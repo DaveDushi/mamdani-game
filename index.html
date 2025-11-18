@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mamdani Run: Escape Trump!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="ui-layer">
+            <!-- UI elements will go here -->
+            <div id="start-screen" class="screen">
+                <h1>MAMDANI RUN</h1>
+                <p>Escape Trump! Build Utopia!</p>
+                <p>ARROWS to Move/Jump/Slide</p>
+                <button id="start-btn">START REVOLUTION</button>
+            </div>
+            <div id="hud" class="hidden">
+                <div class="hud-panel" id="score-board">DIST: <span id="score">0</span>m</div>
+                <div class="hud-panel" id="stamps-board">STAMPS: <span id="stamps">0</span></div>
+                <div id="purity-container">
+                    <div id="purity-label">PURITY</div>
+                    <div id="purity-bar-container">
+                        <div id="purity-bar"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="tax-notification" class="hidden">TAXES!<br>-50% STAMPS</div>
+            <div id="game-over-screen" class="hidden screen">
+                <h1>TRUMP WINS!</h1>
+                <p>Final Distance: <span id="final-score">0</span>m</p>
+                <button id="restart-btn">TRY AGAIN</button>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="/main.js"></script>
+</body>
+
+</html>
