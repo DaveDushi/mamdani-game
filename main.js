@@ -8,6 +8,7 @@ import { ScoreManager } from './game/ScoreManager.js';
 import { Trump } from './game/Trump.js';
 import { PowerupManager } from './game/PowerupManager.js';
 import { ParticleSystem } from './game/ParticleSystem.js';
+import { Shop } from './game/Shop.js';
 
 // Scene Setup
 const scene = new THREE.Scene();
@@ -41,6 +42,7 @@ const scoreManager = new ScoreManager();
 const trump = new Trump(scene);
 const input = new Input();
 const particles = new ParticleSystem(scene);
+const shop = new Shop(player, scoreManager);
 
 // UI Elements
 const startScreen = document.getElementById('start-screen');
@@ -52,10 +54,26 @@ const purityBar = document.getElementById('purity-bar');
 const finalScoreEl = document.getElementById('final-score');
 const startBtn = document.getElementById('start-btn');
 const restartBtn = document.getElementById('restart-btn');
+const shopBtn = document.getElementById('shop-btn');
+const storyModal = document.getElementById('story-modal');
+const closeStoryBtn = document.getElementById('close-story-btn');
 
 // Event Listeners
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
+shopBtn.addEventListener('click', () => shop.show());
+closeStoryBtn.addEventListener('click', () => {
+    storyModal.classList.add('hidden');
+    startScreen.classList.remove('hidden');
+    localStorage.setItem('mamdani_story_seen', 'true');
+});
+
+// Check Story
+if (!localStorage.getItem('mamdani_story_seen')) {
+    startScreen.classList.add('hidden');
+    storyModal.classList.remove('hidden');
+    storyModal.classList.add('flex'); // Ensure flex for centering if needed, or just remove hidden
+}
 
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;

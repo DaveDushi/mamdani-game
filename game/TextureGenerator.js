@@ -26,6 +26,9 @@ export class TextureGenerator {
             case 'halal': canvas = this.drawHalalCart(); break;
             case 'taxi': canvas = this.drawTaxi(); break;
             case 'person': canvas = this.drawPerson(); break;
+            case 'billboard_commie': canvas = this.drawBillboard('COMMIE'); break;
+            case 'billboard_palestinian': canvas = this.drawBillboard('FREE PALESTINE'); break;
+            case 'alcohol': canvas = this.drawAlcohol(); break;
             default: canvas = this.createCanvas(64, 64);
         }
         const texture = new THREE.CanvasTexture(canvas);

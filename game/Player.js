@@ -184,11 +184,7 @@ export class Player {
         // Sliding
         if (this.slideTimer > 0) {
             this.slideTimer -= dt;
-            this.mesh.scale.y = 0.5;
-            this.mesh.position.y = -0.5; // Adjust for scale
-        } else {
-            this.mesh.scale.y = 1;
-            if (this.isGrounded) this.mesh.position.y = 0;
+            // Hitbox adjustment handled by groundY in gravity logic
         }
 
         if (this.isGrounded && input.isJustPressed('down')) {
@@ -211,14 +207,58 @@ export class Player {
         }
 
         // Animation
-        if (this.isGrounded && this.slideTimer <= 0) {
+        if (this.slideTimer > 0) {
+            // Slide Pose
+            const slideLean = -Math.PI / 4;
+
+            // Legs forward
+            this.leftLeg.rotation.x = -Math.PI / 2;
+            this.rightLeg.rotation.x = -Math.PI / 2;
+            this.leftLeg.position.set(-0.18, 0.2, 0.3); // Lift and move forward
+            this.rightLeg.position.set(0.18, 0.2, 0.3);
+
+            // Body lean back
+            this.body.rotation.x = slideLean;
+            this.body.position.y = 0.7; // Lower body
+            this.body.position.z = -0.2;
+
+            // Head follow body roughly (or look forward)
+            this.head.position.y = 1.1;
+            this.head.position.z = -0.4;
+            this.head.rotation.x = Math.PI / 6; // Look forward slightly
+
+            // Arms
+            this.leftArm.position.y = 0.7;
+            this.leftArm.position.z = -0.2;
+            this.leftArm.rotation.x = slideLean;
+
+            this.rightArm.position.y = 0.7;
+            this.rightArm.position.z = -0.2;
+            this.rightArm.rotation.x = slideLean;
+
+            // Tie
+            this.tie.position.y = 0.7;
+            this.tie.position.z = -0.04; // Adjust for body lean
+            this.tie.rotation.x = slideLean;
+
+            // Ensure mesh is upright
+            this.mesh.rotation.x = 0;
+
+        } else if (this.isGrounded) {
             this.runTime += dt * 10;
+
+            // Reset Positions (Defaults)
+            this.resetPoseDefaults();
+
+            // Run Cycle
             this.leftLeg.rotation.x = Math.sin(this.runTime) * 0.5;
             this.rightLeg.rotation.x = Math.sin(this.runTime + Math.PI) * 0.5;
             this.leftArm.rotation.x = Math.sin(this.runTime + Math.PI) * 0.5;
             this.rightArm.rotation.x = Math.sin(this.runTime) * 0.5;
         } else {
-            // Reset pose
+            // Reset pose for Jump/Idle
+            this.resetPoseDefaults();
+
             this.leftLeg.rotation.x = 0;
             this.rightLeg.rotation.x = 0;
             this.leftArm.rotation.x = 0;
@@ -232,16 +272,43 @@ export class Player {
         });
     }
 
+    setSkin(skinData) {
+        this.currentSkin = skinData;
+        this.resetColor();
+    }
+
     resetColor() {
         if (this.hasScarf || this.hasRainbow || this.hasMask) return; // Don't reset if powerup active
 
-        this.head.material.color.setHex(0xd2a679); // Skin
+        const skinColor = this.currentSkin ? this.currentSkin.color : 0xd2a679;
+        const suitColor = this.currentSkin ? this.currentSkin.suitColor : 0x1a1a2e;
+
+        this.head.material.color.setHex(skinColor); // Skin
         this.hair.material.color.setHex(0x000000); // Hair
-        this.body.material.color.setHex(0x1a1a2e); // Suit
+        this.body.material.color.setHex(suitColor); // Suit
         this.tie.material.color.setHex(0xff0000); // Tie
-        this.leftArm.material.color.setHex(0x1a1a2e); // Suit
-        this.rightArm.material.color.setHex(0x1a1a2e); // Suit
+        this.leftArm.material.color.setHex(suitColor); // Suit
+        this.rightArm.material.color.setHex(suitColor); // Suit
         this.leftLeg.material.color.setHex(0x111111); // Pants
         this.rightLeg.material.color.setHex(0x111111); // Pants
+    }
+    resetPoseDefaults() {
+        this.mesh.rotation.x = 0;
+        this.mesh.position.z = 0;
+
+        this.head.position.set(0, 1.75, 0);
+        this.head.rotation.x = 0;
+
+        this.body.position.set(0, 1.15, 0);
+        this.body.rotation.x = 0;
+
+        this.tie.position.set(0, 1.15, 0.16);
+        this.tie.rotation.x = 0;
+
+        this.leftArm.position.set(-0.45, 1.15, 0);
+        this.rightArm.position.set(0.45, 1.15, 0);
+
+        this.leftLeg.position.set(-0.18, 0.4, 0);
+        this.rightLeg.position.set(0.18, 0.4, 0);
     }
 }
