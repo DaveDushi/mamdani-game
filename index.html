@@ -9,6 +9,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./style.css" />
 </head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M4V8F77Y5F"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-M4V8F77Y5F');
+</script>
 
 <body>
     <div id="game-container">
@@ -21,17 +30,35 @@
                 <p>ARROWS to Move/Jump/Slide</p>
                 <button id="start-btn">START REVOLUTION</button>
                 <button id="shop-btn" style="margin-top: 10px; background-color: #444;">SHOP</button>
+                <button id="instructions-btn"
+                    style="margin-top: 10px; background-color: #0077be; font-size: 1rem; padding: 1rem 2rem;">HOW TO
+                    PLAY</button>
             </div>
             <div id="hud" class="hidden">
                 <div class="hud-panel" id="score-board">DIST: <span id="score">0</span>m</div>
                 <div class="hud-panel" id="stamps-board">STAMPS: <span id="stamps">0</span></div>
+                <div id="powerup-hud"></div>
             </div>
+            <div id="notification-area"></div>
             <div id="tax-notification" class="hidden">TAXES!<br>-50% STAMPS</div>
+
             <div id="game-over-screen" class="hidden screen">
-                <h1>TRUMP WINS!</h1>
-                <p>Final Distance: <span id="final-score">0</span>m</p>
-                <button id="restart-btn">TRY AGAIN</button>
+                <div class="game-over-content">
+                    <h1 class="game-over-title">TRUMP WINS!</h1>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-label">DISTANCE RUN</div>
+                            <div class="stat-value" id="final-distance">0m</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">TAXES PAID</div>
+                            <div class="stat-value" id="final-tax">$0</div>
+                        </div>
+                    </div>
+                    <button id="restart-btn">TRY AGAIN</button>
+                </div>
             </div>
+
             <div id="story-modal" class="hidden screen" style="background: rgba(0,0,0,0.95); z-index: 100;">
                 <h1 style="color: #ff0000;">THE YEAR IS 2025</h1>
                 <p style="max-width: 600px; line-height: 1.6; margin-bottom: 20px;">
@@ -43,6 +70,40 @@
                     <b>RUN FOR YOUR LIFE!</b>
                 </p>
                 <button id="close-story-btn">I UNDERSTAND</button>
+            </div>
+
+            <div id="instructions-modal" class="hidden screen"
+                style="background: rgba(0,0,0,0.95); z-index: 200; overflow-y: auto;">
+                <div class="instructions-content" style="max-width: 800px; padding: 40px; text-align: left;">
+                    <h1 style="color: var(--secondary-color); text-align: center;">HOW TO PLAY</h1>
+
+                    <h3 style="color: var(--primary-color);">CONTROLS</h3>
+                    <ul style="list-style: none; padding: 0; line-height: 2;">
+                        <li>⬆️ <b>JUMP</b> (Arrow Up / W / Space / Swipe Up)</li>
+                        <li>⬇️ <b>SLIDE</b> (Arrow Down / S / Swipe Down)</li>
+                        <li>⬅️ <b>LEFT</b> (Arrow Left / A / Swipe Left)</li>
+                        <li>➡️ <b>RIGHT</b> (Arrow Right / D / Swipe Right)</li>
+                    </ul>
+
+                    <h3 style="color: var(--primary-color); margin-top: 30px;">OBJECTIVES</h3>
+                    <ul style="list-style: none; padding: 0; line-height: 1.6;">
+                        <li>🏃 <b>RUN</b> as far as possible to escape Trump!</li>
+                        <li>💰 <b>COLLECT STAMPS</b> for score (but beware of 50% taxes!)</li>
+                        <li>🚧 <b>AVOID OBSTACLES</b> (Taxis, Protestors, Scaffolds)</li>
+                        <li>🍺 <b>AVOID ALCOHOL</b> (Causes confusion!)</li>
+                    </ul>
+
+                    <h3 style="color: var(--primary-color); margin-top: 30px;">POWER-UPS</h3>
+                    <ul style="list-style: none; padding: 0; line-height: 1.6;">
+                        <li>😷 <b>COVID MASK</b>: Protects from one hit.</li>
+                        <li>🍉 <b>KAFIYEH</b>: Temporary invincibility.</li>
+                        <li>🌈 <b>RAINBOW</b>: Magnet for stamps.</li>
+                    </ul>
+
+                    <div style="text-align: center; margin-top: 40px;">
+                        <button id="close-instructions-btn">BACK TO MENU</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

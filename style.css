@@ -104,117 +104,12 @@ button:hover {
     box-shadow: 0 8px 0 #990000;
 }
 
-:root {
-    --primary-color: #ff4d4d;
-    /* Revolutionary Red */
-    --secondary-color: #ffd700;
-    /* Gold/Coin */
-    --bg-color: #222;
-    --text-color: #fff;
-    --font-family: 'Courier New', Courier, monospace;
-}
-
-@font-face {
-    font-family: 'Arcade';
-    src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-}
-
-body,
-html {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    font-family: 'Press Start 2P', 'Courier New', monospace;
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    user-select: none;
-}
-
-#game-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
-}
-
-#game-canvas {
-    display: block;
-    width: 100%;
-    height: 100%;
-    touch-action: none;
-}
-
-#ui-layer {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-}
-
-.screen {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    background: rgba(0, 0, 0, 0.85);
-    pointer-events: auto;
-    backdrop-filter: blur(5px);
-}
-
-.hidden {
-    display: none !important;
-}
-
-h1 {
-    font-size: 3rem;
-    color: var(--primary-color);
-    text-shadow: 4px 4px 0px #000;
-    margin-bottom: 1rem;
-    text-align: center;
-    text-transform: uppercase;
-    letter-spacing: 5px;
-    animation: float 2s ease-in-out infinite;
-}
-
-p {
-    font-size: 1rem;
-    margin-bottom: 2rem;
-    text-align: center;
-    line-height: 1.5;
-    max-width: 600px;
-}
-
-button {
-    padding: 1.5rem 3rem;
-    font-size: 1.5rem;
-    font-family: inherit;
-    background: var(--primary-color);
-    color: white;
-    border: 4px solid white;
-    cursor: pointer;
-    transition: all 0.1s;
-    text-transform: uppercase;
-    box-shadow: 0 6px 0 #990000;
-}
-
-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 0 #990000;
-}
-
 button:active {
     transform: translateY(4px);
     box-shadow: 0 2px 0 #990000;
 }
 
+/* HUD Styles */
 #hud {
     position: absolute;
     top: 20px;
@@ -225,13 +120,17 @@ button:active {
     align-items: flex-start;
     font-size: 1.2rem;
     text-shadow: 2px 2px 0 #000;
+    pointer-events: none;
+    /* Let clicks pass through to game */
 }
 
 .hud-panel {
-    background: rgba(0, 0, 0, 0.5);
-    padding: 10px;
-    border: 2px solid white;
-    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 10px 15px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 #score-board {
@@ -321,4 +220,372 @@ button:active {
 .skin-item p {
     margin-bottom: 0;
     font-size: 0.8rem;
+}
+
+/* Powerup HUD */
+#powerup-hud {
+    display: flex;
+    gap: 15px;
+}
+
+.powerup-icon {
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 12px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 28px;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    /* Clip the bar */
+}
+
+.powerup-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(90deg, #00ff00, #adff2f);
+    transition: width 0.1s linear;
+    z-index: 10;
+}
+
+/* Notifications */
+#notification-area {
+    position: absolute;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 150;
+}
+
+.notification {
+    font-family: 'Press Start 2P', cursive;
+    color: #fff;
+    font-size: 24px;
+    text-shadow: 2px 2px 0 #000;
+    animation: fadeUp 2s forwards;
+}
+
+@keyframes fadeUp {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    80% {
+        opacity: 1;
+        transform: translateY(-20px);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 2rem;
+    }
+
+    #hud {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #powerup-hud {
+        margin-top: 10px;
+    }
+
+    .hud-panel {
+        font-size: 1rem;
+        padding: 8px 12px;
+    }
+}
+
+/* Game Over Screen Improvements */
+.game-over-content {
+    background: rgba(0, 0, 0, 0.9);
+    border: 4px solid #ff0000;
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 0 50px rgba(255, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+#score-board {
+    color: white;
+}
+
+#stamps-board {
+    color: var(--secondary-color);
+}
+
+#tax-notification {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3rem;
+    color: red;
+    text-shadow: 4px 4px 0 #000;
+    border: 5px solid red;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.9);
+    animation: pulse 0.5s infinite alternate;
+    z-index: 100;
+    text-align: center;
+}
+
+@keyframes pulse {
+    from {
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    to {
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+/* Shop Styles */
+.shop-screen {
+    z-index: 200;
+    background: rgba(0, 0, 0, 0.95);
+}
+
+.skins-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.skin-item {
+    border: 2px solid white;
+    padding: 20px;
+    width: 150px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.skin-item:hover {
+    background: #333;
+    transform: scale(1.05);
+    border-color: var(--primary-color);
+}
+
+.skin-item h3 {
+    margin-top: 0;
+    color: var(--secondary-color);
+    font-size: 1rem;
+    margin-bottom: 10px;
+}
+
+.skin-item p {
+    margin-bottom: 0;
+    font-size: 0.8rem;
+}
+
+/* Powerup HUD */
+#powerup-hud {
+    display: flex;
+    gap: 15px;
+}
+
+.powerup-icon {
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 12px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 28px;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    /* Clip the bar */
+}
+
+.powerup-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(90deg, #00ff00, #adff2f);
+    transition: width 0.1s linear;
+    z-index: 10;
+}
+
+/* Notifications */
+#notification-area {
+    position: absolute;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 150;
+}
+
+.notification {
+    font-family: 'Press Start 2P', cursive;
+    color: #fff;
+    font-size: 24px;
+    text-shadow: 2px 2px 0 #000;
+    animation: fadeUp 2s forwards;
+}
+
+@keyframes fadeUp {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    80% {
+        opacity: 1;
+        transform: translateY(-20px);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 2rem;
+    }
+
+    #hud {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #powerup-hud {
+        margin-top: 10px;
+    }
+
+    .hud-panel {
+        font-size: 1rem;
+        padding: 8px 12px;
+    }
+}
+
+/* Game Over Screen Improvements */
+.game-over-content {
+    background: rgba(0, 0, 0, 0.9);
+    border: 4px solid #ff0000;
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 0 50px rgba(255, 0, 0, 0.5);
+    animation: zoomIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    max-width: 90%;
+    width: 500px;
+}
+
+.game-over-title {
+    font-size: 3rem;
+    color: #ff0000;
+    text-shadow: 4px 4px 0 #000;
+    margin-bottom: 30px;
+    animation: pulseText 1s infinite alternate;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.stat-item {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: #aaa;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    color: #fff;
+    text-shadow: 2px 2px 0 #000;
+    display: block;
+}
+
+#final-tax {
+    color: #ff4d4d;
+}
+
+#final-distance {
+    color: #ffd700;
+}
+
+@keyframes zoomIn {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes pulseText {
+    from {
+        transform: scale(1);
+    }
+
+    to {
+        transform: scale(1.1);
+    }
 }

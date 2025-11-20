@@ -19,9 +19,9 @@ export class TextureGenerator {
             case 'barrier': canvas = this.drawBarrier(); break;
             case 'scaffold': canvas = this.drawScaffold(); break;
             case 'coin': canvas = this.drawCoin(); break;
-            case 'scarf': canvas = this.drawScarf(); break;
+            case 'kafiyeh': canvas = this.drawKafiyeh(); break;
             case 'rainbow': canvas = this.drawRainbow(); break;
-            case 'mask': canvas = this.drawMask(); break;
+            case 'covidMask': canvas = this.drawCovidMask(); break;
             case 'building': canvas = this.drawBuilding(); break;
             case 'halal': canvas = this.drawHalalCart(); break;
             case 'taxi': canvas = this.drawTaxi(); break;
@@ -413,7 +413,7 @@ export class TextureGenerator {
         return c;
     }
 
-    drawScarf() {
+    drawKafiyeh() {
         const c = this.createCanvas(64, 64);
         const ctx = c.getContext('2d');
 
@@ -461,7 +461,7 @@ export class TextureGenerator {
         return c;
     }
 
-    drawMask() {
+    drawCovidMask() {
         const c = this.createCanvas(64, 64);
         const ctx = c.getContext('2d');
 

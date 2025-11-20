@@ -8,21 +8,21 @@ export class PowerupManager {
         this.texGen = new TextureGenerator();
 
         // Geometries
-        // Scarf: Bandana Triangle (Flattened Cone)
-        this.scarfGeo = new THREE.ConeGeometry(0.5, 0.1, 3); // Triangle prism
-        this.scarfGeo.rotateX(Math.PI / 2); // Lay flat
-        this.scarfGeo.rotateY(Math.PI / 6); // Point forward
+        // Kafiyeh: Bandana Triangle (Flattened Cone)
+        this.kafiyehGeo = new THREE.ConeGeometry(0.5, 0.1, 3); // Triangle prism
+        this.kafiyehGeo.rotateX(Math.PI / 2); // Lay flat
+        this.kafiyehGeo.rotateY(Math.PI / 6); // Point forward
 
         // Rainbow: Arch (Half Torus)
         this.rainbowGeo = new THREE.TorusGeometry(0.4, 0.1, 8, 16, Math.PI);
 
-        // Mask: Surgical Mask (Curved Plane or Box)
-        this.maskGeo = new THREE.BoxGeometry(0.6, 0.4, 0.1);
+        // Covid Mask: Surgical Mask (Curved Plane or Box)
+        this.covidMaskGeo = new THREE.BoxGeometry(0.6, 0.4, 0.1);
 
         // Materials
-        this.scarfMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('scarf') });
+        this.kafiyehMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('kafiyeh') });
         this.rainbowMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('rainbow') });
-        this.maskMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('mask') });
+        this.covidMaskMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('covidMask') });
     }
 
     reset() {
@@ -35,8 +35,8 @@ export class PowerupManager {
         let mesh, type;
 
         if (typeRoll < 0.33) {
-            type = 'scarf';
-            mesh = new THREE.Mesh(this.scarfGeo, this.scarfMat);
+            type = 'kafiyeh';
+            mesh = new THREE.Mesh(this.kafiyehGeo, this.kafiyehMat);
             mesh.rotation.x = -Math.PI / 4; // Tilt slightly up
         } else if (typeRoll < 0.66) {
             type = 'rainbow';
@@ -50,8 +50,8 @@ export class PowerupManager {
             // Actually, let's just rotate it in spawn.
             mesh.rotation.z = 0;
         } else {
-            type = 'mask';
-            mesh = new THREE.Mesh(this.maskGeo, this.maskMat);
+            type = 'covidMask';
+            mesh = new THREE.Mesh(this.covidMaskGeo, this.covidMaskMat);
             mesh.rotation.x = -Math.PI / 6; // Tilt to face camera
         }
 

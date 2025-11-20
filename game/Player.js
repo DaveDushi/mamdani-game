@@ -83,17 +83,19 @@ export class Player {
         this.slideDuration = 0.8; // Seconds
 
         // Powerups
-        this.hasScarf = false; // Invincibility
+        this.hasKafiyeh = false; // Invincibility
         this.hasRainbow = false; // Magnet
-        this.hasMask = false; // Safe Slide
+        this.hasCovidMask = false; // Safe Slide
 
-        this.scarfTimer = 0;
+        this.kafiyehTimer = 0;
         this.rainbowTimer = 0;
-        this.maskTimer = 0;
+        this.covidMaskTimer = 0;
 
         this.runTime = 0;
 
         this.confusionTimer = 0;
+
+        this.events = [];
     }
 
     reset() {
@@ -107,57 +109,62 @@ export class Player {
         this.slideTimer = 0;
         this.confusionTimer = 0;
 
-        this.hasScarf = false;
+        this.hasKafiyeh = false;
         this.hasRainbow = false;
-        this.hasMask = false;
+        this.hasCovidMask = false;
     }
 
     activatePowerup(type) {
-        if (type === 'scarf') {
-            this.hasScarf = true;
-            this.scarfTimer = 10.0;
-            // this.mesh.material.color.setHex(0xFF0000); // Visual cue - needs to be applied to specific parts
+        if (type === 'kafiyeh') {
+            this.hasKafiyeh = true;
+            this.kafiyehTimer = 10.0;
+            this.events.push({ type: 'powerupStart', name: 'kafiyeh', duration: 10.0 });
         } else if (type === 'rainbow') {
             this.hasRainbow = true;
             this.rainbowTimer = 10.0;
-            // this.mesh.material.color.setHex(0x00FFFF);
-        } else if (type === 'mask') {
-            this.hasMask = true;
-            this.maskTimer = 10.0;
-            // this.mesh.material.color.setHex(0xFFFFFF);
+            this.events.push({ type: 'powerupStart', name: 'rainbow', duration: 10.0 });
+        } else if (type === 'covidMask') {
+            this.hasCovidMask = true;
+            this.covidMaskTimer = 10.0;
+            this.events.push({ type: 'powerupStart', name: 'covidMask', duration: 10.0 });
         }
     }
 
     activateConfusion() {
         this.confusionTimer = 5.0;
+        this.events.push({ type: 'debuffStart', name: 'confusion', duration: 5.0 });
     }
 
     update(dt, input) {
         // Update Powerup Timers
-        if (this.hasScarf) {
-            this.scarfTimer -= dt;
-            if (this.scarfTimer <= 0) {
-                this.hasScarf = false;
-                // Reset visual if needed
+        if (this.hasKafiyeh) {
+            this.kafiyehTimer -= dt;
+            if (this.kafiyehTimer <= 0) {
+                this.hasKafiyeh = false;
+                this.events.push({ type: 'powerupEnd', name: 'kafiyeh' });
             }
         }
         if (this.hasRainbow) {
             this.rainbowTimer -= dt;
             if (this.rainbowTimer <= 0) {
                 this.hasRainbow = false;
-                // this.mesh.material.color.setHex(0xff0000);
+                this.events.push({ type: 'powerupEnd', name: 'rainbow' });
             }
         }
-        if (this.hasMask) {
-            this.maskTimer -= dt;
-            if (this.maskTimer <= 0) {
-                this.hasMask = false;
-                // this.mesh.material.color.setHex(0xff0000);
+        if (this.hasCovidMask) {
+            this.covidMaskTimer -= dt;
+            if (this.covidMaskTimer <= 0) {
+                this.hasCovidMask = false;
+                this.events.push({ type: 'powerupEnd', name: 'covidMask' });
             }
         }
 
         if (this.confusionTimer > 0) {
             this.confusionTimer -= dt;
+            if (this.confusionTimer <= 0) {
+                this.confusionTimer = 0;
+                this.events.push({ type: 'debuffEnd', name: 'confusion' });
+            }
         }
 
         // Input Handling with Confusion
@@ -288,7 +295,7 @@ export class Player {
     }
 
     resetColor() {
-        if (this.hasScarf || this.hasRainbow || this.hasMask) return; // Don't reset if powerup active
+        if (this.hasKafiyeh || this.hasRainbow || this.hasCovidMask) return; // Don't reset if powerup active
 
         const skinColor = this.currentSkin ? this.currentSkin.color : 0xd2a679;
         const suitColor = this.currentSkin ? this.currentSkin.suitColor : 0x1a1a2e;

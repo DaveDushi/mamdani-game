@@ -33,15 +33,16 @@ The year is 2025. Trump has declared himself Emperor, and the world has descende
 - **Stamps (Coins)**: The main currency. Collecting them increases your score. Be warned: 50% of your stamps are taken as taxes!
 
 ### Power-ups
-- **Mask**: Provides a shield that protects you from one hit. (Visual: Player turns blue/shielded).
-- **Scarf**: Grants temporary invincibility. (Visual: Sparkles).
-- **Rainbow**: Acts as a magnet, attracting nearby stamps to you.
+- **Covid Mask** 😷: Provides a shield that protects you from one hit. (Visual: Player turns blue/shielded).
+- **Kafiyeh** 🍉: Grants temporary invincibility. (Visual: Sparkles).
+- **Rainbow** 🌈: Acts as a magnet, attracting nearby stamps to you.
 
 ### Obstacles
-- **Standard Obstacles**: Buses, Taxis, Protestors. Hitting these causes damage or slows you down.
-- **Scaffold**: High obstacles that you must **slide** under.
-- **Alcohol**: A trap! Hitting it causes **confusion** (controls might be affected or visual distortion).
-- **Halal Cart**: A helpful object. Hitting it provides a small heal or bonus (Good vibes!).
+- **Taxi**: Short obstacle. You can **jump** over it.
+- **Protestor**: Tall obstacle. You must **dodge** (move left/right).
+- **Scaffold**: High obstacle. You must **slide** under.
+- **Halal Cart**: High obstacle. You must **slide** under.
+- **Alcohol**: A trap! Hitting it causes **confusion** (controls might be affected).
 
 ## Mechanics
 
@@ -54,4 +55,5 @@ The year is 2025. Trump has declared himself Emperor, and the world has descende
 - A "Tax Notification" will appear, reminding you that **50% of your collected stamps** are deducted as taxes. This is applied to your final score.
 
 ### Shop
-- You can access the **Shop** from the main menu to spend your hard-earned stamps (after taxes!) on upgrades or skins (if implemented).
+- You can access the **Shop** from the main menu.
+- **Skins**: Civilian, Rebel, Activist, Worker. All skins are currently **Free**!

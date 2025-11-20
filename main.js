@@ -51,17 +51,28 @@ const gameOverScreen = document.getElementById('game-over-screen');
 const scoreEl = document.getElementById('score');
 const stampsEl = document.getElementById('stamps');
 
-const finalScoreEl = document.getElementById('final-score');
+
 const startBtn = document.getElementById('start-btn');
 const restartBtn = document.getElementById('restart-btn');
 const shopBtn = document.getElementById('shop-btn');
+const instructionsBtn = document.getElementById('instructions-btn');
 const storyModal = document.getElementById('story-modal');
+const instructionsModal = document.getElementById('instructions-modal');
 const closeStoryBtn = document.getElementById('close-story-btn');
+const closeInstructionsBtn = document.getElementById('close-instructions-btn');
 
 // Event Listeners
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
 shopBtn.addEventListener('click', () => shop.show());
+instructionsBtn.addEventListener('click', () => {
+    startScreen.classList.add('hidden');
+    instructionsModal.classList.remove('hidden');
+});
+closeInstructionsBtn.addEventListener('click', () => {
+    instructionsModal.classList.add('hidden');
+    startScreen.classList.remove('hidden');
+});
 closeStoryBtn.addEventListener('click', () => {
     storyModal.classList.add('hidden');
     startScreen.classList.remove('hidden');
@@ -103,15 +114,108 @@ function gameOver() {
     gameOverScreen.classList.remove('hidden');
 
     const taxPaid = scoreManager.applyFinalTax();
-    finalScoreEl.innerText = `${scoreManager.getDisplayScore()} (Tax Paid: ${taxPaid})`;
+
+    const finalDistanceEl = document.getElementById('final-distance');
+    const finalTaxEl = document.getElementById('final-tax');
+
+    if (finalDistanceEl) finalDistanceEl.innerText = `${scoreManager.getDisplayScore()}m`;
+    if (finalTaxEl) finalTaxEl.innerText = `$${taxPaid}`;
 }
 
 function updateUI() {
     scoreEl.innerText = scoreManager.getDisplayScore();
     stampsEl.innerText = scoreManager.stamps;
 
+    // Process Player Events
+    while (player.events.length > 0) {
+        const event = player.events.shift();
+        if (event.type === 'powerupStart') {
+            addPowerupIcon(event.name, event.duration);
+            showNotification(`${event.name.toUpperCase()} ACTIVATED!`, '#00ff00');
+        } else if (event.type === 'powerupEnd') {
+            removePowerupIcon(event.name);
+            showNotification(`${event.name.toUpperCase()} EXPIRED`, '#ff0000');
+        } else if (event.type === 'debuffStart') {
+            addPowerupIcon(event.name, event.duration);
+            showNotification('CONFUSION!', '#800080');
+        } else if (event.type === 'debuffEnd') {
+            removePowerupIcon(event.name);
+            showNotification('CONFUSION CLEARED', '#00ff00');
+        }
+    }
 
+    // Update Powerup Bars
+    const powerupHud = document.getElementById('powerup-hud');
+    Array.from(powerupHud.children).forEach(icon => {
+        const name = icon.dataset.name;
+        let timer = 0;
+        let maxTime = 10.0;
+
+        if (name === 'kafiyeh') timer = player.kafiyehTimer;
+        else if (name === 'rainbow') timer = player.rainbowTimer;
+        else if (name === 'covidMask') timer = player.covidMaskTimer;
+        else if (name === 'confusion') {
+            timer = player.confusionTimer;
+            maxTime = 5.0;
+        }
+
+        const percent = (timer / maxTime) * 100;
+        icon.querySelector('.powerup-bar').style.width = `${percent}%`;
+    });
 }
+
+function addPowerupIcon(name, duration) {
+    const hud = document.getElementById('powerup-hud');
+    // Check if exists
+    let icon = hud.querySelector(`[data-name="${name}"]`);
+    if (!icon) {
+        icon = document.createElement('div');
+        icon.className = 'powerup-icon';
+        icon.dataset.name = name;
+
+        // Emoji Icons
+        let emoji = '';
+        if (name === 'kafiyeh') emoji = '🍉';
+        else if (name === 'rainbow') emoji = '🌈';
+        else if (name === 'covidMask') emoji = '😷';
+        else if (name === 'confusion') emoji = '🥴';
+
+        icon.innerText = emoji;
+
+        const bar = document.createElement('div');
+        bar.className = 'powerup-bar';
+        icon.appendChild(bar);
+
+        hud.appendChild(icon);
+    }
+}
+
+function removePowerupIcon(name) {
+    const hud = document.getElementById('powerup-hud');
+    const icon = hud.querySelector(`[data-name="${name}"]`);
+    if (icon) {
+        hud.removeChild(icon);
+    }
+}
+
+function showNotification(text, color) {
+    const container = document.getElementById('notification-area');
+    const notif = document.createElement('div');
+    notif.className = 'notification';
+    notif.innerText = text;
+    notif.style.color = color;
+
+    container.appendChild(notif);
+
+    // Remove after animation
+    setTimeout(() => {
+        if (container.contains(notif)) {
+            container.removeChild(notif);
+        }
+    }, 2000);
+}
+
+
 
 // Game Loop
 const clock = new THREE.Clock();
@@ -152,15 +256,26 @@ function animate() {
 
         // Magnet Effect (Rainbow)
         if (player.hasRainbow) {
-            obstacleManager.obstacles.forEach(obj => {
+            for (let i = obstacleManager.obstacles.length - 1; i >= 0; i--) {
+                const obj = obstacleManager.obstacles[i];
                 if (obj.type === 'coin') {
                     const dist = player.mesh.position.distanceTo(obj.mesh.position);
-                    if (dist < 15) { // Magnet range
+
+                    // Move towards player if in range
+                    if (dist < 15) {
                         const direction = new THREE.Vector3().subVectors(player.mesh.position, obj.mesh.position).normalize();
-                        obj.mesh.position.add(direction.multiplyScalar(20 * dt)); // Move towards player
+                        obj.mesh.position.add(direction.multiplyScalar(25 * dt)); // Increased speed slightly
+                    }
+
+                    // Auto-collect if very close (Fixes missing collisions)
+                    if (dist < 1.5) {
+                        scoreManager.addStamps(1);
+                        particles.spawnParticles(player.mesh.position, 10, 0xffd700, 1); // Coin sparkles
+                        obstacleManager.scene.remove(obj.mesh);
+                        obstacleManager.obstacles.splice(i, 1);
                     }
                 }
-            });
+            }
         }
 
         // Check Obstacle Collisions
@@ -187,14 +302,14 @@ function animate() {
                     obstacleManager.obstacles.splice(collisionResult.index, 1);
                 } else {
                     // Standard Hit (Bus, Taxi, Protestor, Halal if not sliding, etc.)
-                    if (player.hasScarf) {
+                    if (player.hasKafiyeh) {
                         // Invincible!
                         // Maybe destroy obstacle?
                         particles.spawnParticles(player.mesh.position, 10, 0xffffff, 1);
                         obstacleManager.scene.remove(collisionResult.mesh);
                         obstacleManager.obstacles.splice(collisionResult.index, 1);
-                    } else if (player.hasMask) {
-                        player.hasMask = false;
+                    } else if (player.hasCovidMask) {
+                        player.hasCovidMask = false;
                         player.mesh.traverse(child => {
                             if (child.isMesh) child.material.color.setHex(0xff0000);
                         });
