@@ -20,14 +20,6 @@ export class ScoreManager {
     update(dt, speed) {
         // Score based on distance/speed
         this.score += speed * dt;
-
-        // Tax Timer
-        this.taxTimer += dt;
-        if (this.taxTimer >= this.taxInterval) {
-            this.applyTax();
-            this.taxTimer = 0;
-            return true; // Tax applied
-        }
         return false;
     }
 
@@ -39,11 +31,9 @@ export class ScoreManager {
         this.donations += amount;
     }
 
-    applyTax() {
+    applyFinalTax() {
         const taxAmount = Math.floor(this.stamps * this.taxRate);
         this.stamps -= taxAmount;
-        // TODO: Show Tax UI notification
-        console.log(`TAX TIME! Lost ${taxAmount} stamps.`);
         return taxAmount;
     }
 

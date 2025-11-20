@@ -50,7 +50,7 @@ const hud = document.getElementById('hud');
 const gameOverScreen = document.getElementById('game-over-screen');
 const scoreEl = document.getElementById('score');
 const stampsEl = document.getElementById('stamps');
-const purityBar = document.getElementById('purity-bar');
+
 const finalScoreEl = document.getElementById('final-score');
 const startBtn = document.getElementById('start-btn');
 const restartBtn = document.getElementById('restart-btn');
@@ -101,20 +101,16 @@ function gameOver() {
     gameState.setState('GAME_OVER');
     hud.classList.add('hidden');
     gameOverScreen.classList.remove('hidden');
-    finalScoreEl.innerText = scoreManager.getDisplayScore();
+
+    const taxPaid = scoreManager.applyFinalTax();
+    finalScoreEl.innerText = `${scoreManager.getDisplayScore()} (Tax Paid: ${taxPaid})`;
 }
 
 function updateUI() {
     scoreEl.innerText = scoreManager.getDisplayScore();
     stampsEl.innerText = scoreManager.stamps;
 
-    const purityPercent = (player.purity / player.maxPurity) * 100;
-    purityBar.style.width = `${purityPercent}%`;
 
-    // Color change based on purity
-    if (purityPercent > 60) purityBar.style.backgroundColor = '#00ff00';
-    else if (purityPercent > 30) purityBar.style.backgroundColor = '#ffff00';
-    else purityBar.style.backgroundColor = '#ff0000';
 }
 
 // Game Loop
@@ -133,14 +129,7 @@ function animate() {
         powerupManager.update(dt, world.speed, player);
         particles.update(dt);
 
-        if (scoreManager.update(dt, world.speed)) {
-            // Show Tax Notification
-            const taxNotif = document.getElementById('tax-notification');
-            taxNotif.classList.remove('hidden');
-            setTimeout(() => {
-                taxNotif.classList.add('hidden');
-            }, 3000);
-        }
+        scoreManager.update(dt, world.speed);
         trump.update(dt, player.mesh.position.x);
 
         // Particle Effects for Player Actions
@@ -171,14 +160,7 @@ function animate() {
                 const subtype = collisionResult.subtype;
                 const isSliding = player.slideTimer > 0;
 
-                // Handle Mechanics
-                if (subtype === 'halal' && isSliding) {
-                    // Slide into Halal Cart -> Heal
-                    player.heal(20);
-                    obstacleManager.scene.remove(collisionResult.mesh);
-                    obstacleManager.obstacles.splice(collisionResult.index, 1);
-                    particles.spawnParticles(player.mesh.position, 15, 0x00ff00, 1); // Green heal particles
-                } else if (subtype === 'scaffold' && isSliding) {
+                if (subtype === 'scaffold' && isSliding) {
                     // Slide under Scaffold -> Safe (No hit)
                     // Do nothing, just pass through
                 } else {
@@ -198,7 +180,6 @@ function animate() {
                         } else {
                             // First hit -> Start Chase
                             trump.startChase();
-                            player.takeDamage(10);
 
                             // Visual Feedback
                             player.flashRed();
@@ -217,6 +198,7 @@ function animate() {
             }
         }
     }
+
 
     renderer.render(scene, camera);
 }

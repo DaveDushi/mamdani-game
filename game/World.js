@@ -4,7 +4,7 @@ import { TextureGenerator } from './TextureGenerator.js';
 export class World {
     constructor(scene) {
         this.scene = scene;
-        this.speed = 10; // Base speed
+        this.speed = 30; // Base speed
         this.distance = 0;
         this.texGen = new TextureGenerator();
 
@@ -144,7 +144,7 @@ export class World {
     }
 
     update(dt) {
-        this.speed += dt * 0.1; // Accelerate
+        this.speed += dt * 0.5; // Accelerate
         this.distance += this.speed * dt;
 
         const moveDist = this.speed * dt;

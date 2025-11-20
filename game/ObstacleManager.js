@@ -8,7 +8,7 @@ export class ObstacleManager {
         this.powerupManager = powerupManager;
         this.obstacles = [];
         this.spawnTimer = 0;
-        this.spawnInterval = 2.0; // Seconds between spawns
+        this.spawnInterval = 1.5; // Seconds between spawns
         this.texGen = new TextureGenerator();
 
         // Geometries
@@ -17,12 +17,16 @@ export class ObstacleManager {
         this.scaffoldGeo = new THREE.BoxGeometry(2.5, 0.5, 2); // Overhead
         this.coinGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.1, 16);
         this.coinGeo.rotateX(Math.PI / 2);
+        this.potholeGeo = new THREE.CylinderGeometry(1, 1, 0.05, 16);
+        this.alcoholGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.8, 8);
 
         // Materials
         this.busMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('bus') });
         this.barrierMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('barrier') });
         this.scaffoldMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('scaffold') });
         this.coinMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('coin'), metalness: 0.8, roughness: 0.2 });
+        this.potholeMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('pothole'), transparent: true, opacity: 0.9 });
+        this.alcoholMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('alcohol') });
     }
 
     reset() {
@@ -30,7 +34,7 @@ export class ObstacleManager {
         this.obstacles.forEach(obj => this.scene.remove(obj.mesh));
         this.obstacles = [];
         this.spawnTimer = 0;
-        this.spawnInterval = 2.0;
+        this.spawnInterval = 1.5;
     }
 
     update(dt, speed) {
@@ -190,6 +194,16 @@ export class ObstacleManager {
             const l4 = new THREE.Mesh(legGeo, this.scaffoldMat); l4.position.set(1.4, 1, -0.9); scaffoldGroup.add(l4);
 
             mesh = scaffoldGroup;
+        } else if (typeRoll < 0.85) {
+            // Alcohol (Bad, reduces purity)
+            type = 'alcohol';
+            mesh = new THREE.Mesh(this.alcoholGeo, this.alcoholMat);
+            mesh.position.y = 0.4;
+        } else if (typeRoll < 0.95) {
+            // Pothole (Jumpable/Avoidable)
+            type = 'pothole';
+            mesh = new THREE.Mesh(this.potholeGeo, this.potholeMat);
+            mesh.position.y = 0.05; // On ground
         } else {
             // Coin
             type = 'coin';

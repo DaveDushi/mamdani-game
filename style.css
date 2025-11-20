@@ -11,8 +11,6 @@
 @font-face {
     font-family: 'Arcade';
     src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-    /* Note: Google Fonts URL usually goes in HTML head, but for this demo we'll stick to Courier or system fonts if we can't load external easily without HTML change. 
-       Let's just use a good stack. */
 }
 
 body,
@@ -23,7 +21,6 @@ html {
     height: 100%;
     overflow: hidden;
     font-family: 'Press Start 2P', 'Courier New', monospace;
-    /* Try to use a retro font if available */
     background-color: var(--bg-color);
     color: var(--text-color);
     user-select: none;
@@ -39,6 +36,113 @@ html {
     display: block;
     width: 100%;
     height: 100%;
+    touch-action: none;
+}
+
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.85);
+    pointer-events: auto;
+    backdrop-filter: blur(5px);
+}
+
+.hidden {
+    display: none !important;
+}
+
+h1 {
+    font-size: 3rem;
+    color: var(--primary-color);
+    text-shadow: 4px 4px 0px #000;
+    margin-bottom: 1rem;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 5px;
+    animation: float 2s ease-in-out infinite;
+}
+
+p {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+    text-align: center;
+    line-height: 1.5;
+    max-width: 600px;
+}
+
+button {
+    padding: 1.5rem 3rem;
+    font-size: 1.5rem;
+    font-family: inherit;
+    background: var(--primary-color);
+    color: white;
+    border: 4px solid white;
+    cursor: pointer;
+    transition: all 0.1s;
+    text-transform: uppercase;
+    box-shadow: 0 6px 0 #990000;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 0 #990000;
+}
+
+:root {
+    --primary-color: #ff4d4d;
+    /* Revolutionary Red */
+    --secondary-color: #ffd700;
+    /* Gold/Coin */
+    --bg-color: #222;
+    --text-color: #fff;
+    --font-family: 'Courier New', Courier, monospace;
+}
+
+@font-face {
+    font-family: 'Arcade';
+    src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+}
+
+body,
+html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Press Start 2P', 'Courier New', monospace;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    user-select: none;
+}
+
+#game-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+#game-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
 }
 
 #ui-layer {
@@ -136,30 +240,6 @@ button:active {
 
 #stamps-board {
     color: var(--secondary-color);
-}
-
-#purity-bar-container {
-    width: 300px;
-    height: 20px;
-    border: 3px solid white;
-    background: #333;
-    margin-top: 5px;
-    position: relative;
-}
-
-#purity-bar {
-    width: 100%;
-    height: 100%;
-    background: #00ff00;
-    transition: width 0.2s, background-color 0.2s;
-}
-
-#purity-label {
-    position: absolute;
-    top: -25px;
-    left: 0;
-    font-size: 0.8rem;
-    text-transform: uppercase;
 }
 
 #tax-notification {

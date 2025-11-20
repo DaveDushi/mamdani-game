@@ -78,9 +78,7 @@ export class Player {
         this.rightLeg.castShadow = true;
         this.mesh.add(this.rightLeg);
 
-        // Purity (Health)
-        this.maxPurity = 100;
-        this.purity = this.maxPurity;
+
         this.slideTimer = 0;
         this.slideDuration = 0.8; // Seconds
 
@@ -103,7 +101,7 @@ export class Player {
         this.velocity.set(0, 0, 0);
         this.isGrounded = true;
         this.mesh.scale.set(1, 1, 1);
-        this.purity = this.maxPurity;
+
         this.slideTimer = 0;
 
         this.hasScarf = false;
@@ -111,16 +109,7 @@ export class Player {
         this.hasMask = false;
     }
 
-    takeDamage(amount) {
-        if (this.hasScarf) return; // Invincible
-        this.purity -= amount;
-        if (this.purity < 0) this.purity = 0;
-    }
 
-    heal(amount) {
-        this.purity += amount;
-        if (this.purity > this.maxPurity) this.purity = this.maxPurity;
-    }
 
     activatePowerup(type) {
         if (type === 'scarf') {

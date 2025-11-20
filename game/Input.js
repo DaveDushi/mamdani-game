@@ -20,16 +20,26 @@ export class Input {
         // Touch Support
         this.touchStartX = 0;
         this.touchStartY = 0;
-        window.addEventListener('touchstart', (e) => {
-            this.touchStartX = e.changedTouches[0].screenX;
-            this.touchStartY = e.changedTouches[0].screenY;
-        });
-        window.addEventListener('touchend', (e) => this.handleSwipe(e));
+
+        // Prevent default scrolling on the game canvas
+        const canvas = document.querySelector('canvas'); // Assuming canvas is the target
+        const target = canvas || window;
+
+        target.addEventListener('touchstart', (e) => {
+            this.touchStartX = e.changedTouches[0].clientX;
+            this.touchStartY = e.changedTouches[0].clientY;
+        }, { passive: false });
+
+        target.addEventListener('touchmove', (e) => {
+            e.preventDefault(); // Prevent scrolling
+        }, { passive: false });
+
+        target.addEventListener('touchend', (e) => this.handleSwipe(e));
     }
 
     handleSwipe(e) {
-        const touchEndX = e.changedTouches[0].screenX;
-        const touchEndY = e.changedTouches[0].screenY;
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
 
         const dx = touchEndX - this.touchStartX;
         const dy = touchEndY - this.touchStartY;
