@@ -8,9 +8,16 @@ export class PowerupManager {
         this.texGen = new TextureGenerator();
 
         // Geometries
-        this.scarfGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-        this.rainbowGeo = new THREE.TorusGeometry(0.3, 0.1, 8, 16);
-        this.maskGeo = new THREE.SphereGeometry(0.3, 16, 16);
+        // Scarf: Bandana Triangle (Flattened Cone)
+        this.scarfGeo = new THREE.ConeGeometry(0.5, 0.1, 3); // Triangle prism
+        this.scarfGeo.rotateX(Math.PI / 2); // Lay flat
+        this.scarfGeo.rotateY(Math.PI / 6); // Point forward
+
+        // Rainbow: Arch (Half Torus)
+        this.rainbowGeo = new THREE.TorusGeometry(0.4, 0.1, 8, 16, Math.PI);
+
+        // Mask: Surgical Mask (Curved Plane or Box)
+        this.maskGeo = new THREE.BoxGeometry(0.6, 0.4, 0.1);
 
         // Materials
         this.scarfMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('scarf') });
@@ -30,12 +37,22 @@ export class PowerupManager {
         if (typeRoll < 0.33) {
             type = 'scarf';
             mesh = new THREE.Mesh(this.scarfGeo, this.scarfMat);
+            mesh.rotation.x = -Math.PI / 4; // Tilt slightly up
         } else if (typeRoll < 0.66) {
             type = 'rainbow';
             mesh = new THREE.Mesh(this.rainbowGeo, this.rainbowMat);
+            mesh.rotation.z = Math.PI; // Arch upwards? Default torus is flat on XY?
+            // TorusGeometry(radius, tube, radialSegments, tubularSegments, arc)
+            // Arc starts at 0. Math.PI gives half circle.
+            // We want it standing up like an arch (McDonalds style).
+            // Default lies on XY plane.
+            // We need to rotate it to stand on XZ plane?
+            // Actually, let's just rotate it in spawn.
+            mesh.rotation.z = 0;
         } else {
             type = 'mask';
             mesh = new THREE.Mesh(this.maskGeo, this.maskMat);
+            mesh.rotation.x = -Math.PI / 6; // Tilt to face camera
         }
 
         mesh.position.set(lane, 1, zPos);

@@ -150,6 +150,19 @@ function animate() {
             particles.spawnParticles(player.mesh.position, 20, 0x00ffff, 2); // Powerup sparkles
         }
 
+        // Magnet Effect (Rainbow)
+        if (player.hasRainbow) {
+            obstacleManager.obstacles.forEach(obj => {
+                if (obj.type === 'coin') {
+                    const dist = player.mesh.position.distanceTo(obj.mesh.position);
+                    if (dist < 15) { // Magnet range
+                        const direction = new THREE.Vector3().subVectors(player.mesh.position, obj.mesh.position).normalize();
+                        obj.mesh.position.add(direction.multiplyScalar(20 * dt)); // Move towards player
+                    }
+                }
+            });
+        }
+
         // Check Obstacle Collisions
         const collisionResult = obstacleManager.checkCollisions(player);
         if (collisionResult) {
@@ -163,9 +176,24 @@ function animate() {
                 if (subtype === 'scaffold' && isSliding) {
                     // Slide under Scaffold -> Safe (No hit)
                     // Do nothing, just pass through
+                } else if (subtype === 'halal' && isSliding) {
+                    // Slide under Halal Cart -> Safe
+                    // Do nothing, just pass through
+                } else if (subtype === 'alcohol') {
+                    // Alcohol -> Confusion
+                    player.activateConfusion();
+                    particles.spawnParticles(player.mesh.position, 10, 0x800080, 1); // Purple bubbles
+                    obstacleManager.scene.remove(collisionResult.mesh);
+                    obstacleManager.obstacles.splice(collisionResult.index, 1);
                 } else {
-                    // Standard Hit
-                    if (player.hasMask) {
+                    // Standard Hit (Bus, Taxi, Protestor, Halal if not sliding, etc.)
+                    if (player.hasScarf) {
+                        // Invincible!
+                        // Maybe destroy obstacle?
+                        particles.spawnParticles(player.mesh.position, 10, 0xffffff, 1);
+                        obstacleManager.scene.remove(collisionResult.mesh);
+                        obstacleManager.obstacles.splice(collisionResult.index, 1);
+                    } else if (player.hasMask) {
                         player.hasMask = false;
                         player.mesh.traverse(child => {
                             if (child.isMesh) child.material.color.setHex(0xff0000);

@@ -92,6 +92,8 @@ export class Player {
         this.maskTimer = 0;
 
         this.runTime = 0;
+
+        this.confusionTimer = 0;
     }
 
     reset() {
@@ -103,13 +105,12 @@ export class Player {
         this.mesh.scale.set(1, 1, 1);
 
         this.slideTimer = 0;
+        this.confusionTimer = 0;
 
         this.hasScarf = false;
         this.hasRainbow = false;
         this.hasMask = false;
     }
-
-
 
     activatePowerup(type) {
         if (type === 'scarf') {
@@ -125,6 +126,10 @@ export class Player {
             this.maskTimer = 10.0;
             // this.mesh.material.color.setHex(0xFFFFFF);
         }
+    }
+
+    activateConfusion() {
+        this.confusionTimer = 5.0;
     }
 
     update(dt, input) {
@@ -151,11 +156,27 @@ export class Player {
             }
         }
 
+        if (this.confusionTimer > 0) {
+            this.confusionTimer -= dt;
+        }
+
+        // Input Handling with Confusion
+        let moveLeft = input.isJustPressed('left');
+        let moveRight = input.isJustPressed('right');
+        let jump = input.isJustPressed('up');
+        let slide = input.isJustPressed('down');
+
+        if (this.confusionTimer > 0) {
+            // Swap Inputs
+            const tempLeft = moveLeft; moveLeft = moveRight; moveRight = tempLeft;
+            const tempJump = jump; jump = slide; slide = tempJump;
+        }
+
         // Lane Switching
-        if (input.isJustPressed('left') && this.currentLane > 0) {
+        if (moveLeft && this.currentLane > 0) {
             this.currentLane--;
         }
-        if (input.isJustPressed('right') && this.currentLane < 2) {
+        if (moveRight && this.currentLane < 2) {
             this.currentLane++;
         }
 
@@ -165,7 +186,7 @@ export class Player {
         this.mesh.position.x += (this.targetX - this.mesh.position.x) * 10 * dt;
 
         // Jumping
-        if (this.isGrounded && input.isJustPressed('up')) {
+        if (this.isGrounded && jump) {
             this.velocity.y = this.jumpForce;
             this.isGrounded = false;
         }
@@ -176,7 +197,7 @@ export class Player {
             // Hitbox adjustment handled by groundY in gravity logic
         }
 
-        if (this.isGrounded && input.isJustPressed('down')) {
+        if (this.isGrounded && slide) {
             this.slideTimer = this.slideDuration;
         }
 

@@ -77,50 +77,36 @@ export class ObstacleManager {
 
         let mesh, type;
 
-        if (typeRoll < 0.15) {
-            // Bus (Tall, must dodge)
-            type = 'bus';
-            const busGroup = new THREE.Group();
+        if (typeRoll < 0.25) {
+            // Protestor (Tall, must dodge)
+            type = 'protestor';
+            const protestorGroup = new THREE.Group();
 
-            // Main Body
-            const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.5, 6), new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('bus') }));
-            body.position.y = 1.5;
-            busGroup.add(body);
+            // Body
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.6, 0.4), new THREE.MeshStandardMaterial({ color: 0x555555 }));
+            body.position.y = 0.8;
+            protestorGroup.add(body);
 
-            // Roof
-            const roof = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.2, 5.8), new THREE.MeshStandardMaterial({ color: 0xdddddd }));
-            roof.position.y = 2.8;
-            busGroup.add(roof);
+            // Head
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), new THREE.MeshStandardMaterial({ color: 0xffccaa }));
+            head.position.y = 1.8;
+            protestorGroup.add(head);
 
-            // Wheels
-            const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.3, 16);
-            wheelGeo.rotateZ(Math.PI / 2);
-            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+            // Sign Stick
+            const stick = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.5, 0.1), new THREE.MeshStandardMaterial({ color: 0x8B4513 }));
+            stick.position.set(0.4, 1.5, 0.2);
+            stick.rotation.x = -0.2;
+            protestorGroup.add(stick);
 
-            const w1 = new THREE.Mesh(wheelGeo, wheelMat); w1.position.set(-1.1, 0.4, 2); busGroup.add(w1);
-            const w2 = new THREE.Mesh(wheelGeo, wheelMat); w2.position.set(1.1, 0.4, 2); busGroup.add(w2);
-            const w3 = new THREE.Mesh(wheelGeo, wheelMat); w3.position.set(-1.1, 0.4, -2); busGroup.add(w3);
-            const w4 = new THREE.Mesh(wheelGeo, wheelMat); w4.position.set(1.1, 0.4, -2); busGroup.add(w4);
+            // Sign Board
+            const board = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.1), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+            board.position.set(0.4, 2.2, 0.3); // High up
+            board.rotation.x = -0.2;
+            protestorGroup.add(board);
 
-            // Bumpers
-            const bumperGeo = new THREE.BoxGeometry(2.2, 0.3, 0.2);
-            const bumperMat = new THREE.MeshStandardMaterial({ color: 0x555555 });
-            const frontBumper = new THREE.Mesh(bumperGeo, bumperMat); frontBumper.position.set(0, 0.5, 3); busGroup.add(frontBumper);
-            const backBumper = new THREE.Mesh(bumperGeo, bumperMat); backBumper.position.set(0, 0.5, -3); busGroup.add(backBumper);
+            mesh = protestorGroup;
 
-            // Lights
-            const lightGeo = new THREE.BoxGeometry(0.3, 0.2, 0.1);
-            const headLightMat = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffff00 });
-            const tailLightMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000 });
-
-            const hl1 = new THREE.Mesh(lightGeo, headLightMat); hl1.position.set(-0.7, 0.8, 3.05); busGroup.add(hl1);
-            const hl2 = new THREE.Mesh(lightGeo, headLightMat); hl2.position.set(0.7, 0.8, 3.05); busGroup.add(hl2);
-
-            const tl1 = new THREE.Mesh(lightGeo, tailLightMat); tl1.position.set(-0.7, 0.8, -3.05); busGroup.add(tl1);
-            const tl2 = new THREE.Mesh(lightGeo, tailLightMat); tl2.position.set(0.7, 0.8, -3.05); busGroup.add(tl2);
-
-            mesh = busGroup;
-        } else if (typeRoll < 0.35) {
+        } else if (typeRoll < 0.45) {
             // Taxi (Short, Jumpable)
             type = 'taxi';
             const taxiGroup = new THREE.Group();
@@ -167,18 +153,54 @@ export class ObstacleManager {
             const t2 = new THREE.Mesh(lightGeo, tlMat); t2.position.set(0.6, 0.4, -1.82); taxiGroup.add(t2);
 
             mesh = taxiGroup;
-        } else if (typeRoll < 0.5) {
-            // Halal Cart (Slide to heal)
+        } else if (typeRoll < 0.60) {
+            // Halal Cart (Slide under)
             type = 'halal';
             const cartGeo = new THREE.Group();
-            const base = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1), new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('halal') }));
-            base.position.y = 0.75;
-            cartGeo.add(base);
-            const umbrella = new THREE.Mesh(new THREE.ConeGeometry(1.2, 0.5, 8), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
-            umbrella.position.y = 1.8;
+
+            // Main Box (Silver/Metal)
+            const boxGeo = new THREE.BoxGeometry(2, 1.2, 1.2);
+            const boxMat = new THREE.MeshStandardMaterial({ color: 0xC0C0C0, metalness: 0.8, roughness: 0.2 });
+            const box = new THREE.Mesh(boxGeo, boxMat);
+            box.position.y = 1.4; // Raised high enough to slide under (Player slide height ~0.7)
+            cartGeo.add(box);
+
+            // Wheels (to hold it up)
+            const wheelGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16);
+            wheelGeo.rotateZ(Math.PI / 2);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+
+            const w1 = new THREE.Mesh(wheelGeo, wheelMat); w1.position.set(-0.8, 0.3, 0.4); cartGeo.add(w1);
+            const w2 = new THREE.Mesh(wheelGeo, wheelMat); w2.position.set(0.8, 0.3, 0.4); cartGeo.add(w2);
+            const w3 = new THREE.Mesh(wheelGeo, wheelMat); w3.position.set(-0.8, 0.3, -0.4); cartGeo.add(w3);
+            const w4 = new THREE.Mesh(wheelGeo, wheelMat); w4.position.set(0.8, 0.3, -0.4); cartGeo.add(w4);
+
+            // Legs/Supports connecting wheels to box
+            const legGeo = new THREE.BoxGeometry(0.1, 0.8, 0.1);
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x555555 });
+            const l1 = new THREE.Mesh(legGeo, legMat); l1.position.set(-0.8, 0.8, 0.4); cartGeo.add(l1);
+            const l2 = new THREE.Mesh(legGeo, legMat); l2.position.set(0.8, 0.8, 0.4); cartGeo.add(l2);
+            const l3 = new THREE.Mesh(legGeo, legMat); l3.position.set(-0.8, 0.8, -0.4); cartGeo.add(l3);
+            const l4 = new THREE.Mesh(legGeo, legMat); l4.position.set(0.8, 0.8, -0.4); cartGeo.add(l4);
+
+            // Umbrella (Colorful)
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.5), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+            pole.position.set(0.5, 2.2, 0);
+            cartGeo.add(pole);
+
+            const umbrellaGeo = new THREE.ConeGeometry(1.3, 0.5, 8);
+            const umbrellaMat = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Red umbrella
+            const umbrella = new THREE.Mesh(umbrellaGeo, umbrellaMat);
+            umbrella.position.set(0.5, 2.9, 0);
             cartGeo.add(umbrella);
+
+            // Details (Grill/Food)
+            const grill = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 1), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+            grill.position.set(0, 2.01, 0);
+            cartGeo.add(grill);
+
             mesh = cartGeo;
-        } else if (typeRoll < 0.8) {
+        } else if (typeRoll < 0.75) {
             // Scaffold (Duckable)
             type = 'scaffold';
             const scaffoldGroup = new THREE.Group();
@@ -195,20 +217,69 @@ export class ObstacleManager {
 
             mesh = scaffoldGroup;
         } else if (typeRoll < 0.85) {
-            // Alcohol (Bad, reduces purity)
+            // Alcohol (Bad, inverts controls)
             type = 'alcohol';
-            mesh = new THREE.Mesh(this.alcoholGeo, this.alcoholMat);
-            mesh.position.y = 0.4;
-        } else if (typeRoll < 0.95) {
-            // Pothole (Jumpable/Avoidable)
-            type = 'pothole';
-            mesh = new THREE.Mesh(this.potholeGeo, this.potholeMat);
-            mesh.position.y = 0.05; // On ground
+            const bottleGroup = new THREE.Group();
+
+            // Bottle Body (Green Glass)
+            const bodyGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.8, 16);
+            const glassMat = new THREE.MeshStandardMaterial({
+                color: 0x228B22, // Forest Green
+                transparent: true,
+                opacity: 0.9,
+                roughness: 0.1,
+                metalness: 0.3
+            });
+            const body = new THREE.Mesh(bodyGeo, glassMat);
+            body.position.y = 0.4;
+            bottleGroup.add(body);
+
+            // Bottle Neck
+            const neckGeo = new THREE.CylinderGeometry(0.1, 0.3, 0.4, 16);
+            const neck = new THREE.Mesh(neckGeo, glassMat);
+            neck.position.y = 1.0;
+            bottleGroup.add(neck);
+
+            // Cap (Gold)
+            const capGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.1, 16);
+            const capMat = new THREE.MeshStandardMaterial({ color: 0xFFD700, metalness: 0.8, roughness: 0.2 });
+            const cap = new THREE.Mesh(capGeo, capMat);
+            cap.position.y = 1.25;
+            bottleGroup.add(cap);
+
+            // Label (White paper)
+            const labelGeo = new THREE.CylinderGeometry(0.31, 0.31, 0.4, 16, 1, true, 0, Math.PI); // Half cylinder for front label
+            const labelMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            const label = new THREE.Mesh(labelGeo, labelMat);
+            label.position.set(0, 0.4, 0.01); // Slightly forward
+            label.rotation.y = -Math.PI / 2; // Face forward? No, default cylinder faces Z? 
+            // Cylinder default: Y up. 
+            // We want label on +Z face (facing camera).
+            // Cylinder geometry is around Y axis.
+            // We want the half-cylinder to wrap around the front.
+            // Let's just use a full cylinder slightly larger for simplicity, or stick to simple band.
+            // Simple band:
+            const bandGeo = new THREE.CylinderGeometry(0.31, 0.31, 0.3, 16);
+            const band = new THREE.Mesh(bandGeo, labelMat);
+            band.position.y = 0.4;
+            bottleGroup.add(band);
+
+            mesh = bottleGroup;
         } else {
-            // Coin
+            // Coin Group (High chance)
             type = 'coin';
-            mesh = new THREE.Mesh(this.coinGeo, this.coinMat);
-            mesh.position.y = 1;
+            // Spawn a group of coins
+            const coinCount = 3 + Math.floor(Math.random() * 3); // 3 to 5 coins
+            for (let i = 0; i < coinCount; i++) {
+                const coinMesh = new THREE.Mesh(this.coinGeo, this.coinMat);
+                coinMesh.position.y = 1;
+                coinMesh.position.x = lane;
+                coinMesh.position.z = zStart - (i * 2.5); // Spaced out
+                coinMesh.castShadow = true;
+                this.scene.add(coinMesh);
+                this.obstacles.push({ mesh: coinMesh, type: 'coin' });
+            }
+            return; // Already added to obstacles, so return
         }
 
         mesh.position.x = lane;

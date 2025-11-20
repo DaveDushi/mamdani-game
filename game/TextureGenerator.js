@@ -416,22 +416,36 @@ export class TextureGenerator {
     drawScarf() {
         const c = this.createCanvas(64, 64);
         const ctx = c.getContext('2d');
-        ctx.fillStyle = '#ff0000';
-        ctx.fillRect(10, 20, 44, 24);
+
+        // White Background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 64, 64);
+
+        // Red Checkered Pattern (Keffiyeh style)
+        ctx.fillStyle = '#cc0000';
+        const size = 8;
+        for (let y = 0; y < 64; y += size) {
+            for (let x = 0; x < 64; x += size) {
+                if ((x / size + y / size) % 2 === 0) {
+                    // Draw a pattern block
+                    ctx.fillRect(x + 1, y + 1, size - 2, size - 2);
+                }
+            }
+        }
         return c;
     }
 
     drawRainbow() {
         const c = this.createCanvas(64, 64);
         const ctx = c.getContext('2d');
-        // Simple gradient ring
+        // Vibrant Gradient Ring
         const grad = ctx.createRadialGradient(32, 32, 10, 32, 32, 30);
-        grad.addColorStop(0, 'red');
-        grad.addColorStop(0.2, 'orange');
-        grad.addColorStop(0.4, 'yellow');
-        grad.addColorStop(0.6, 'green');
-        grad.addColorStop(0.8, 'blue');
-        grad.addColorStop(1, 'violet');
+        grad.addColorStop(0, '#ff0000'); // Red
+        grad.addColorStop(0.2, '#ff7f00'); // Orange
+        grad.addColorStop(0.4, '#ffff00'); // Yellow
+        grad.addColorStop(0.6, '#00ff00'); // Green
+        grad.addColorStop(0.8, '#0000ff'); // Blue
+        grad.addColorStop(1, '#8b00ff'); // Violet
 
         ctx.fillStyle = grad;
         ctx.beginPath();
@@ -451,21 +465,23 @@ export class TextureGenerator {
         const c = this.createCanvas(64, 64);
         const ctx = c.getContext('2d');
 
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.ellipse(32, 32, 25, 20, 0, 0, Math.PI * 2);
-        ctx.fill();
+        // Surgical Blue Background
+        ctx.fillStyle = '#44aadd';
+        ctx.fillRect(0, 0, 64, 64);
 
-        ctx.strokeStyle = '#ccc';
+        // Pleats (Darker Blue Lines)
+        ctx.strokeStyle = '#3388bb';
         ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, 20); ctx.lineTo(64, 20);
+        ctx.moveTo(0, 32); ctx.lineTo(64, 32);
+        ctx.moveTo(0, 44); ctx.lineTo(64, 44);
         ctx.stroke();
 
-        // Straps
-        ctx.strokeStyle = '#fff';
-        ctx.beginPath();
-        ctx.moveTo(7, 32);
-        ctx.lineTo(57, 32);
-        ctx.stroke();
+        // White Straps (on sides)
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 8, 64);
+        ctx.fillRect(56, 0, 8, 64);
 
         return c;
     }
