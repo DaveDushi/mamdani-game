@@ -79,9 +79,9 @@ export class World {
     }
 
     getBillboardTexture() {
-        if (this.distance < 1000) {
+        if (this.distance < 500) {
             return this.billboardTextures.capitalist[Math.floor(Math.random() * this.billboardTextures.capitalist.length)];
-        } else if (this.distance < 2000) {
+        } else if (this.distance < 1500) {
             // Mix of capitalist and neutral, or just neutral
             return this.billboardTextures.neutral[Math.floor(Math.random() * this.billboardTextures.neutral.length)];
         } else {
@@ -139,12 +139,12 @@ export class World {
     }
 
     reset() {
-        this.speed = 10;
+        this.speed = 12;
         this.distance = 0;
     }
 
     update(dt) {
-        this.speed += dt * 0.5; // Accelerate
+        this.speed += dt * 0.35; // Accelerate
         this.distance += this.speed * dt;
 
         const moveDist = this.speed * dt;
