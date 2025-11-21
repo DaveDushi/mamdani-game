@@ -117,11 +117,11 @@ export class Player {
     activatePowerup(type) {
         if (type === 'kafiyeh') {
             this.hasKafiyeh = true;
-            this.kafiyehTimer = 10.0;
+            this.kafiyehTimer = 5.0;
             this.events.push({ type: 'powerupStart', name: 'kafiyeh', duration: 10.0 });
         } else if (type === 'rainbow') {
             this.hasRainbow = true;
-            this.rainbowTimer = 10.0;
+            this.rainbowTimer = 7.0;
             this.events.push({ type: 'powerupStart', name: 'rainbow', duration: 10.0 });
         } else if (type === 'covidMask') {
             this.hasCovidMask = true;
