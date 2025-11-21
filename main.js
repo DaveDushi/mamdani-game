@@ -137,10 +137,10 @@ function updateUI() {
             showNotification(`${event.name.toUpperCase()} EXPIRED`, '#ff0000');
         } else if (event.type === 'debuffStart') {
             addPowerupIcon(event.name, event.duration);
-            showNotification('CONFUSION!', '#800080');
+            showNotification('HARAM!', '#800080');
         } else if (event.type === 'debuffEnd') {
             removePowerupIcon(event.name);
-            showNotification('CONFUSION CLEARED', '#00ff00');
+            showNotification('HARAM ENDED', '#00ff00');
         }
     }
 
