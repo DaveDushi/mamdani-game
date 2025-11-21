@@ -16,7 +16,9 @@ scene.background = new THREE.Color(0x87CEEB); // Sky blue
 scene.fog = new THREE.Fog(0x87CEEB, 10, 60);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 3, 6);
+const isMobile = window.innerWidth < 768;
+// Zoom out slightly on mobile to see side lanes better
+camera.position.set(0, 3, isMobile ? 10 : 6);
 camera.lookAt(0, 0, -5);
 
 const renderer = new THREE.WebGLRenderer({ canvas: document.querySelector('#game-canvas'), antialias: true });

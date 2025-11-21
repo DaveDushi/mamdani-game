@@ -23,15 +23,15 @@ export class Shop {
         if (!shopOverlay) {
             shopOverlay = document.createElement('div');
             shopOverlay.id = 'shop-screen';
-            shopOverlay.className = 'absolute inset-0 bg-black bg-opacity-80 hidden flex-col items-center justify-center z-50';
+            shopOverlay.className = 'hidden'; // Controlled by CSS class
             shopOverlay.innerHTML = `
-                <div class="bg-white p-8 rounded-lg max-w-2xl w-full">
-                    <h2 class="text-3xl font-bold mb-6 text-center">Shop</h2>
-                    <div id="shop-items" class="grid grid-cols-2 gap-4 mb-6">
+                <div class="shop-content">
+                    <h2 class="shop-title">Shop</h2>
+                    <div id="shop-items" class="skins-container">
                         <!-- Items will be injected here -->
                     </div>
                     <div class="text-center">
-                        <button id="close-shop-btn" class="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600 font-bold">Close</button>
+                        <button id="close-shop-btn" class="close-shop-btn">Close</button>
                     </div>
                 </div>
             `;
@@ -46,16 +46,16 @@ export class Shop {
 
         this.skins.forEach(skin => {
             const itemEl = document.createElement('div');
-            itemEl.className = 'skin-item border-2 border-gray-300 p-4 rounded cursor-pointer hover:border-blue-500 transition-colors flex flex-col items-center';
+            itemEl.className = 'skin-item';
             itemEl.dataset.id = skin.id;
 
             // Preview Box
             const previewColor = '#' + skin.suitColor.toString(16).padStart(6, '0');
 
             itemEl.innerHTML = `
-                <div class="w-16 h-16 mb-2 rounded-full border-2 border-black" style="background-color: ${previewColor};"></div>
-                <h3 class="font-bold text-lg">${skin.name}</h3>
-                <p class="text-gray-600">${skin.cost === 0 ? 'Free' : skin.cost + ' Stamps'}</p>
+                <div class="skin-preview" style="background-color: ${previewColor};"></div>
+                <h3>${skin.name}</h3>
+                <p>${skin.cost === 0 ? 'Free' : skin.cost + ' Stamps'}</p>
             `;
 
             itemsContainer.appendChild(itemEl);
@@ -75,20 +75,19 @@ export class Shop {
                 this.equipSkin(skinId);
 
                 // Visual feedback
-                skinItems.forEach(i => i.classList.remove('border-green-500', 'bg-green-50'));
-                item.classList.add('border-green-500', 'bg-green-50');
+                skinItems.forEach(i => i.classList.remove('selected'));
+                item.classList.add('selected');
             });
         });
     }
 
     show() {
         this.shopEl.classList.remove('hidden');
-        this.shopEl.classList.add('flex');
+        // Flex is handled by CSS when not hidden
     }
 
     hide() {
         this.shopEl.classList.add('hidden');
-        this.shopEl.classList.remove('flex');
     }
 
     equipSkin(id) {
