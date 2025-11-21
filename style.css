@@ -522,3 +522,26 @@ button:active {
         transform: scale(1.1);
     }
 }
+
+/* Buy Me a Coffee Button */
+#bmc-link {
+    margin-top: 20px;
+    display: inline-block;
+    transition: all 0.2s ease;
+}
+
+#bmc-link:hover {
+    transform: translateY(-3px) scale(1.05);
+    filter: brightness(1.1);
+}
+
+#bmc-link:active {
+    transform: translateY(1px);
+}
+
+#bmc-link img {
+    height: 60px;
+    display: block;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}

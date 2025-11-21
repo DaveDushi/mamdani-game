@@ -27,6 +27,8 @@ export class ObstacleManager {
         this.coinMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('coin'), metalness: 0.8, roughness: 0.2 });
         this.potholeMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('pothole'), transparent: true, opacity: 0.9 });
         this.alcoholMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('alcohol') });
+
+        this.signMaterials = {}; // Cache for sign materials
     }
 
     reset() {
@@ -35,13 +37,14 @@ export class ObstacleManager {
         this.obstacles = [];
         this.spawnTimer = 0;
         this.spawnInterval = 1.5;
+        this.signMaterials = {}; // Optional: clear cache on reset if we want to free memory, but keeping it is fine too.
     }
 
-    update(dt, speed) {
+    update(dt, speed, distance) {
         // Spawning
         this.spawnTimer -= dt;
         if (this.spawnTimer <= 0) {
-            this.spawnObstacle();
+            this.spawnObstacle(distance);
             this.spawnTimer = this.spawnInterval / (speed / 10); // Spawn faster as speed increases
         }
 
@@ -63,7 +66,20 @@ export class ObstacleManager {
         }
     }
 
-    spawnObstacle() {
+    getProtestText(distance) {
+        if (distance < 1000) {
+            const texts = ["No more taxes", "Free Market", "Trump is King"];
+            return texts[Math.floor(Math.random() * texts.length)];
+        } else if (distance < 2000) {
+            const texts = ["Tax the rich", "Free Healthcare", "Free Palestine"];
+            return texts[Math.floor(Math.random() * texts.length)];
+        } else {
+            const texts = ["Intifada Revolution", "Free Supermarkets", "Dictator Mamdani", "Comrads Unite"];
+            return texts[Math.floor(Math.random() * texts.length)];
+        }
+    }
+
+    spawnObstacle(distance = 0) {
         const lanes = [-3, 0, 3];
         const lane = lanes[Math.floor(Math.random() * lanes.length)];
         const typeRoll = Math.random();
@@ -99,11 +115,20 @@ export class ObstacleManager {
             protestorGroup.add(stick);
 
             // Sign Board
-            const board = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.1), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-            board.position.set(0.4, 2.2, 0.3); // High up
+            const text = this.getProtestText(distance);
+            let signMat = this.signMaterials[text];
+            if (!signMat) {
+                signMat = new THREE.MeshStandardMaterial({ map: this.texGen.getSignTexture(text) });
+                this.signMaterials[text] = signMat;
+            }
+
+            // Made sign bigger (1.6x1.0) and group scaled up
+            const board = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.0, 0.1), signMat);
+            board.position.set(0.4, 2.3, 0.3); // Adjusted position for larger board
             board.rotation.x = -0.2;
             protestorGroup.add(board);
 
+            protestorGroup.scale.set(1.5, 1.5, 1.5); // Scale up the whole protestor
             mesh = protestorGroup;
 
         } else if (typeRoll < 0.45) {

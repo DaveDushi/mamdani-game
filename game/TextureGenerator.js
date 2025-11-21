@@ -588,4 +588,65 @@ export class TextureGenerator {
 
         return c;
     }
+
+    drawProtestSign(text) {
+        const c = this.createCanvas(256, 128); // Higher res for text
+        const ctx = c.getContext('2d');
+
+        // Cardboard Background
+        ctx.fillStyle = '#d2b48c'; // Tan/Cardboard
+        ctx.fillRect(0, 0, 256, 128);
+
+        // Grain/Noise
+        ctx.fillStyle = 'rgba(0,0,0,0.05)';
+        for (let i = 0; i < 100; i++) {
+            ctx.fillRect(Math.random() * 256, Math.random() * 128, 2, 2);
+        }
+
+        // Text
+        ctx.fillStyle = '#000000'; // Marker black
+        // Randomize color slightly for variety? No, stick to black/red marker.
+        if (Math.random() < 0.3) ctx.fillStyle = '#cc0000'; // Red marker sometimes
+
+        ctx.font = 'bold 24px Arial'; // Simple font
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // Word wrap logic (simple)
+        const words = text.split(' ');
+        let line = '';
+        let lines = [];
+
+        // Very basic wrapping
+        if (words.length > 2) {
+            // Split into two lines roughly
+            const mid = Math.floor(words.length / 2);
+            lines.push(words.slice(0, mid).join(' '));
+            lines.push(words.slice(mid).join(' '));
+        } else {
+            lines.push(text);
+        }
+
+        const lineHeight = 30;
+        const startY = 64 - ((lines.length - 1) * lineHeight) / 2;
+
+        lines.forEach((l, i) => {
+            ctx.fillText(l, 128, startY + (i * lineHeight));
+        });
+
+        // Border/Edge
+        ctx.strokeStyle = '#8b4513';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(0, 0, 256, 128);
+
+        return c;
+    }
+
+    getSignTexture(text) {
+        const canvas = this.drawProtestSign(text);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.magFilter = THREE.LinearFilter; // Better for text
+        texture.minFilter = THREE.LinearFilter;
+        return texture;
+    }
 }

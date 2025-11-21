@@ -238,7 +238,7 @@ function animate() {
         // Update Game Logic
         world.update(dt);
         player.update(dt, input);
-        obstacleManager.update(dt, world.speed);
+        obstacleManager.update(dt, world.speed, world.distance);
         powerupManager.update(dt, world.speed, player);
         particles.update(dt);
 

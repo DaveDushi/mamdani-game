@@ -79,9 +79,9 @@ export class World {
     }
 
     getBillboardTexture() {
-        if (this.distance < 500) {
+        if (this.distance < 1000) {
             return this.billboardTextures.capitalist[Math.floor(Math.random() * this.billboardTextures.capitalist.length)];
-        } else if (this.distance < 1500) {
+        } else if (this.distance < 2000) {
             // Mix of capitalist and neutral, or just neutral
             return this.billboardTextures.neutral[Math.floor(Math.random() * this.billboardTextures.neutral.length)];
         } else {
