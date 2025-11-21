@@ -56,4 +56,4 @@ The year is 2025. Trump has declared himself Emperor, and the world has descende
 
 ### Shop
 - You can access the **Shop** from the main menu.
-- **Skins**: Civilian, Rebel, Activist, Worker. All skins are currently **Free**!
+- **Skins**: Civilian, Rebel, Activist, Worker. All skins are currently **Paid for by Soros**!

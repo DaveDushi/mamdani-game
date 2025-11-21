@@ -55,7 +55,7 @@ export class Shop {
             itemEl.innerHTML = `
                 <div class="skin-preview" style="background-color: ${previewColor};"></div>
                 <h3>${skin.name}</h3>
-                <p>${skin.cost === 0 ? 'Free' : skin.cost + ' Stamps'}</p>
+                <p>${skin.cost === 0 ? 'Paid for by Soros' : skin.cost + ' Stamps'}</p>
             `;
 
             itemsContainer.appendChild(itemEl);

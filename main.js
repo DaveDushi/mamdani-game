@@ -57,6 +57,7 @@ const foodStampsEl = document.getElementById('food-stamps');
 const startBtn = document.getElementById('start-btn');
 const restartBtn = document.getElementById('restart-btn');
 const shopBtn = document.getElementById('shop-btn');
+const goHomeBtn = document.getElementById('go-home-btn');
 const instructionsBtn = document.getElementById('instructions-btn');
 const storyModal = document.getElementById('story-modal');
 const instructionsModal = document.getElementById('instructions-modal');
@@ -67,6 +68,12 @@ const closeInstructionsBtn = document.getElementById('close-instructions-btn');
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
 shopBtn.addEventListener('click', () => shop.show());
+goHomeBtn.addEventListener('click', () => {
+    gameOverScreen.classList.add('hidden');
+    startScreen.classList.remove('hidden');
+    gameState.setState('START');
+    // Reset camera or other visuals if needed, but for now just switching screens
+});
 instructionsBtn.addEventListener('click', () => {
     startScreen.classList.add('hidden');
     instructionsModal.classList.remove('hidden');
