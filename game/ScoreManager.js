@@ -1,7 +1,7 @@
 export class ScoreManager {
     constructor() {
         this.score = 0; // Distance
-        this.stamps = 0; // Currency
+        this.foodStamps = 0; // Currency
         this.donations = 0; // Safe currency
 
         // Tax Config
@@ -12,7 +12,7 @@ export class ScoreManager {
 
     reset() {
         this.score = 0;
-        this.stamps = 0;
+        this.foodStamps = 0;
         this.donations = 0;
         this.taxTimer = 0;
     }
@@ -23,8 +23,8 @@ export class ScoreManager {
         return false;
     }
 
-    addStamps(amount) {
-        this.stamps += amount;
+    addFoodStamps(amount) {
+        this.foodStamps += amount;
     }
 
     addDonation(amount) {
@@ -32,8 +32,8 @@ export class ScoreManager {
     }
 
     applyFinalTax() {
-        const taxAmount = Math.floor(this.stamps * this.taxRate);
-        this.stamps -= taxAmount;
+        const taxAmount = Math.floor(this.foodStamps * this.taxRate);
+        this.foodStamps -= taxAmount;
         return taxAmount;
     }
 

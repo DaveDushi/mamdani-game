@@ -49,7 +49,7 @@ const startScreen = document.getElementById('start-screen');
 const hud = document.getElementById('hud');
 const gameOverScreen = document.getElementById('game-over-screen');
 const scoreEl = document.getElementById('score');
-const stampsEl = document.getElementById('stamps');
+const foodStampsEl = document.getElementById('food-stamps');
 
 
 const startBtn = document.getElementById('start-btn');
@@ -124,7 +124,7 @@ function gameOver() {
 
 function updateUI() {
     scoreEl.innerText = scoreManager.getDisplayScore();
-    stampsEl.innerText = scoreManager.stamps;
+    foodStampsEl.innerText = scoreManager.foodStamps;
 
     // Process Player Events
     while (player.events.length > 0) {
@@ -269,7 +269,7 @@ function animate() {
 
                     // Auto-collect if very close (Fixes missing collisions)
                     if (dist < 1.5) {
-                        scoreManager.addStamps(1);
+                        scoreManager.addFoodStamps(1);
                         particles.spawnParticles(player.mesh.position, 10, 0xffd700, 1); // Coin sparkles
                         obstacleManager.scene.remove(obj.mesh);
                         obstacleManager.obstacles.splice(i, 1);
@@ -282,7 +282,7 @@ function animate() {
         const collisionResult = obstacleManager.checkCollisions(player);
         if (collisionResult) {
             if (collisionResult.type === 'coin') {
-                scoreManager.addStamps(1);
+                scoreManager.addFoodStamps(1);
                 particles.spawnParticles(player.mesh.position, 10, 0xffd700, 1); // Coin sparkles
             } else if (collisionResult.type === 'obstacle') {
                 const subtype = collisionResult.subtype;

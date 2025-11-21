@@ -1,11 +1,11 @@
 # Mamdani Run: Escape Trump! - Game Rules & Overview
 
 ## Story
-The year is 2025. Trump has declared himself Emperor, and the world has descended into chaos. You play as **Mamdani**, the last intellectual. Your mission is to run for your life, survive the dystopian streets, and collect stamps to pay your taxes while avoiding the temptations of alcohol and the wrath of the Emperor.
+The year is 2025. Trump has declared himself Emperor, and the world has descended into chaos. You play as **Mamdani**, the last intellectual. Your mission is to run for your life, survive the dystopian streets, and collect food stamps to pay your taxes while avoiding the temptations of alcohol and the wrath of the Emperor.
 
 ## Objective
 - **Run** as far as possible to escape.
-- **Collect Stamps** (Coins) to increase your score and pay taxes.
+- **Collect Food Stamps** (Coins) to increase your score and pay taxes.
 - **Avoid Obstacles** to maintain your health and speed.
 - **Survive** the chase if you get hit.
 
@@ -30,7 +30,7 @@ The year is 2025. Trump has declared himself Emperor, and the world has descende
 - **Trump**: The antagonist who chases you. He appears if you stumble (hit an obstacle).
 
 ### Collectibles
-- **Stamps (Coins)**: The main currency. Collecting them increases your score. Be warned: 50% of your stamps are taken as taxes!
+- **Food Stamps (Coins)**: The main currency. Collecting them increases your score. Be warned: 50% of your food stamps are taken as taxes!
 
 ### Power-ups
 - **Covid Mask** 😷: Provides a shield that protects you from one hit. (Visual: Player turns blue/shielded).
@@ -52,7 +52,7 @@ The year is 2025. Trump has declared himself Emperor, and the world has descende
 3.  **Recovery**: If you survive for a while without hitting another obstacle, Trump will fall back, and you will recover.
 
 ### Taxes
-- A "Tax Notification" will appear, reminding you that **50% of your collected stamps** are deducted as taxes. This is applied to your final score.
+- A "Tax Notification" will appear, reminding you that **50% of your collected food stamps** are deducted as taxes. This is applied to your final score.
 
 ### Shop
 - You can access the **Shop** from the main menu.
