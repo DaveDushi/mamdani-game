@@ -9,6 +9,7 @@ import { Trump } from './game/Trump.js';
 import { PowerupManager } from './game/PowerupManager.js';
 import { ParticleSystem } from './game/ParticleSystem.js';
 import { Shop } from './game/Shop.js';
+import { ApiClient } from './game/ApiClient.js';
 
 // Scene Setup
 const scene = new THREE.Scene();
@@ -45,6 +46,7 @@ const trump = new Trump(scene);
 const input = new Input();
 const particles = new ParticleSystem(scene);
 const shop = new Shop(player, scoreManager);
+const apiClient = new ApiClient();
 
 // UI Elements
 const startScreen = document.getElementById('start-screen');
@@ -52,6 +54,7 @@ const hud = document.getElementById('hud');
 const gameOverScreen = document.getElementById('game-over-screen');
 const scoreEl = document.getElementById('score');
 const foodStampsEl = document.getElementById('food-stamps');
+const bestScoreEl = document.getElementById('best-score');
 
 
 const startBtn = document.getElementById('start-btn');
@@ -64,6 +67,25 @@ const instructionsModal = document.getElementById('instructions-modal');
 const closeStoryBtn = document.getElementById('close-story-btn');
 const closeInstructionsBtn = document.getElementById('close-instructions-btn');
 
+// Leaderboard UI
+const registrationModal = document.getElementById('registration-modal');
+// const leaderboardModal = document.getElementById('leaderboard-modal'); // Removed
+const submitScoreBtn = document.getElementById('submit-score-btn');
+const joinLbBtn = document.getElementById('join-lb-btn'); // New button
+const regNameInput = document.getElementById('reg-name');
+const regSocialInput = document.getElementById('reg-social');
+const regErrorMsg = document.getElementById('reg-error');
+const leaderboardList = document.getElementById('leaderboard-list');
+const pbScoreEl = document.getElementById('pb-score');
+const pbRankDisplay = document.getElementById('pb-rank-display');
+
+// Player Identity
+let playerId = localStorage.getItem('mamdani_player_id');
+if (!playerId) {
+    playerId = crypto.randomUUID();
+    localStorage.setItem('mamdani_player_id', playerId);
+}
+
 // Event Listeners
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
@@ -72,7 +94,6 @@ goHomeBtn.addEventListener('click', () => {
     gameOverScreen.classList.add('hidden');
     startScreen.classList.remove('hidden');
     gameState.setState('START');
-    // Reset camera or other visuals if needed, but for now just switching screens
 });
 instructionsBtn.addEventListener('click', () => {
     startScreen.classList.add('hidden');
@@ -88,11 +109,19 @@ closeStoryBtn.addEventListener('click', () => {
     localStorage.setItem('mamdani_story_seen', 'true');
 });
 
+// Leaderboard Events
+submitScoreBtn.addEventListener('click', handleRegistration);
+if (joinLbBtn) {
+    joinLbBtn.addEventListener('click', () => {
+        registrationModal.classList.remove('hidden');
+    });
+}
+
 // Check Story
 if (!localStorage.getItem('mamdani_story_seen')) {
     startScreen.classList.add('hidden');
     storyModal.classList.remove('hidden');
-    storyModal.classList.add('flex'); // Ensure flex for centering if needed, or just remove hidden
+    storyModal.classList.add('flex');
 }
 
 window.addEventListener('resize', () => {
@@ -105,6 +134,8 @@ function startGame() {
     gameState.setState('PLAYING');
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
+    // leaderboardModal.classList.add('hidden');
+    registrationModal.classList.add('hidden');
     hud.classList.remove('hidden');
 
     world.reset();
@@ -114,21 +145,187 @@ function startGame() {
     trump.reset();
     powerupManager.reset();
     particles.reset();
-    updateUI();
+    scoreEl.innerText = scoreManager.getDisplayScore();
+    foodStampsEl.innerText = scoreManager.foodStamps;
+
+    // Update Best Score Display
+    const savedBestScore = localStorage.getItem('mamdani_best_score') || 0;
+    if (bestScoreEl) bestScoreEl.innerText = savedBestScore;
+
+    // Process Player Events
+    while (player.events.length > 0) {
+        const event = player.events.shift();
+        if (event.type === 'powerupStart') {
+            addPowerupIcon(event.name, event.duration);
+            showNotification(`${event.name.toUpperCase()} ACTIVATED!`, '#00ff00');
+        } else if (event.type === 'powerupEnd') {
+            removePowerupIcon(event.name);
+            showNotification(`${event.name.toUpperCase()} EXPIRED`, '#ff0000');
+        } else if (event.type === 'debuffStart') {
+            addPowerupIcon(event.name, event.duration);
+            showNotification('HARAM!', '#800080');
+        } else if (event.type === 'debuffEnd') {
+            removePowerupIcon(event.name);
+            showNotification('HARAM ENDED', '#00ff00');
+        }
+    }
+
+    // Update Powerup Bars
+    const powerupHud = document.getElementById('powerup-hud');
+    Array.from(powerupHud.children).forEach(icon => {
+        const name = icon.dataset.name;
+        let timer = 0;
+        let maxTime = 10.0;
+
+        if (name === 'kafiyeh') timer = player.kafiyehTimer;
+        else if (name === 'rainbow') timer = player.rainbowTimer;
+        else if (name === 'covidMask') timer = player.covidMaskTimer;
+        else if (name === 'confusion') {
+            timer = player.confusionTimer;
+            maxTime = 5.0;
+        }
+
+        const percent = (timer / maxTime) * 100;
+        icon.querySelector('.powerup-bar').style.width = `${percent}%`;
+    });
 }
 
-function gameOver() {
+async function gameOver() {
     gameState.setState('GAME_OVER');
     hud.classList.add('hidden');
     gameOverScreen.classList.remove('hidden');
 
     const taxPaid = scoreManager.applyFinalTax();
+    const finalScore = scoreManager.getDisplayScore();
 
     const finalDistanceEl = document.getElementById('final-distance');
     const finalTaxEl = document.getElementById('final-tax');
 
-    if (finalDistanceEl) finalDistanceEl.innerText = `${scoreManager.getDisplayScore()}m`;
+    if (finalDistanceEl) finalDistanceEl.innerText = `${finalScore}m`;
     if (finalTaxEl) finalTaxEl.innerText = `$${taxPaid}`;
+
+    // Always show leaderboard in the game over screen
+    // This will handle score submission for both registered and anonymous players
+    showLeaderboard(finalScore);
+
+    // Show/Hide Join Button
+    const savedName = localStorage.getItem('mamdani_name');
+    if (!savedName) {
+        if (joinLbBtn) joinLbBtn.style.display = 'block';
+    } else {
+        if (joinLbBtn) joinLbBtn.style.display = 'none';
+    }
+}
+
+async function handleRegistration() {
+    const name = regNameInput.value.trim();
+    const social = regSocialInput.value.trim();
+
+    if (!name) {
+        regErrorMsg.innerText = "NAME IS REQUIRED!";
+        regErrorMsg.style.display = 'block';
+        return;
+    }
+
+    regErrorMsg.style.display = 'none';
+    submitScoreBtn.disabled = true;
+    submitScoreBtn.innerText = "SUBMITTING...";
+
+    // Register
+    const regResult = await apiClient.register(playerId, name, social);
+
+    if (regResult.ok || regResult.updated) {
+        localStorage.setItem('mamdani_name', name);
+        if (social) localStorage.setItem('mamdani_social', social);
+
+        // Submit current score
+        const score = scoreManager.getDisplayScore();
+        await apiClient.submitScore(playerId, score);
+
+        registrationModal.classList.add('hidden');
+
+        // Refresh leaderboard and hide join button
+        showLeaderboard(score);
+        if (joinLbBtn) joinLbBtn.style.display = 'none';
+
+    } else {
+        regErrorMsg.innerText = "ERROR REGISTERING. TRY AGAIN.";
+        regErrorMsg.style.display = 'block';
+    }
+
+    submitScoreBtn.disabled = false;
+    submitScoreBtn.innerText = "SUBMIT SCORE";
+}
+
+async function showLeaderboard(currentScore) {
+    // leaderboardModal.classList.remove('hidden'); // No longer using modal
+    leaderboardList.innerHTML = '<div style="text-align: center; color: #666;">LOADING...</div>';
+
+    // 0. Ensure Player is Registered (Anonymous or Named)
+    if (!localStorage.getItem('mamdani_name')) {
+        try {
+            await apiClient.register(playerId, "", "");
+        } catch (e) {
+            console.error("Auto-registration failed:", e);
+        }
+    }
+
+    // 1. Submit Score FIRST to ensure it's recorded
+    const myRankData = await apiClient.submitScore(playerId, currentScore);
+
+    // 2. THEN Fetch Leaderboard Data
+    let data = await apiClient.getLeaderboard(50);
+
+    // Debugging: Handle if data is wrapped in an object (e.g. { scores: [...] } or { entries: [...] })
+    // Debugging: Handle if data is wrapped in an object (e.g. { scores: [...] } or { entries: [...] })
+    if (data && !Array.isArray(data)) {
+        if (data.scores) data = data.scores;
+        else if (data.entries) data = data.entries; // Fix for user issue
+    }
+
+    // Render List
+    leaderboardList.innerHTML = '';
+    if (Array.isArray(data) && data.length > 0) {
+        data.forEach((entry, index) => {
+            const item = document.createElement('div');
+            item.className = 'leaderboard-item';
+
+            let socialHtml = '';
+            if (entry.social) {
+                const handle = entry.social.replace('@', '');
+                socialHtml = `<a href="https://truthsocial.com/@${handle}" target="_blank" class="lb-social-link">@${handle}</a>`;
+            }
+
+            item.innerHTML = `
+                <div class="lb-rank">#${index + 1}</div>
+                <div class="lb-name">${entry.name}${socialHtml}</div>
+                <div class="lb-score">${entry.score}m</div>
+            `;
+            leaderboardList.appendChild(item);
+        });
+    } else {
+        console.log("Leaderboard Data:", data); // Log for debugging
+        leaderboardList.innerHTML = '<div style="text-align: center; color: #666;">NO SCORES YET</div>';
+    }
+
+    // Update Personal Best
+    if (myRankData && myRankData.ok) {
+        pbScoreEl.innerText = `${myRankData.bestScore}m`;
+
+        // Cache best score for HUD
+        localStorage.setItem('mamdani_best_score', myRankData.bestScore);
+        if (bestScoreEl) bestScoreEl.innerText = myRankData.bestScore;
+
+
+
+        const savedName = localStorage.getItem('mamdani_name');
+        if (!savedName) {
+            pbRankDisplay.innerText = "(join to see your rank)";
+        } else {
+            const rankText = myRankData.rank > 0 ? `#${myRankData.rank}` : '-';
+            pbRankDisplay.innerText = `Rank: ${rankText}`;
+        }
+    }
 }
 
 function updateUI() {

@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mamdani Run: Escape Trump!</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -15,7 +15,6 @@
     window.dataLayer = window.dataLayer || [];
     function gtag() { dataLayer.push(arguments); }
     gtag('js', new Date());
-
     gtag('config', 'G-M4V8F77Y5F');
 </script>
 
@@ -39,13 +38,13 @@
             <div id="hud" class="hidden">
                 <div class="hud-panel" id="score-board">DIST: <span id="score">0</span>m</div>
                 <div class="hud-panel" id="food-stamps-board">FOOD STAMPS: <span id="food-stamps">0</span></div>
+                <div class="hud-panel" id="best-score-board">BEST: <span id="best-score">0</span>m</div>
                 <div id="powerup-hud"></div>
             </div>
             <div id="notification-area"></div>
             <div id="tax-notification" class="hidden">TAXES!<br>-50% FOOD STAMPS</div>
-
-            <div id="game-over-screen" class="hidden screen">
-                <div class="game-over-content">
+            <div id="game-over-screen" class="hidden screen" style="overflow-y: auto;">
+                <div class="game-over-content" style="margin-top: 50px; margin-bottom: 50px;">
                     <h1 class="game-over-title">TRUMP WINS!</h1>
                     <div class="stats-grid">
                         <div class="stat-item">
@@ -57,11 +56,33 @@
                             <div class="stat-value" id="final-tax">$0</div>
                         </div>
                     </div>
-                    <button id="restart-btn">TRY AGAIN</button>
-                    <button id="go-home-btn" style="margin-top: 10px; background-color: #444;">GO BACK</button>
+                    <div id="personal-best-display"
+                        style="margin-top: 20px; margin-bottom: 5px; color: var(--primary-color); font-size: 0.9rem;">
+                        BEST: <span id="pb-score">0</span> <span id="pb-rank-display">Rank: -</span>
+                    </div>
+                    <div id="leaderboard-section"
+                        style="margin-top: 30px; border-top: 2px solid #444; padding-top: 20px;">
+                        <h2 style="color: var(--secondary-color); margin-bottom: 10px; font-size: 1.2rem;">TOP
+                            REVOLUTIONARIES</h2>
+                        <div
+                            style="display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 5px; font-size: 0.8rem; color: #aaa;">
+                            <span>RANK</span>
+                            <span>NAME</span>
+                            <span>SCORE</span>
+                        </div>
+                        <div id="leaderboard-list" style="max-height: 200px; overflow-y: auto; margin-bottom: 20px;">
+                            <div style="text-align: center; color: #666;">LOADING...</div>
+                        </div>
+                        <button id="join-lb-btn"
+                            style="background-color: #0077be; font-size: 1rem; padding: 0.8rem 1.5rem; display: none;">JOIN
+                            THE REVOLUTION</button>
+                    </div>
+                    <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+                        <button id="restart-btn">TRY AGAIN</button>
+                        <button id="go-home-btn" style="background-color: #444;">GO BACK</button>
+                    </div>
                 </div>
             </div>
-
             <div id="story-modal" class="hidden screen" style="background: rgba(0,0,0,0.95); z-index: 100;">
                 <h1 style="color: #ff0000;">THE YEAR IS 2025</h1>
                 <p style="max-width: 600px; line-height: 1.6; margin-bottom: 20px;">
@@ -74,12 +95,10 @@
                 </p>
                 <button id="close-story-btn">I UNDERSTAND</button>
             </div>
-
             <div id="instructions-modal" class="hidden screen"
                 style="background: rgba(0,0,0,0.95); z-index: 200; overflow-y: auto;">
                 <div class="instructions-content" style="max-width: 800px; padding: 40px; text-align: left;">
                     <h1 style="color: var(--secondary-color); text-align: center;">HOW TO PLAY</h1>
-
                     <h3 style="color: var(--primary-color);">CONTROLS</h3>
                     <ul style="list-style: none; padding: 0; line-height: 2;">
                         <li>⬆️ <b>JUMP</b> (Arrow Up / W / Space / Swipe Up)</li>
@@ -87,7 +106,6 @@
                         <li>⬅️ <b>LEFT</b> (Arrow Left / A / Swipe Left)</li>
                         <li>➡️ <b>RIGHT</b> (Arrow Right / D / Swipe Right)</li>
                     </ul>
-
                     <h3 style="color: var(--primary-color); margin-top: 30px;">OBJECTIVES</h3>
                     <ul style="list-style: none; padding: 0; line-height: 1.6;">
                         <li>🏃 <b>RUN</b> as far as possible to escape Trump!</li>
@@ -95,17 +113,27 @@
                         <li>🚧 <b>AVOID OBSTACLES</b> (Taxis, Protestors, Scaffolds)</li>
                         <li>🍺 <b>AVOID ALCOHOL</b> (Alcohol is Haram!)</li>
                     </ul>
-
                     <h3 style="color: var(--primary-color); margin-top: 30px;">POWER-UPS</h3>
                     <ul style="list-style: none; padding: 0; line-height: 1.6;">
                         <li>😷 <b>COVID MASK</b>: Protects from one hit.</li>
                         <li>🍉 <b>KAFIYEH</b>: Temporary invincibility.</li>
                         <li>🌈 <b>RAINBOW</b>: Magnet for food stamps.</li>
                     </ul>
-
                     <div style="text-align: center; margin-top: 40px;">
                         <button id="close-instructions-btn">BACK TO MENU</button>
                     </div>
+                </div>
+            </div>
+            <div id="registration-modal" class="hidden screen" style="background: rgba(0,0,0,0.95); z-index: 300;">
+                <div class="modal-content" style="max-width: 500px; padding: 40px; text-align: center;">
+                    <h2 style="color: var(--primary-color); margin-bottom: 20px;">JOIN THE REVOLUTION</h2>
+                    <p style="margin-bottom: 20px;">Enter your name to join the global leaderboard.</p>
+                    <input type="text" id="reg-name" placeholder="YOUR NAME" maxlength="15"
+                        style="width: 100%; padding: 10px; margin-bottom: 10px; background: #333; color: white; border: 2px solid #555; font-family: 'Press Start 2P', cursive;">
+                    <input type="text" id="reg-social" placeholder="@TRUTHSOCIAL (Optional)" maxlength="20"
+                        style="width: 100%; padding: 10px; margin-bottom: 20px; background: #333; color: white; border: 2px solid #555; font-family: 'Press Start 2P', cursive;">
+                    <button id="submit-score-btn" style="width: 100%;">SUBMIT SCORE</button>
+                    <p id="reg-error" style="color: red; font-size: 0.8rem; margin-top: 10px; display: none;"></p>
                 </div>
             </div>
         </div>
