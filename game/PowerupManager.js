@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as BABYLON from '@babylonjs/core';
 import { TextureGenerator } from './TextureGenerator.js';
 
 export class PowerupManager {
@@ -7,26 +7,19 @@ export class PowerupManager {
         this.powerups = [];
         this.texGen = new TextureGenerator();
 
-        // Geometries
-        // Kafiyeh: Bandana Triangle (Flattened Cone)
-        this.kafiyehGeo = new THREE.ConeGeometry(0.5, 0.1, 3); // Triangle prism
-        this.kafiyehGeo.rotateX(Math.PI / 2); // Lay flat
-        this.kafiyehGeo.rotateY(Math.PI / 6); // Point forward
-
-        // Rainbow: Arch (Half Torus)
-        this.rainbowGeo = new THREE.TorusGeometry(0.4, 0.1, 8, 16, Math.PI);
-
-        // Covid Mask: Surgical Mask (Curved Plane or Box)
-        this.covidMaskGeo = new THREE.BoxGeometry(0.6, 0.4, 0.1);
-
         // Materials
-        this.kafiyehMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('kafiyeh') });
-        this.rainbowMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('rainbow') });
-        this.covidMaskMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('covidMask') });
+        this.kafiyehMat = new BABYLON.StandardMaterial("kafiyehMat", scene);
+        this.kafiyehMat.diffuseColor = new BABYLON.Color3(0, 0, 0); // Black/White pattern ideally
+
+        this.rainbowMat = new BABYLON.StandardMaterial("rainbowMat", scene);
+        this.rainbowMat.diffuseColor = new BABYLON.Color3(1, 0, 1); // Rainbow-ish
+
+        this.covidMaskMat = new BABYLON.StandardMaterial("covidMaskMat", scene);
+        this.covidMaskMat.diffuseColor = new BABYLON.Color3(0.4, 0.8, 1); // Light Blue
     }
 
     reset() {
-        this.powerups.forEach(p => this.scene.remove(p.mesh));
+        this.powerups.forEach(p => p.mesh.dispose());
         this.powerups = [];
     }
 
@@ -36,28 +29,24 @@ export class PowerupManager {
 
         if (typeRoll < 0.33) {
             type = 'kafiyeh';
-            mesh = new THREE.Mesh(this.kafiyehGeo, this.kafiyehMat);
-            mesh.rotation.x = -Math.PI / 4; // Tilt slightly up
+            // ConeGeometry(diameterTop, diameterBottom, height, tessellation)
+            mesh = BABYLON.MeshBuilder.CreateCylinder("kafiyeh", { diameterTop: 0, diameterBottom: 1, height: 0.2, tessellation: 3 }, this.scene);
+            mesh.material = this.kafiyehMat;
+            mesh.rotation.x = -Math.PI / 4;
         } else if (typeRoll < 0.66) {
             type = 'rainbow';
-            mesh = new THREE.Mesh(this.rainbowGeo, this.rainbowMat);
-            mesh.rotation.z = Math.PI; // Arch upwards? Default torus is flat on XY?
-            // TorusGeometry(radius, tube, radialSegments, tubularSegments, arc)
-            // Arc starts at 0. Math.PI gives half circle.
-            // We want it standing up like an arch (McDonalds style).
-            // Default lies on XY plane.
-            // We need to rotate it to stand on XZ plane?
-            // Actually, let's just rotate it in spawn.
-            mesh.rotation.z = 0;
+            mesh = BABYLON.MeshBuilder.CreateTorus("rainbow", { diameter: 0.8, thickness: 0.2, tessellation: 16 }, this.scene);
+            mesh.material = this.rainbowMat;
+            mesh.rotation.z = 0; // Standing up
         } else {
             type = 'covidMask';
-            mesh = new THREE.Mesh(this.covidMaskGeo, this.covidMaskMat);
-            mesh.rotation.x = -Math.PI / 6; // Tilt to face camera
+            mesh = BABYLON.MeshBuilder.CreateBox("covidMask", { width: 0.6, height: 0.4, depth: 0.1 }, this.scene);
+            mesh.material = this.covidMaskMat;
+            mesh.rotation.x = -Math.PI / 6;
         }
 
         mesh.position.set(lane, 1, zPos);
-        mesh.castShadow = true;
-        this.scene.add(mesh);
+        this.scene.addMesh(mesh); // Explicit add not strictly needed if created with scene, but safe
 
         this.powerups.push({ mesh, type });
     }
@@ -70,21 +59,21 @@ export class PowerupManager {
 
             // Remove if passed
             if (p.mesh.position.z > 10) {
-                this.scene.remove(p.mesh);
+                p.mesh.dispose();
                 this.powerups.splice(i, 1);
             }
         }
     }
 
     checkCollisions(player) {
-        const playerBox = new THREE.Box3().setFromObject(player.mesh);
+        const playerPos = player.mesh.position;
 
         for (let i = this.powerups.length - 1; i >= 0; i--) {
             const p = this.powerups[i];
-            const pBox = new THREE.Box3().setFromObject(p.mesh);
+            const pPos = p.mesh.position;
 
-            if (playerBox.intersectsBox(pBox)) {
-                this.scene.remove(p.mesh);
+            if (Math.abs(pPos.z - playerPos.z) < 1.0 && Math.abs(pPos.x - playerPos.x) < 1.0) {
+                p.mesh.dispose();
                 this.powerups.splice(i, 1);
                 return p.type;
             }

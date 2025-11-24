@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as BABYLON from '@babylonjs/core';
 import { GameState } from './game/GameState.js';
 import { World } from './game/World.js';
 import { Player } from './game/Player.js';
@@ -11,38 +11,52 @@ import { ParticleSystem } from './game/ParticleSystem.js';
 import { Shop } from './game/Shop.js';
 import { ApiClient } from './game/ApiClient.js';
 
+// Canvas Setup
+const canvas = document.getElementById('game-canvas');
+const engine = new BABYLON.Engine(canvas, true);
+
 // Scene Setup
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87CEEB); // Sky blue
-scene.fog = new THREE.Fog(0x87CEEB, 7, 100);
+const createScene = () => {
+    const scene = new BABYLON.Scene(engine);
+    scene.clearColor = new BABYLON.Color4(0.53, 0.81, 0.92, 1); // Sky blue
+    scene.fogMode = BABYLON.Scene.FOGMODE_LINEAR;
+    scene.fogColor = new BABYLON.Color3(0.53, 0.81, 0.92);
+    scene.fogStart = 7;
+    scene.fogEnd = 100;
+    scene.useRightHandedSystem = true;
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const isMobile = window.innerWidth < 768;
-// Zoom out slightly on mobile to see side lanes better
-camera.position.set(0, 5, isMobile ? 10 : 6);
-camera.lookAt(0, 0, -5);
+    // Camera
+    const isMobile = window.innerWidth < 768;
+    const camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, isMobile ? 17 : 10), scene);
+    camera.setTarget(new BABYLON.Vector3(0, 0, -5));
+    // camera.attachControl(canvas, true); // Debugging only
 
-const renderer = new THREE.WebGLRenderer({ canvas: document.querySelector('#game-canvas'), antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
+    // Lighting
+    const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+    light.intensity = 0.6;
 
-// Lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-scene.add(ambientLight);
+    const dirLight = new BABYLON.DirectionalLight("dirLight", new BABYLON.Vector3(-1, -2, -1), scene);
+    dirLight.position = new BABYLON.Vector3(5, 10, 5);
+    dirLight.intensity = 0.8;
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-dirLight.position.set(5, 10, 5);
-dirLight.castShadow = true;
-scene.add(dirLight);
+    // Shadows
+    const shadowGenerator = new BABYLON.ShadowGenerator(1024, dirLight);
+    shadowGenerator.useBlurExponentialShadowMap = true;
+    shadowGenerator.blurKernel = 32;
+
+    return { scene, camera, shadowGenerator };
+};
+
+const { scene, camera, shadowGenerator } = createScene();
 
 // Game Components
 const gameState = new GameState();
-const world = new World(scene);
-const player = new Player(scene);
+const world = new World(scene, shadowGenerator);
+const player = new Player(scene, shadowGenerator);
 const powerupManager = new PowerupManager(scene);
-const obstacleManager = new ObstacleManager(scene, player, powerupManager);
+const obstacleManager = new ObstacleManager(scene, player, powerupManager, shadowGenerator);
 const scoreManager = new ScoreManager();
-const trump = new Trump(scene);
+const trump = new Trump(scene, shadowGenerator);
 const input = new Input();
 const particles = new ParticleSystem(scene);
 const shop = new Shop(player, scoreManager);
@@ -56,7 +70,6 @@ const scoreEl = document.getElementById('score');
 const foodStampsEl = document.getElementById('food-stamps');
 const bestScoreEl = document.getElementById('best-score');
 
-
 const startBtn = document.getElementById('start-btn');
 const restartBtn = document.getElementById('restart-btn');
 const shopBtn = document.getElementById('shop-btn');
@@ -69,9 +82,8 @@ const closeInstructionsBtn = document.getElementById('close-instructions-btn');
 
 // Leaderboard UI
 const registrationModal = document.getElementById('registration-modal');
-// const leaderboardModal = document.getElementById('leaderboard-modal'); // Removed
 const submitScoreBtn = document.getElementById('submit-score-btn');
-const joinLbBtn = document.getElementById('join-lb-btn'); // New button
+const joinLbBtn = document.getElementById('join-lb-btn');
 const regNameInput = document.getElementById('reg-name');
 const regSocialInput = document.getElementById('reg-social');
 const regErrorMsg = document.getElementById('reg-error');
@@ -125,9 +137,7 @@ if (!localStorage.getItem('mamdani_story_seen')) {
 }
 
 window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    engine.resize();
 });
 
 document.addEventListener('visibilitychange', () => {
@@ -135,7 +145,6 @@ document.addEventListener('visibilitychange', () => {
         gameState.setPaused(true);
     } else {
         gameState.setPaused(false);
-        clock.getDelta(); // Discard accumulated time
     }
 });
 
@@ -143,7 +152,6 @@ function startGame() {
     gameState.setState('PLAYING');
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
-    // leaderboardModal.classList.add('hidden');
     registrationModal.classList.add('hidden');
     hud.classList.remove('hidden');
 
@@ -162,41 +170,10 @@ function startGame() {
     if (bestScoreEl) bestScoreEl.innerText = savedBestScore;
 
     // Process Player Events
-    while (player.events.length > 0) {
-        const event = player.events.shift();
-        if (event.type === 'powerupStart') {
-            addPowerupIcon(event.name, event.duration);
-            showNotification(`${event.name.toUpperCase()} ACTIVATED!`, '#00ff00');
-        } else if (event.type === 'powerupEnd') {
-            removePowerupIcon(event.name);
-            showNotification(`${event.name.toUpperCase()} EXPIRED`, '#ff0000');
-        } else if (event.type === 'debuffStart') {
-            addPowerupIcon(event.name, event.duration);
-            showNotification('HARAM!', '#800080');
-        } else if (event.type === 'debuffEnd') {
-            removePowerupIcon(event.name);
-            showNotification('HARAM ENDED', '#00ff00');
-        }
-    }
+    processPlayerEvents();
 
     // Update Powerup Bars
-    const powerupHud = document.getElementById('powerup-hud');
-    Array.from(powerupHud.children).forEach(icon => {
-        const name = icon.dataset.name;
-        let timer = 0;
-        let maxTime = 10.0;
-
-        if (name === 'kafiyeh') timer = player.kafiyehTimer;
-        else if (name === 'rainbow') timer = player.rainbowTimer;
-        else if (name === 'covidMask') timer = player.covidMaskTimer;
-        else if (name === 'confusion') {
-            timer = player.confusionTimer;
-            maxTime = 5.0;
-        }
-
-        const percent = (timer / maxTime) * 100;
-        icon.querySelector('.powerup-bar').style.width = `${percent}%`;
-    });
+    updatePowerupBars();
 }
 
 async function gameOver() {
@@ -213,11 +190,8 @@ async function gameOver() {
     if (finalDistanceEl) finalDistanceEl.innerText = `${finalScore}m`;
     if (finalTaxEl) finalTaxEl.innerText = `$${taxPaid}`;
 
-    // Always show leaderboard in the game over screen
-    // This will handle score submission for both registered and anonymous players
     showLeaderboard(finalScore);
 
-    // Show/Hide Join Button
     const savedName = localStorage.getItem('mamdani_name');
     if (!savedName) {
         if (joinLbBtn) joinLbBtn.style.display = 'block';
@@ -240,20 +214,16 @@ async function handleRegistration() {
     submitScoreBtn.disabled = true;
     submitScoreBtn.innerText = "SUBMITTING...";
 
-    // Register
     const regResult = await apiClient.register(playerId, name, social);
 
     if (regResult.ok || regResult.updated) {
         localStorage.setItem('mamdani_name', name);
         if (social) localStorage.setItem('mamdani_social', social);
 
-        // Submit current score
         const score = scoreManager.getDisplayScore();
         await apiClient.submitScore(playerId, score);
 
         registrationModal.classList.add('hidden');
-
-        // Refresh leaderboard and hide join button
         showLeaderboard(score);
         if (joinLbBtn) joinLbBtn.style.display = 'none';
 
@@ -267,10 +237,8 @@ async function handleRegistration() {
 }
 
 async function showLeaderboard(currentScore) {
-    // leaderboardModal.classList.remove('hidden'); // No longer using modal
     leaderboardList.innerHTML = '<div style="text-align: center; color: #666;">LOADING...</div>';
 
-    // 0. Ensure Player is Registered (Anonymous or Named)
     if (!localStorage.getItem('mamdani_name')) {
         try {
             await apiClient.register(playerId, "", "");
@@ -279,20 +247,14 @@ async function showLeaderboard(currentScore) {
         }
     }
 
-    // 1. Submit Score FIRST to ensure it's recorded
     const myRankData = await apiClient.submitScore(playerId, currentScore);
-
-    // 2. THEN Fetch Leaderboard Data
     let data = await apiClient.getLeaderboard(50);
 
-    // Debugging: Handle if data is wrapped in an object (e.g. { scores: [...] } or { entries: [...] })
-    // Debugging: Handle if data is wrapped in an object (e.g. { scores: [...] } or { entries: [...] })
     if (data && !Array.isArray(data)) {
         if (data.scores) data = data.scores;
-        else if (data.entries) data = data.entries; // Fix for user issue
+        else if (data.entries) data = data.entries;
     }
 
-    // Render List
     leaderboardList.innerHTML = '';
     if (Array.isArray(data) && data.length > 0) {
         data.forEach((entry, index) => {
@@ -313,19 +275,13 @@ async function showLeaderboard(currentScore) {
             leaderboardList.appendChild(item);
         });
     } else {
-        console.log("Leaderboard Data:", data); // Log for debugging
         leaderboardList.innerHTML = '<div style="text-align: center; color: #666;">NO SCORES YET</div>';
     }
 
-    // Update Personal Best
     if (myRankData && myRankData.ok) {
         pbScoreEl.innerText = `${myRankData.bestScore}m`;
-
-        // Cache best score for HUD
         localStorage.setItem('mamdani_best_score', myRankData.bestScore);
         if (bestScoreEl) bestScoreEl.innerText = myRankData.bestScore;
-
-
 
         const savedName = localStorage.getItem('mamdani_name');
         if (!savedName) {
@@ -341,7 +297,11 @@ function updateUI() {
     scoreEl.innerText = scoreManager.getDisplayScore();
     foodStampsEl.innerText = scoreManager.foodStamps;
 
-    // Process Player Events
+    processPlayerEvents();
+    updatePowerupBars();
+}
+
+function processPlayerEvents() {
     while (player.events.length > 0) {
         const event = player.events.shift();
         if (event.type === 'powerupStart') {
@@ -358,8 +318,9 @@ function updateUI() {
             showNotification('HARAM ENDED', '#00ff00');
         }
     }
+}
 
-    // Update Powerup Bars
+function updatePowerupBars() {
     const powerupHud = document.getElementById('powerup-hud');
     Array.from(powerupHud.children).forEach(icon => {
         const name = icon.dataset.name;
@@ -381,14 +342,12 @@ function updateUI() {
 
 function addPowerupIcon(name, duration) {
     const hud = document.getElementById('powerup-hud');
-    // Check if exists
     let icon = hud.querySelector(`[data-name="${name}"]`);
     if (!icon) {
         icon = document.createElement('div');
         icon.className = 'powerup-icon';
         icon.dataset.name = name;
 
-        // Emoji Icons
         let emoji = '';
         if (name === 'kafiyeh') emoji = '🍉';
         else if (name === 'rainbow') emoji = '🏳️‍🌈';
@@ -422,7 +381,6 @@ function showNotification(text, color) {
 
     container.appendChild(notif);
 
-    // Remove after animation
     setTimeout(() => {
         if (container.contains(notif)) {
             container.removeChild(notif);
@@ -430,18 +388,11 @@ function showNotification(text, color) {
     }, 2000);
 }
 
-
-
 // Game Loop
-const clock = new THREE.Clock();
-
-function animate() {
-    requestAnimationFrame(animate);
-
-    const dt = clock.getDelta();
+engine.runRenderLoop(() => {
+    const dt = engine.getDeltaTime() / 1000;
 
     if (gameState.isPlaying() && !gameState.isPaused()) {
-        // Update Game Logic
         world.update(dt);
         player.update(dt, input);
         obstacleManager.update(dt, world.speed, world.distance);
@@ -451,102 +402,82 @@ function animate() {
         scoreManager.update(dt, world.speed);
         trump.update(dt, player.mesh.position.x);
 
-        // Particle Effects for Player Actions
         if (input.isJustPressed('up') && player.isGrounded) {
-            particles.spawnParticles(player.mesh.position, 5, 0xffffff, 0.5); // Jump dust
+            particles.spawnParticles(player.mesh.position, 5, new BABYLON.Color3(1, 1, 1), 0.5);
         }
         if (input.isJustPressed('down') && player.isGrounded) {
-            particles.spawnParticles(player.mesh.position, 5, 0xaaaaaa, 0.5); // Slide dust
+            particles.spawnParticles(player.mesh.position, 5, new BABYLON.Color3(0.6, 0.6, 0.6), 0.5);
         }
 
-        // Update UI
         updateUI();
 
-        // Check Powerup Collisions
         const powerupType = powerupManager.checkCollisions(player);
         if (powerupType) {
             player.activatePowerup(powerupType);
-            particles.spawnParticles(player.mesh.position, 20, 0x00ffff, 2); // Powerup sparkles
+            particles.spawnParticles(player.mesh.position, 20, new BABYLON.Color3(0, 1, 1), 2);
         }
 
-        // Magnet Effect (Rainbow)
         if (player.hasRainbow) {
             for (let i = obstacleManager.obstacles.length - 1; i >= 0; i--) {
                 const obj = obstacleManager.obstacles[i];
                 if (obj.type === 'coin') {
-                    const dist = player.mesh.position.distanceTo(obj.mesh.position);
+                    const dist = BABYLON.Vector3.Distance(player.mesh.position, obj.mesh.position);
 
-                    // Move towards player if in range
                     if (dist < 15) {
-                        const direction = new THREE.Vector3().subVectors(player.mesh.position, obj.mesh.position).normalize();
-                        obj.mesh.position.add(direction.multiplyScalar(25 * dt)); // Increased speed slightly
+                        const direction = player.mesh.position.subtract(obj.mesh.position).normalize();
+                        obj.mesh.position.addInPlace(direction.scale(25 * dt));
                     }
 
-                    // Auto-collect if very close (Fixes missing collisions)
                     if (dist < 1.5) {
                         scoreManager.addFoodStamps(1);
-                        particles.spawnParticles(player.mesh.position, 10, 0xffd700, 1); // Coin sparkles
-                        obstacleManager.scene.remove(obj.mesh);
+                        particles.spawnParticles(player.mesh.position, 10, new BABYLON.Color3(1, 0.84, 0), 1);
+                        obj.mesh.dispose();
                         obstacleManager.obstacles.splice(i, 1);
                     }
                 }
             }
         }
 
-        // Check Obstacle Collisions
         const collisionResult = obstacleManager.checkCollisions(player);
         if (collisionResult) {
             if (collisionResult.type === 'coin') {
                 scoreManager.addFoodStamps(1);
-                particles.spawnParticles(player.mesh.position, 10, 0xffd700, 1); // Coin sparkles
+                particles.spawnParticles(player.mesh.position, 10, new BABYLON.Color3(1, 0.84, 0), 1);
             } else if (collisionResult.type === 'obstacle') {
                 const subtype = collisionResult.subtype;
                 const isSliding = player.slideTimer > 0;
 
                 if (subtype === 'scaffold' && isSliding) {
-                    // Slide under Scaffold -> Safe (No hit)
-                    // Do nothing, just pass through
+                    // Safe
                 } else if (subtype === 'halal' && isSliding) {
-                    // Slide under Halal Cart -> Safe
-                    // Do nothing, just pass through
+                    // Safe
                 } else if (subtype === 'alcohol') {
-                    // Alcohol -> Confusion
                     player.activateConfusion();
-                    particles.spawnParticles(player.mesh.position, 10, 0x800080, 1); // Purple bubbles
-                    obstacleManager.scene.remove(collisionResult.mesh);
+                    particles.spawnParticles(player.mesh.position, 10, new BABYLON.Color3(0.5, 0, 0.5), 1);
+                    collisionResult.mesh.dispose();
                     obstacleManager.obstacles.splice(collisionResult.index, 1);
                 } else {
-                    // Standard Hit (Bus, Taxi, Protestor, Halal if not sliding, etc.)
                     if (player.hasKafiyeh) {
-                        // Invincible!
-                        // Maybe destroy obstacle?
-                        particles.spawnParticles(player.mesh.position, 10, 0xffffff, 1);
-                        obstacleManager.scene.remove(collisionResult.mesh);
+                        particles.spawnParticles(player.mesh.position, 10, new BABYLON.Color3(1, 1, 1), 1);
+                        collisionResult.mesh.dispose();
                         obstacleManager.obstacles.splice(collisionResult.index, 1);
                     } else if (player.hasCovidMask) {
                         player.hasCovidMask = false;
-                        player.mesh.traverse(child => {
-                            if (child.isMesh) child.material.color.setHex(0xff0000);
+                        player.mesh.getChildMeshes().forEach(child => {
+                            if (child.material) child.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
                         });
-                        particles.spawnParticles(player.mesh.position, 15, 0xffffff, 1); // Shield break
-                        obstacleManager.scene.remove(collisionResult.mesh);
+                        particles.spawnParticles(player.mesh.position, 15, new BABYLON.Color3(1, 1, 1), 1);
+                        collisionResult.mesh.dispose();
                         obstacleManager.obstacles.splice(collisionResult.index, 1);
                     } else {
                         if (trump.isChasing) {
-                            // Second hit while chasing -> Game Over
                             gameOver();
                         } else {
-                            // First hit -> Start Chase
                             trump.startChase();
-
-                            // Visual Feedback
                             player.flashRed();
-                            particles.spawnParticles(player.mesh.position, 10, 0xff0000, 2); // Hit blood/sparks
-
-                            // Remove obstacle so we don't hit it again immediately
-                            obstacleManager.scene.remove(collisionResult.mesh);
+                            particles.spawnParticles(player.mesh.position, 10, new BABYLON.Color3(1, 0, 0), 2);
+                            collisionResult.mesh.dispose();
                             obstacleManager.obstacles.splice(collisionResult.index, 1);
-
                             setTimeout(() => {
                                 player.resetColor();
                             }, 100);
@@ -557,8 +488,5 @@ function animate() {
         }
     }
 
-
-    renderer.render(scene, camera);
-}
-
-animate();
+    scene.render();
+});

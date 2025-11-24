@@ -1,66 +1,81 @@
-import * as THREE from 'three';
+import * as BABYLON from '@babylonjs/core';
 import { TextureGenerator } from './TextureGenerator.js';
 
 export class Trump {
-    constructor(scene) {
+    constructor(scene, shadowGenerator) {
         this.scene = scene;
+        this.shadowGenerator = shadowGenerator;
         this.texGen = new TextureGenerator();
 
         // Mesh Group
-        this.mesh = new THREE.Group();
+        this.mesh = new BABYLON.TransformNode("trumpNode", scene);
         this.mesh.position.set(0, 0, 15);
-        this.mesh.castShadow = true;
-        this.scene.add(this.mesh);
 
         // Materials
-        const skinMat = new THREE.MeshStandardMaterial({ color: 0xffcc99 }); // Orange Skin
-        const suitMat = new THREE.MeshStandardMaterial({ color: 0x000080 }); // Navy Suit
-        const hairMat = new THREE.MeshStandardMaterial({ color: 0xffff00 }); // Yellow Hair
-        const tieMat = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Red Tie
+        const skinMat = new BABYLON.StandardMaterial("trumpSkin", scene);
+        skinMat.diffuseColor = new BABYLON.Color3(1, 0.8, 0.6); // Orange-ish Skin
+
+        const suitMat = new BABYLON.StandardMaterial("trumpSuit", scene);
+        suitMat.diffuseColor = new BABYLON.Color3(0, 0, 0.5); // Navy Suit
+
+        const hairMat = new BABYLON.StandardMaterial("trumpHair", scene);
+        hairMat.diffuseColor = new BABYLON.Color3(1, 1, 0); // Yellow Hair
+
+        const tieMat = new BABYLON.StandardMaterial("trumpTie", scene);
+        tieMat.diffuseColor = new BABYLON.Color3(1, 0, 0); // Red Tie
 
         // Head
-        const headGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
-        this.head = new THREE.Mesh(headGeo, skinMat);
+        this.head = BABYLON.MeshBuilder.CreateBox("trumpHead", { width: 0.6, height: 0.6, depth: 0.6 }, scene);
+        this.head.material = skinMat;
         this.head.position.y = 1.8;
-        this.mesh.add(this.head);
+        this.head.parent = this.mesh;
+        if (this.shadowGenerator) this.shadowGenerator.getShadowMap().renderList.push(this.head);
 
         // Hair
-        const hairGeo = new THREE.BoxGeometry(0.65, 0.2, 0.65);
-        this.hair = new THREE.Mesh(hairGeo, hairMat);
+        this.hair = BABYLON.MeshBuilder.CreateBox("trumpHair", { width: 0.65, height: 0.2, depth: 0.65 }, scene);
+        this.hair.material = hairMat;
         this.hair.position.y = 2.15;
-        this.mesh.add(this.hair);
+        this.hair.parent = this.mesh;
+        if (this.shadowGenerator) this.shadowGenerator.getShadowMap().renderList.push(this.hair);
 
         // Body
-        const bodyGeo = new THREE.BoxGeometry(0.7, 0.7, 0.4);
-        this.body = new THREE.Mesh(bodyGeo, suitMat);
+        this.body = BABYLON.MeshBuilder.CreateBox("trumpBody", { width: 0.7, height: 0.7, depth: 0.4 }, scene);
+        this.body.material = suitMat;
         this.body.position.y = 1.15;
-        this.mesh.add(this.body);
+        this.body.parent = this.mesh;
+        if (this.shadowGenerator) this.shadowGenerator.getShadowMap().renderList.push(this.body);
 
         // Tie
-        const tieGeo = new THREE.BoxGeometry(0.2, 0.5, 0.05);
-        this.tie = new THREE.Mesh(tieGeo, tieMat);
+        this.tie = BABYLON.MeshBuilder.CreateBox("trumpTie", { width: 0.2, height: 0.5, depth: 0.05 }, scene);
+        this.tie.material = tieMat;
         this.tie.position.set(0, 1.15, 0.21);
-        this.mesh.add(this.tie);
+        this.tie.parent = this.mesh;
 
         // Arms
-        const armGeo = new THREE.BoxGeometry(0.25, 0.7, 0.25);
-        this.leftArm = new THREE.Mesh(armGeo, suitMat);
+        this.leftArm = BABYLON.MeshBuilder.CreateBox("trumpLeftArm", { width: 0.25, height: 0.7, depth: 0.25 }, scene);
+        this.leftArm.material = suitMat;
         this.leftArm.position.set(-0.5, 1.15, 0);
-        this.mesh.add(this.leftArm);
+        this.leftArm.parent = this.mesh;
+        if (this.shadowGenerator) this.shadowGenerator.getShadowMap().renderList.push(this.leftArm);
 
-        this.rightArm = new THREE.Mesh(armGeo, suitMat);
+        this.rightArm = BABYLON.MeshBuilder.CreateBox("trumpRightArm", { width: 0.25, height: 0.7, depth: 0.25 }, scene);
+        this.rightArm.material = suitMat;
         this.rightArm.position.set(0.5, 1.15, 0);
-        this.mesh.add(this.rightArm);
+        this.rightArm.parent = this.mesh;
+        if (this.shadowGenerator) this.shadowGenerator.getShadowMap().renderList.push(this.rightArm);
 
         // Legs
-        const legGeo = new THREE.BoxGeometry(0.3, 0.8, 0.3);
-        this.leftLeg = new THREE.Mesh(legGeo, suitMat);
+        this.leftLeg = BABYLON.MeshBuilder.CreateBox("trumpLeftLeg", { width: 0.3, height: 0.8, depth: 0.3 }, scene);
+        this.leftLeg.material = suitMat;
         this.leftLeg.position.set(-0.2, 0.4, 0);
-        this.mesh.add(this.leftLeg);
+        this.leftLeg.parent = this.mesh;
+        if (this.shadowGenerator) this.shadowGenerator.getShadowMap().renderList.push(this.leftLeg);
 
-        this.rightLeg = new THREE.Mesh(legGeo, suitMat);
+        this.rightLeg = BABYLON.MeshBuilder.CreateBox("trumpRightLeg", { width: 0.3, height: 0.8, depth: 0.3 }, scene);
+        this.rightLeg.material = suitMat;
         this.rightLeg.position.set(0.2, 0.4, 0);
-        this.mesh.add(this.rightLeg);
+        this.rightLeg.parent = this.mesh;
+        if (this.shadowGenerator) this.shadowGenerator.getShadowMap().renderList.push(this.rightLeg);
 
         // State
         this.isChasing = false;
