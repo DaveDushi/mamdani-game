@@ -130,6 +130,15 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        gameState.setPaused(true);
+    } else {
+        gameState.setPaused(false);
+        clock.getDelta(); // Discard accumulated time
+    }
+});
+
 function startGame() {
     gameState.setState('PLAYING');
     startScreen.classList.add('hidden');
@@ -431,7 +440,7 @@ function animate() {
 
     const dt = clock.getDelta();
 
-    if (gameState.isPlaying()) {
+    if (gameState.isPlaying() && !gameState.isPaused()) {
         // Update Game Logic
         world.update(dt);
         player.update(dt, input);

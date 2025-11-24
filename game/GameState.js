@@ -1,6 +1,15 @@
 export class GameState {
     constructor() {
         this.state = 'START'; // START, PLAYING, GAME_OVER
+        this.paused = false;
+    }
+
+    setPaused(isPaused) {
+        this.paused = isPaused;
+    }
+
+    isPaused() {
+        return this.paused;
     }
 
     setState(newState) {
