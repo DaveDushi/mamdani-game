@@ -109,6 +109,19 @@ closeStoryBtn.addEventListener('click', () => {
     localStorage.setItem('mamdani_story_seen', 'true');
 });
 
+// BMC Tracking
+const bmcWrapper = document.getElementById('bmc-wrapper');
+if (bmcWrapper) {
+    bmcWrapper.addEventListener('click', () => {
+        if (typeof gtag === 'function') {
+            gtag('event', 'bmc_click', {
+                'event_category': 'Engagement',
+                'event_label': 'Buy Me Coffee'
+            });
+        }
+    });
+}
+
 // Leaderboard Events
 submitScoreBtn.addEventListener('click', handleRegistration);
 if (joinLbBtn) {
@@ -127,6 +140,12 @@ const feedbackStatus = document.getElementById('feedback-status');
 
 if (feedbackBtn) {
     feedbackBtn.addEventListener('click', () => {
+        if (typeof gtag === 'function') {
+            gtag('event', 'feedback_open', {
+                'event_category': 'Engagement',
+                'event_label': 'Feedback Button'
+            });
+        }
         startScreen.classList.add('hidden');
         feedbackModal.classList.remove('hidden');
         feedbackMsg.value = '';
@@ -160,7 +179,7 @@ if (sendFeedbackBtn) {
                 startScreen.classList.remove('hidden');
                 sendFeedbackBtn.disabled = false;
                 sendFeedbackBtn.innerText = "SEND";
-            }, 2000);
+            }, 1500);
         } else {
             feedbackStatus.innerText = result.error || "ERROR SENDING.";
             feedbackStatus.style.color = "red";
@@ -194,6 +213,12 @@ document.addEventListener('visibilitychange', () => {
 });
 
 function startGame() {
+    if (typeof gtag === 'function') {
+        gtag('event', 'game_start', {
+            'event_category': 'Game',
+            'event_label': 'Start'
+        });
+    }
     gameState.setState('PLAYING');
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
