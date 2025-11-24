@@ -117,6 +117,60 @@ if (joinLbBtn) {
     });
 }
 
+// Feedback Events
+const feedbackBtn = document.getElementById('feedback-btn');
+const feedbackModal = document.getElementById('feedback-modal');
+const closeFeedbackBtn = document.getElementById('close-feedback-btn');
+const sendFeedbackBtn = document.getElementById('send-feedback-btn');
+const feedbackMsg = document.getElementById('feedback-msg');
+const feedbackStatus = document.getElementById('feedback-status');
+
+if (feedbackBtn) {
+    feedbackBtn.addEventListener('click', () => {
+        startScreen.classList.add('hidden');
+        feedbackModal.classList.remove('hidden');
+        feedbackMsg.value = '';
+        feedbackStatus.style.display = 'none';
+    });
+}
+
+if (closeFeedbackBtn) {
+    closeFeedbackBtn.addEventListener('click', () => {
+        feedbackModal.classList.add('hidden');
+        startScreen.classList.remove('hidden');
+    });
+}
+
+if (sendFeedbackBtn) {
+    sendFeedbackBtn.addEventListener('click', async () => {
+        const message = feedbackMsg.value.trim();
+        if (!message) return;
+
+        sendFeedbackBtn.disabled = true;
+        sendFeedbackBtn.innerText = "SENDING...";
+
+        const result = await apiClient.sendFeedback(playerId, message);
+
+        if (result.ok) {
+            feedbackStatus.innerText = "THANKS FOR FEEDBACK!";
+            feedbackStatus.style.color = "#00ff00";
+            feedbackStatus.style.display = "block";
+            setTimeout(() => {
+                feedbackModal.classList.add('hidden');
+                startScreen.classList.remove('hidden');
+                sendFeedbackBtn.disabled = false;
+                sendFeedbackBtn.innerText = "SEND";
+            }, 2000);
+        } else {
+            feedbackStatus.innerText = result.error || "ERROR SENDING.";
+            feedbackStatus.style.color = "red";
+            feedbackStatus.style.display = "block";
+            sendFeedbackBtn.disabled = false;
+            sendFeedbackBtn.innerText = "SEND";
+        }
+    });
+}
+
 // Check Story
 if (!localStorage.getItem('mamdani_story_seen')) {
     startScreen.classList.add('hidden');

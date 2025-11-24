@@ -71,10 +71,10 @@ export class ObstacleManager {
             const texts = ["No more taxes", "Free Market", "Trump is King"];
             return texts[Math.floor(Math.random() * texts.length)];
         } else if (distance < 2000) {
-            const texts = ["Tax the rich", "Free Healthcare", "Free Palestine"];
+            const texts = ["Tax the rich", "Free Healthcare", "Abolish ICE"];
             return texts[Math.floor(Math.random() * texts.length)];
         } else {
-            const texts = ["Intifada Revolution", "Free Supermarkets", "Dictator Mamdani", "Comrads Unite"];
+            const texts = ["Intifada Revolution", "Dictator Mamdani", "Comrads Unite", "MAO is the best"];
             return texts[Math.floor(Math.random() * texts.length)];
         }
     }

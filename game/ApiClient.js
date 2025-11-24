@@ -31,6 +31,20 @@ export class ApiClient {
         }
     }
 
+    async sendFeedback(playerId, message) {
+        try {
+            const response = await fetch(`${this.baseUrl}/feedback`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playerId, message })
+            });
+            return await response.json();
+        } catch (error) {
+            console.error('API Error (sendFeedback):', error);
+            return { ok: false };
+        }
+    }
+
     async getLeaderboard(limit = 50) {
         try {
             const response = await fetch(`${this.baseUrl}/leaderboard?limit=${limit}`);

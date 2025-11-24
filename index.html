@@ -37,6 +37,8 @@
                     data-slug="davedushi" data-color="#FFDD00" data-emoji="" data-font="Comic"
                     data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000"
                     data-coffee-color="#ffffff"></script>
+                <button id="feedback-btn"
+                    style="position: absolute; bottom: 20px; right: 20px; background-color: #555; font-size: 0.8rem; padding: 10px 20px; width: auto;">FEEDBACK</button>
             </div>
             <div id="hud" class="hidden">
                 <div class="hud-panel" id="score-board">DIST: <span id="score">0</span>m</div>
@@ -137,6 +139,20 @@
                         style="width: 100%; padding: 10px; margin-bottom: 20px; background: #333; color: white; border: 2px solid #555; font-family: 'Press Start 2P', cursive;">
                     <button id="submit-score-btn" style="width: 100%;">SUBMIT SCORE</button>
                     <p id="reg-error" style="color: red; font-size: 0.8rem; margin-top: 10px; display: none;"></p>
+                </div>
+            </div>
+
+            <div id="feedback-modal" class="hidden screen" style="background: rgba(0,0,0,0.95); z-index: 400;">
+                <div class="modal-content" style="max-width: 500px; padding: 40px; text-align: center;">
+                    <h2 style="color: var(--secondary-color); margin-bottom: 20px;">SEND FEEDBACK</h2>
+                    <p style="margin-bottom: 20px;">Tell us what you think!</p>
+                    <textarea id="feedback-msg" placeholder="Your message..." rows="5"
+                        style="width: 100%; padding: 10px; margin-bottom: 20px; background: #333; color: white; border: 2px solid #555; font-family: 'Courier New', monospace; resize: none;"></textarea>
+                    <div style="display: flex; gap: 10px; justify-content: center;">
+                        <button id="send-feedback-btn">SEND</button>
+                        <button id="close-feedback-btn" style="background-color: #444;">CLOSE</button>
+                    </div>
+                    <p id="feedback-status" style="margin-top: 10px; display: none;"></p>
                 </div>
             </div>
         </div>
