@@ -204,8 +204,14 @@ export class Player {
             // Hitbox adjustment handled by groundY in gravity logic
         }
 
-        if (this.isGrounded && slide) {
-            this.slideTimer = this.slideDuration;
+        if (slide) {
+            if (this.isGrounded) {
+                this.slideTimer = this.slideDuration;
+            } else {
+                // Jump Cancel / Air Slide
+                this.slideTimer = this.slideDuration;
+                this.velocity.y = -5; // Gentle drop
+            }
         }
 
         // Gravity
@@ -214,7 +220,7 @@ export class Player {
             this.mesh.position.y += this.velocity.y * dt;
 
             // Ground collision
-            const groundY = (this.slideTimer > 0) ? -0.5 : 0;
+            const groundY = 0;
 
             if (this.mesh.position.y <= groundY) {
                 this.mesh.position.y = groundY;
