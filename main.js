@@ -267,7 +267,10 @@ function startGame() {
 
         if (name === 'kafiyeh') timer = player.kafiyehTimer;
         else if (name === 'rainbow') timer = player.rainbowTimer;
-        else if (name === 'covidMask') timer = player.covidMaskTimer;
+        else if (name === 'covidMask') {
+            timer = player.covidMaskTimer;
+            maxTime = 3.0;
+        }
         else if (name === 'confusion') {
             timer = player.confusionTimer;
             maxTime = 5.0;
@@ -447,7 +450,10 @@ function updateUI() {
 
         if (name === 'kafiyeh') timer = player.kafiyehTimer;
         else if (name === 'rainbow') timer = player.rainbowTimer;
-        else if (name === 'covidMask') timer = player.covidMaskTimer;
+        else if (name === 'covidMask') {
+            timer = player.covidMaskTimer;
+            maxTime = 3.0;
+        }
         else if (name === 'confusion') {
             timer = player.confusionTimer;
             maxTime = 5.0;
@@ -527,7 +533,8 @@ function animate() {
         powerupManager.update(dt, world.speed, player);
         particles.update(dt);
 
-        scoreManager.update(dt, world.speed);
+        const multiplier = player.hasCovidMask ? 2 : 1;
+        scoreManager.update(dt, world.speed, multiplier);
         trump.update(dt, player.mesh.position.x);
 
         // Particle Effects for Player Actions
@@ -600,14 +607,6 @@ function animate() {
                         // Invincible!
                         // Maybe destroy obstacle?
                         particles.spawnParticles(player.mesh.position, 10, 0xffffff, 1);
-                        obstacleManager.scene.remove(collisionResult.mesh);
-                        obstacleManager.obstacles.splice(collisionResult.index, 1);
-                    } else if (player.hasCovidMask) {
-                        player.hasCovidMask = false;
-                        player.mesh.traverse(child => {
-                            if (child.isMesh) child.material.color.setHex(0xff0000);
-                        });
-                        particles.spawnParticles(player.mesh.position, 15, 0xffffff, 1); // Shield break
                         obstacleManager.scene.remove(collisionResult.mesh);
                         obstacleManager.obstacles.splice(collisionResult.index, 1);
                     } else {

@@ -118,15 +118,15 @@ export class Player {
         if (type === 'kafiyeh') {
             this.hasKafiyeh = true;
             this.kafiyehTimer = 5.0;
-            this.events.push({ type: 'powerupStart', name: 'kafiyeh', duration: 10.0 });
+            this.events.push({ type: 'powerupStart', name: 'kafiyeh', duration: 5.0 });
         } else if (type === 'rainbow') {
             this.hasRainbow = true;
             this.rainbowTimer = 7.0;
-            this.events.push({ type: 'powerupStart', name: 'rainbow', duration: 10.0 });
+            this.events.push({ type: 'powerupStart', name: 'rainbow', duration: 7.0 });
         } else if (type === 'covidMask') {
             this.hasCovidMask = true;
-            this.covidMaskTimer = 10.0;
-            this.events.push({ type: 'powerupStart', name: 'covidMask', duration: 10.0 });
+            this.covidMaskTimer = 3.0;
+            this.events.push({ type: 'powerupStart', name: 'covidMask', duration: 3.0 });
         }
     }
 
@@ -301,7 +301,7 @@ export class Player {
     }
 
     resetColor() {
-        if (this.hasKafiyeh || this.hasRainbow || this.hasCovidMask) return; // Don't reset if powerup active
+        if (this.hasKafiyeh || this.hasRainbow) return; // Don't reset if powerup active
 
         const skinColor = this.currentSkin ? this.currentSkin.color : 0xd2a679;
         const suitColor = this.currentSkin ? this.currentSkin.suitColor : 0x1a1a2e;

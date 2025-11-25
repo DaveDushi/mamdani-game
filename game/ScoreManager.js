@@ -17,9 +17,9 @@ export class ScoreManager {
         this.taxTimer = 0;
     }
 
-    update(dt, speed) {
+    update(dt, speed, multiplier = 1) {
         // Score based on distance/speed
-        this.score += speed * dt;
+        this.score += speed * dt * multiplier;
         return false;
     }
 
