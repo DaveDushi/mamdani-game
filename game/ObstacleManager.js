@@ -41,8 +41,12 @@ export class ObstacleManager {
     }
 
     clear() {
-        this.obstacles.forEach(obj => this.scene.remove(obj.mesh));
-        this.obstacles = [];
+        this.obstacles.forEach(obj => {
+            if (obj.type !== 'coin') {
+                this.scene.remove(obj.mesh);
+            }
+        });
+        this.obstacles = this.obstacles.filter(obj => obj.type === 'coin');
     }
 
     update(dt, speed, distance) {
