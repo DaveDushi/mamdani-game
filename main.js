@@ -243,42 +243,10 @@ function startGame() {
     // Process Player Events
     while (player.events.length > 0) {
         const event = player.events.shift();
-        if (event.type === 'powerupStart') {
-            addPowerupIcon(event.name, event.duration);
-            showNotification(`${event.name.toUpperCase()} ACTIVATED!`, '#00ff00');
-        } else if (event.type === 'powerupEnd') {
-            removePowerupIcon(event.name);
-            showNotification(`${event.name.toUpperCase()} EXPIRED`, '#ff0000');
-        } else if (event.type === 'debuffStart') {
-            addPowerupIcon(event.name, event.duration);
-            showNotification('HARAM!', '#800080');
-        } else if (event.type === 'debuffEnd') {
-            removePowerupIcon(event.name);
-            showNotification('HARAM ENDED', '#00ff00');
+        if (event.type === 'debuffStart') {
+            showNotification('HARAM!', '#fd1010ff');
         }
     }
-
-    // Update Powerup Bars
-    const powerupHud = document.getElementById('powerup-hud');
-    Array.from(powerupHud.children).forEach(icon => {
-        const name = icon.dataset.name;
-        let timer = 0;
-        let maxTime = 10.0;
-
-        if (name === 'kafiyeh') timer = player.kafiyehTimer;
-        else if (name === 'rainbow') timer = player.rainbowTimer;
-        else if (name === 'covidMask') {
-            timer = player.covidMaskTimer;
-            maxTime = 3.0;
-        }
-        else if (name === 'confusion') {
-            timer = player.confusionTimer;
-            maxTime = 5.0;
-        }
-
-        const percent = (timer / maxTime) * 100;
-        icon.querySelector('.powerup-bar').style.width = `${percent}%`;
-    });
 }
 
 async function gameOver() {
@@ -426,75 +394,9 @@ function updateUI() {
     // Process Player Events
     while (player.events.length > 0) {
         const event = player.events.shift();
-        if (event.type === 'powerupStart') {
-            addPowerupIcon(event.name, event.duration);
-            showNotification(`${event.name.toUpperCase()} ACTIVATED!`, '#00ff00');
-        } else if (event.type === 'powerupEnd') {
-            removePowerupIcon(event.name);
-            showNotification(`${event.name.toUpperCase()} EXPIRED`, '#ff0000');
-        } else if (event.type === 'debuffStart') {
-            addPowerupIcon(event.name, event.duration);
-            showNotification('HARAM!', '#800080');
-        } else if (event.type === 'debuffEnd') {
-            removePowerupIcon(event.name);
-            showNotification('HARAM ENDED', '#00ff00');
+        if (event.type === 'debuffStart') {
+            showNotification('HARAM!', '#f21111ff');
         }
-    }
-
-    // Update Powerup Bars
-    const powerupHud = document.getElementById('powerup-hud');
-    Array.from(powerupHud.children).forEach(icon => {
-        const name = icon.dataset.name;
-        let timer = 0;
-        let maxTime = 10.0;
-
-        if (name === 'kafiyeh') timer = player.kafiyehTimer;
-        else if (name === 'rainbow') timer = player.rainbowTimer;
-        else if (name === 'covidMask') {
-            timer = player.covidMaskTimer;
-            maxTime = 3.0;
-        }
-        else if (name === 'confusion') {
-            timer = player.confusionTimer;
-            maxTime = 5.0;
-        }
-
-        const percent = (timer / maxTime) * 100;
-        icon.querySelector('.powerup-bar').style.width = `${percent}%`;
-    });
-}
-
-function addPowerupIcon(name, duration) {
-    const hud = document.getElementById('powerup-hud');
-    // Check if exists
-    let icon = hud.querySelector(`[data-name="${name}"]`);
-    if (!icon) {
-        icon = document.createElement('div');
-        icon.className = 'powerup-icon';
-        icon.dataset.name = name;
-
-        // Emoji Icons
-        let emoji = '';
-        if (name === 'kafiyeh') emoji = '🍉';
-        else if (name === 'rainbow') emoji = '🏳️‍🌈';
-        else if (name === 'covidMask') emoji = '😷';
-        else if (name === 'confusion') emoji = '🥴';
-
-        icon.innerText = emoji;
-
-        const bar = document.createElement('div');
-        bar.className = 'powerup-bar';
-        icon.appendChild(bar);
-
-        hud.appendChild(icon);
-    }
-}
-
-function removePowerupIcon(name) {
-    const hud = document.getElementById('powerup-hud');
-    const icon = hud.querySelector(`[data-name="${name}"]`);
-    if (icon) {
-        hud.removeChild(icon);
     }
 }
 
@@ -514,8 +416,6 @@ function showNotification(text, color) {
         }
     }, 2000);
 }
-
-
 
 // Game Loop
 const clock = new THREE.Clock();

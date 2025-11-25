@@ -144,13 +144,11 @@ export class Player {
         if (type === 'kafiyeh') {
             this.hasKafiyeh = true;
             this.kafiyehTimer = 5.0;
-            this.events.push({ type: 'powerupStart', name: 'kafiyeh', duration: 5.0 });
             // Visual
             this.head.material = this.kafiyehMat;
         } else if (type === 'rainbow') {
             this.hasRainbow = true;
-            this.rainbowTimer = 7.0;
-            this.events.push({ type: 'powerupStart', name: 'rainbow', duration: 7.0 });
+            this.rainbowTimer = 7
             // Visual
             this.body.material = this.rainbowMat;
             this.leftArm.material = this.rainbowMat;
@@ -158,7 +156,6 @@ export class Player {
         } else if (type === 'covidMask') {
             this.hasCovidMask = true;
             this.covidMaskTimer = 3.0;
-            this.events.push({ type: 'powerupStart', name: 'covidMask', duration: 3.0 });
         }
     }
 
@@ -174,7 +171,6 @@ export class Player {
             this.kafiyehTimer -= dt;
             if (this.kafiyehTimer <= 0) {
                 this.hasKafiyeh = false;
-                this.events.push({ type: 'powerupEnd', name: 'kafiyeh' });
                 // Reset Visual
                 this.head.material = this.skinMat;
                 this.resetColor();
@@ -184,7 +180,6 @@ export class Player {
             this.rainbowTimer -= dt;
             if (this.rainbowTimer <= 0) {
                 this.hasRainbow = false;
-                this.events.push({ type: 'powerupEnd', name: 'rainbow' });
                 // Reset Visual
                 this.body.material = this.suitMat;
                 this.leftArm.material = this.suitMat;
@@ -196,7 +191,6 @@ export class Player {
             this.covidMaskTimer -= dt;
             if (this.covidMaskTimer <= 0) {
                 this.hasCovidMask = false;
-                this.events.push({ type: 'powerupEnd', name: 'covidMask' });
             }
         }
 
@@ -205,7 +199,6 @@ export class Player {
             this.starsGroup.rotation.y += dt * 3; // Spin stars
             if (this.confusionTimer <= 0) {
                 this.confusionTimer = 0;
-                this.events.push({ type: 'debuffEnd', name: 'confusion' });
                 this.starsGroup.visible = false;
             }
         }
