@@ -103,7 +103,7 @@ export class Player {
         // Powerups
         this.hasKafiyeh = false; // Invincibility
         this.hasRainbow = false; // Magnet
-        this.hasCovidMask = false; // Safe Slide
+        this.hasCovidMask = false;
 
         this.kafiyehTimer = 0;
         this.rainbowTimer = 0;
@@ -344,7 +344,7 @@ export class Player {
     }
 
     resetColor() {
-        if (this.hasKafiyeh || this.hasRainbow) return; // Don't reset if powerup active
+        if (this.hasKafiyeh) return; // Don't reset if powerup active
 
         const skinColor = this.currentSkin ? this.currentSkin.color : 0xd2a679;
         const suitColor = this.currentSkin ? this.currentSkin.suitColor : 0x1a1a2e;
@@ -357,6 +357,13 @@ export class Player {
         this.rightArm.material.color.setHex(suitColor); // Suit
         this.leftLeg.material.color.setHex(0x111111); // Pants
         this.rightLeg.material.color.setHex(0x111111); // Pants
+
+        if (this.hasRainbow) {
+            this.rainbowMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('rainbow_flag') });
+            this.body.material = this.rainbowMat;
+            this.leftArm.material = this.rainbowMat;
+            this.rightArm.material = this.rainbowMat;
+        }
     }
     resetPoseDefaults() {
         this.mesh.rotation.x = 0;
