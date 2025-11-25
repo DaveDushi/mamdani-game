@@ -30,6 +30,7 @@ export class TextureGenerator {
             case 'billboard_palestinian': canvas = this.drawBillboard('FREE PALESTINE'); break;
             case 'alcohol': canvas = this.drawAlcohol(); break;
             case 'pothole': canvas = this.drawPothole(); break;
+            case 'rainbow_flag': canvas = this.drawRainbowFlag(); break;
             default: canvas = this.createCanvas(64, 64);
         }
         const texture = new THREE.CanvasTexture(canvas);
@@ -457,6 +458,20 @@ export class TextureGenerator {
         ctx.beginPath();
         ctx.arc(32, 32, 20, 0, Math.PI * 2);
         ctx.fill();
+
+        return c;
+    }
+
+    drawRainbowFlag() {
+        const c = this.createCanvas(128, 128);
+        const ctx = c.getContext('2d');
+        const colors = ['#FF0018', '#FFA52C', '#FFFF41', '#008018', '#0000F9', '#86007D'];
+        const stripeHeight = 128 / 6;
+
+        colors.forEach((color, i) => {
+            ctx.fillStyle = color;
+            ctx.fillRect(0, i * stripeHeight, 128, stripeHeight + 1);
+        });
 
         return c;
     }

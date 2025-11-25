@@ -13,15 +13,19 @@ export class PowerupManager {
         this.kafiyehGeo.rotateX(Math.PI / 2); // Lay flat
         this.kafiyehGeo.rotateY(Math.PI / 6); // Point forward
 
-        // Rainbow: Arch (Half Torus)
-        this.rainbowGeo = new THREE.TorusGeometry(0.4, 0.1, 8, 16, Math.PI);
+        // Rainbow: Flag (Box)
+        this.rainbowGeo = new THREE.BoxGeometry(1.0, 0.7, 0.1);
 
         // Covid Mask: Surgical Mask (Curved Plane or Box)
         this.covidMaskGeo = new THREE.BoxGeometry(0.6, 0.4, 0.1);
 
         // Materials
         this.kafiyehMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('kafiyeh') });
-        this.rainbowMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('rainbow') });
+        this.rainbowMat = new THREE.MeshStandardMaterial({
+            map: this.texGen.getTexture('rainbow_flag'),
+            emissive: 0x222222,
+            emissiveMap: this.texGen.getTexture('rainbow_flag')
+        });
         this.covidMaskMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('covidMask') });
     }
 
@@ -41,14 +45,7 @@ export class PowerupManager {
         } else if (typeRoll < 0.66) {
             type = 'rainbow';
             mesh = new THREE.Mesh(this.rainbowGeo, this.rainbowMat);
-            mesh.rotation.z = Math.PI; // Arch upwards? Default torus is flat on XY?
-            // TorusGeometry(radius, tube, radialSegments, tubularSegments, arc)
-            // Arc starts at 0. Math.PI gives half circle.
-            // We want it standing up like an arch (McDonalds style).
-            // Default lies on XY plane.
-            // We need to rotate it to stand on XZ plane?
-            // Actually, let's just rotate it in spawn.
-            mesh.rotation.z = 0;
+            mesh.rotation.x = -Math.PI / 6; // Tilt slightly back to be visible
         } else {
             type = 'covidMask';
             mesh = new THREE.Mesh(this.covidMaskGeo, this.covidMaskMat);

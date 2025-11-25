@@ -4,7 +4,7 @@ import { TextureGenerator } from './TextureGenerator.js';
 export class Player {
     constructor(scene) {
         this.scene = scene;
-        // this.texGen = new TextureGenerator(); // No longer needed for player mesh
+        this.texGen = new TextureGenerator();
 
         // Lane Config
         this.lanes = [-3, 0, 3]; // Left, Center, Right
@@ -23,17 +23,35 @@ export class Player {
         this.scene.add(this.mesh);
 
         // Materials
-        const skinMat = new THREE.MeshStandardMaterial({ color: 0xd2a679 }); // Skin
-        const suitMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e }); // Dark Blue Suit
+        this.skinMat = new THREE.MeshStandardMaterial({ color: 0xd2a679 }); // Skin
+        this.suitMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e }); // Dark Blue Suit
         const pantsMat = new THREE.MeshStandardMaterial({ color: 0x111111 }); // Black Pants
         const redMat = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Tie
 
+        // Powerup Materials
+        this.kafiyehMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('kafiyeh') });
+        this.rainbowMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('rainbow_flag') });
+
         // Head
         const headGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-        this.head = new THREE.Mesh(headGeo, skinMat);
+        this.head = new THREE.Mesh(headGeo, this.skinMat);
         this.head.position.y = 1.75;
         this.head.castShadow = true;
         this.mesh.add(this.head);
+
+        // Confusion Stars
+        this.starsGroup = new THREE.Group();
+        this.head.add(this.starsGroup);
+        this.starsGroup.visible = false;
+
+        const starGeo = new THREE.TetrahedronGeometry(0.15);
+        const starMat = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xaa8800 });
+        for (let i = 0; i < 5; i++) {
+            const star = new THREE.Mesh(starGeo, starMat);
+            const angle = (i / 5) * Math.PI * 2;
+            star.position.set(Math.cos(angle) * 0.6, 0.4, Math.sin(angle) * 0.6);
+            this.starsGroup.add(star);
+        }
 
         // Hair
         const hairGeo = new THREE.BoxGeometry(0.55, 0.15, 0.55);
@@ -43,7 +61,7 @@ export class Player {
 
         // Body
         const bodyGeo = new THREE.BoxGeometry(0.6, 0.7, 0.3);
-        this.body = new THREE.Mesh(bodyGeo, suitMat);
+        this.body = new THREE.Mesh(bodyGeo, this.suitMat);
         this.body.position.y = 1.15;
         this.body.castShadow = true;
         this.mesh.add(this.body);
@@ -56,12 +74,12 @@ export class Player {
 
         // Arms
         const armGeo = new THREE.BoxGeometry(0.2, 0.7, 0.2);
-        this.leftArm = new THREE.Mesh(armGeo, suitMat);
+        this.leftArm = new THREE.Mesh(armGeo, this.suitMat);
         this.leftArm.position.set(-0.45, 1.15, 0);
         this.leftArm.castShadow = true;
         this.mesh.add(this.leftArm);
 
-        this.rightArm = new THREE.Mesh(armGeo, suitMat);
+        this.rightArm = new THREE.Mesh(armGeo, this.suitMat);
         this.rightArm.position.set(0.45, 1.15, 0);
         this.rightArm.castShadow = true;
         this.mesh.add(this.rightArm);
@@ -112,6 +130,14 @@ export class Player {
         this.hasKafiyeh = false;
         this.hasRainbow = false;
         this.hasCovidMask = false;
+
+        // Reset Visuals
+        this.head.material = this.skinMat;
+        this.body.material = this.suitMat;
+        this.leftArm.material = this.suitMat;
+        this.rightArm.material = this.suitMat;
+        this.starsGroup.visible = false;
+        this.resetColor();
     }
 
     activatePowerup(type) {
@@ -119,10 +145,16 @@ export class Player {
             this.hasKafiyeh = true;
             this.kafiyehTimer = 5.0;
             this.events.push({ type: 'powerupStart', name: 'kafiyeh', duration: 5.0 });
+            // Visual
+            this.head.material = this.kafiyehMat;
         } else if (type === 'rainbow') {
             this.hasRainbow = true;
             this.rainbowTimer = 7.0;
             this.events.push({ type: 'powerupStart', name: 'rainbow', duration: 7.0 });
+            // Visual
+            this.body.material = this.rainbowMat;
+            this.leftArm.material = this.rainbowMat;
+            this.rightArm.material = this.rainbowMat;
         } else if (type === 'covidMask') {
             this.hasCovidMask = true;
             this.covidMaskTimer = 3.0;
@@ -133,6 +165,7 @@ export class Player {
     activateConfusion() {
         this.confusionTimer = 5.0;
         this.events.push({ type: 'debuffStart', name: 'confusion', duration: 5.0 });
+        this.starsGroup.visible = true;
     }
 
     update(dt, input) {
@@ -142,6 +175,9 @@ export class Player {
             if (this.kafiyehTimer <= 0) {
                 this.hasKafiyeh = false;
                 this.events.push({ type: 'powerupEnd', name: 'kafiyeh' });
+                // Reset Visual
+                this.head.material = this.skinMat;
+                this.resetColor();
             }
         }
         if (this.hasRainbow) {
@@ -149,6 +185,11 @@ export class Player {
             if (this.rainbowTimer <= 0) {
                 this.hasRainbow = false;
                 this.events.push({ type: 'powerupEnd', name: 'rainbow' });
+                // Reset Visual
+                this.body.material = this.suitMat;
+                this.leftArm.material = this.suitMat;
+                this.rightArm.material = this.suitMat;
+                this.resetColor();
             }
         }
         if (this.hasCovidMask) {
@@ -161,9 +202,11 @@ export class Player {
 
         if (this.confusionTimer > 0) {
             this.confusionTimer -= dt;
+            this.starsGroup.rotation.y += dt * 3; // Spin stars
             if (this.confusionTimer <= 0) {
                 this.confusionTimer = 0;
                 this.events.push({ type: 'debuffEnd', name: 'confusion' });
+                this.starsGroup.visible = false;
             }
         }
 
