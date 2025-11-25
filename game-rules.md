@@ -42,7 +42,7 @@ The year is 2025. Trump has declared himself Emperor, and the world has descende
 - **Protestor**: Tall obstacle. You must **dodge** (move left/right).
 - **Scaffold**: High obstacle. You must **slide** under.
 - **Halal Cart**: High obstacle. You must **slide** under.
-- **Alcohol**: A trap! Hitting it causes **Haram** (controls might be affected).
+- **Alcohol**: A trap! Hitting it causes **Haram** (controls get switched up).
 
 ## Mechanics
 
