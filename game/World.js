@@ -139,12 +139,12 @@ export class World {
     }
 
     reset() {
-        this.speed = 12;
+        this.speed = 13;
         this.distance = 0;
     }
 
     update(dt) {
-        this.speed += dt * 0.35; // Accelerate
+        this.speed += dt * 0.40; // Accelerate
         this.distance += this.speed * dt;
 
         const moveDist = this.speed * dt;

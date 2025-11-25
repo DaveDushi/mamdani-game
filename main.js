@@ -433,8 +433,7 @@ function animate() {
         powerupManager.update(dt, world.speed, player);
         particles.update(dt);
 
-        const multiplier = player.hasCovidMask ? 2 : 1;
-        scoreManager.update(dt, world.speed, multiplier);
+        scoreManager.update(dt, world.speed);
         trump.update(dt, player.mesh.position.x);
 
         // Particle Effects for Player Actions
@@ -477,6 +476,11 @@ function animate() {
                     }
                 }
             }
+        }
+
+        if (player.hasCovidMask) {
+            obstacleManager.clear();
+            powerupManager.reset();
         }
 
         // Check Obstacle Collisions

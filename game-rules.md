@@ -33,7 +33,7 @@ The year is 2025. Trump has declared himself Emperor, and the world has descende
 - **Food Stamps (Coins)**: The main currency. Collecting them increases your score. Be warned: 50% of your food stamps are taken as taxes!
 
 ### Power-ups
-- **Covid Mask** 😷: Grants a **2x Score Multiplier** for 3 seconds.
+- **Covid Mask** 😷: Clears the obstacles 6ft away.
 - **Kafiyeh** 🍉: Grants temporary invincibility. (Visual: Sparkles).
 - **Rainbow** 🌈: Acts as a magnet, attracting nearby stamps to you.
 

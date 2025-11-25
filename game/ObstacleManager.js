@@ -40,6 +40,11 @@ export class ObstacleManager {
         this.signMaterials = {}; // Optional: clear cache on reset if we want to free memory, but keeping it is fine too.
     }
 
+    clear() {
+        this.obstacles.forEach(obj => this.scene.remove(obj.mesh));
+        this.obstacles = [];
+    }
+
     update(dt, speed, distance) {
         // Spawning
         this.spawnTimer -= dt;

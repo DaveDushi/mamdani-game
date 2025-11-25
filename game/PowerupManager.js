@@ -38,18 +38,20 @@ export class PowerupManager {
         const typeRoll = Math.random();
         let mesh, type;
 
-        if (typeRoll < 0.33) {
-            type = 'kafiyeh';
-            mesh = new THREE.Mesh(this.kafiyehGeo, this.kafiyehMat);
-            mesh.rotation.x = -Math.PI / 4; // Tilt slightly up
-        } else if (typeRoll < 0.66) {
+        if (typeRoll >= 0.60) {
             type = 'rainbow';
             mesh = new THREE.Mesh(this.rainbowGeo, this.rainbowMat);
             mesh.rotation.x = -Math.PI / 6; // Tilt slightly back to be visible
-        } else {
+        } else if (typeRoll >= 0.40) {
+            type = 'kafiyeh';
+            mesh = new THREE.Mesh(this.kafiyehGeo, this.kafiyehMat);
+            mesh.rotation.x = -Math.PI / 4; // Tilt slightly up
+        } else if (typeRoll >= 0.25) {
             type = 'covidMask';
             mesh = new THREE.Mesh(this.covidMaskGeo, this.covidMaskMat);
             mesh.rotation.x = -Math.PI / 6; // Tilt to face camera
+        } else {
+            return
         }
 
         mesh.position.set(lane, 1, zPos);
