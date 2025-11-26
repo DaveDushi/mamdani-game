@@ -53,11 +53,6 @@ The year is 2025. Trump has declared himself Emperor, and the world has descende
     npm run dev
     ```
 
-3.  **Build for Production**:
-    ```bash
-    npm run build
-    ```
-
 ## Credits
 
-Developed by the Antigravity Team.
+Developed by Dave Dushi
