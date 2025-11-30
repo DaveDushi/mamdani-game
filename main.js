@@ -130,12 +130,36 @@ function isWebApp() {
     );
 }
 
-if (isWebApp()) {
-    console.log("Running as PWA / Web App");
-} else {
-    console.log("Running in browser");
+function isIos() {
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
+function isAndroid() {
+    return /Android/i.test(navigator.userAgent);
+}
+
+if (!isWebApp()) {
+    const pwaPrompt = document.getElementById('pwa-prompt');
+
+    if (pwaPrompt) {
+        if (isIos()) {
+            pwaPrompt.innerHTML = `
+                <p>Add to Home Screen for better game play:</p>
+                <p>1. Tap <strong>Share</strong> <img src="/share-ios.png" class="icon-inline"> </p>
+                <p>2. Select <strong>"Add to Home Screen"</strong></p>
+            `;
+        } else if (isAndroid()) {
+            pwaPrompt.innerHTML = `
+                <p>Add to Home Screen for better game play:</p>
+                <p>Tap <strong>⋮ menu</strong> then <strong>"Add to Home screen"</strong></p>
+            `;
+        } else {
+            pwaPrompt.textContent = "Install this game from your browser menu.";
+        }
+
+        pwaPrompt.classList.remove('hidden');
+    }
+}
 
 // Leaderboard Events
 submitScoreBtn.addEventListener('click', handleRegistration);

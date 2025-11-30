@@ -718,6 +718,48 @@ button:active {
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
+#pwa-prompt {
+    background: rgba(0, 0, 0, 0.9);
+    border: 2px solid var(--secondary-color);
+    border-radius: 15px;
+    padding: 20px;
+    margin-top: 20px;
+    text-align: center;
+    max-width: 85%;
+    animation: pulseText 2s infinite alternate;
+    width: 400px;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+    backdrop-filter: blur(5px);
+    animation: fadeIn 0.5s ease-out;
+    color: #fff;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.8rem;
+    text-shadow: none;
+}
+
+#pwa-prompt p {
+    margin: 10px 0;
+    line-height: 1.6;
+    color: #eee;
+    text-align: center;
+    padding: 0;
+}
+
+#pwa-prompt strong {
+    color: var(--secondary-color);
+    text-shadow: 1px 1px 0 #000000;
+}
+
+#pwa-prompt img {
+    height: 24px;
+    vertical-align: middle;
+    margin: 0 5px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 2px;
+    display: inline-block;
+}
+
 /* Leaderboard Styles */
 .leaderboard-item {
     display: flex;
