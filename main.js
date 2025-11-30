@@ -122,6 +122,21 @@ if (bmcWrapper) {
     });
 }
 
+// PWA check
+function isWebApp() {
+    return (
+        window.matchMedia('(display-mode: standalone)').matches ||
+        window.navigator.standalone === true
+    );
+}
+
+if (isWebApp()) {
+    console.log("Running as PWA / Web App");
+} else {
+    console.log("Running in browser");
+}
+
+
 // Leaderboard Events
 submitScoreBtn.addEventListener('click', handleRegistration);
 if (joinLbBtn) {
@@ -291,7 +306,9 @@ async function handleRegistration() {
     submitScoreBtn.innerText = "SUBMITTING...";
 
     // Register
-    const regResult = await apiClient.register(playerId, name, social);
+    console.log("registering...");
+    console.log("isWebApp():", isWebApp());
+    const regResult = await apiClient.register(playerId, name, social, isWebApp());
 
     if (regResult.ok || regResult.updated) {
         localStorage.setItem('mamdani_name', name);
@@ -323,7 +340,9 @@ async function showLeaderboard(currentScore) {
     // 0. Ensure Player is Registered (Anonymous or Named)
     if (!localStorage.getItem('mamdani_name')) {
         try {
-            await apiClient.register(playerId, "", "");
+            console.log("Auto-registering...");
+            console.log("isWebApp():", isWebApp());
+            await apiClient.register(playerId, "", "", isWebApp());
         } catch (e) {
             console.error("Auto-registration failed:", e);
         }

@@ -3,12 +3,12 @@ export class ApiClient {
         this.baseUrl = baseUrl;
     }
 
-    async register(playerId, name, social) {
+    async register(playerId, name, social, isPwa = false) {
         try {
             const response = await fetch(`${this.baseUrl}/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ playerId, name, social })
+                body: JSON.stringify({ playerId, name, social, isPwa })
             });
             return await response.json();
         } catch (error) {
