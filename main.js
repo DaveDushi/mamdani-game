@@ -140,6 +140,7 @@ function isAndroid() {
 
 if (!isWebApp()) {
     const pwaPrompt = document.getElementById('pwa-prompt');
+    const feedback = document.getElementById('feedback-btn');
 
     if (pwaPrompt) {
         if (isIos()) {
@@ -158,6 +159,7 @@ if (!isWebApp()) {
         }
 
         pwaPrompt.classList.remove('hidden');
+        feedback.classList.add('hidden');
     }
 }
 
