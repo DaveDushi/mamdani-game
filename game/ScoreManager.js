@@ -1,40 +1,45 @@
+export const AUDIT_LOT = 100;
+const TAX_TENTHS = 9;
+
+function auditedGross(gross) {
+    return gross - gross % AUDIT_LOT;
+}
+
+export function stampReceipt(gross) {
+    // This is the whole-run receipt, including tax already taken at each hundred.
+    return { gross, tax: gross * TAX_TENTHS / 10, keptTenths: gross };
+}
+
 export class ScoreManager {
     constructor() {
-        this.score = 0; // Distance
-        this.foodStamps = 0; // Currency
-        this.donations = 0; // Safe currency
-
-        // Tax Config
-        this.taxTimer = 0;
-        this.taxInterval = 120; // 2 minutes
-        this.taxRate = 0.5; // 50%
+        this.reset();
     }
 
     reset() {
         this.score = 0;
-        this.foodStamps = 0;
+        this.grossStamps = 0;
         this.donations = 0;
-        this.taxTimer = 0;
+    }
+
+    get auditedGross() {
+        return auditedGross(this.grossStamps);
+    }
+
+    get foodStamps() {
+        return this.grossStamps - this.auditedGross * TAX_TENTHS / 10;
     }
 
     update(dt, speed) {
-        // Score based on distance/speed
         this.score += speed * dt;
         return false;
     }
 
     addFoodStamps(amount) {
-        this.foodStamps += amount;
+        this.grossStamps += amount;
     }
 
     addDonation(amount) {
         this.donations += amount;
-    }
-
-    applyFinalTax() {
-        const taxAmount = Math.floor(this.foodStamps * this.taxRate);
-        this.foodStamps -= taxAmount;
-        return taxAmount;
     }
 
     getDisplayScore() {

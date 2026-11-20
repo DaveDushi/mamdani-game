@@ -3,6 +3,8 @@ import { courseSpeed } from './Course.js';
 import { pedestrian } from './StreetProps.js';
 import { Batch, artTexture } from './Geometry.js';
 import { Landmarks, districts, districtAt } from './Landmarks.js';
+import { CityEvents } from './CityEvents.js';
+import { Crossings, streetClear } from './Crossings.js';
 
 const LENGTH = 48,
     BLOCKS = 5;
@@ -335,6 +337,8 @@ export class World {
         this.blocks = Array.from({ length: BLOCKS }, (_, i) => block(i, mats, cast));
         this.blocks.forEach((b) => scene.add(b.group));
         this.landmarks = new Landmarks(scene, mats.details);
+        this.crossings = new Crossings(scene);
+        this.events = new CityEvents(scene, mats.lamps, streetClear);
         const skyline = new THREE.Mesh(new THREE.PlaneGeometry(350, 154), light.skyMaterial());
         skyline.position.set(-8, 56, -225);
         scene.add(skyline);
@@ -344,12 +348,17 @@ export class World {
         );
         ground.rotation.x = -Math.PI / 2;
         ground.position.set(0, -0.09, -124);
+        this.crossings.maskGround(ground);
         scene.add(ground);
         this.reset();
     }
 
     get district() {
         return districts[districtAt(this.distance)];
+    }
+
+    get currentEventLabel() {
+        return this.events?.currentEventLabel ?? '';
     }
 
     reset(mode = 'day') {
@@ -359,12 +368,19 @@ export class World {
         this.trainTime = 0;
         this.landmarks.update(0);
         this.light.update(0);
+        this.crossings?.update(0, this.light.night.value);
+        this.events?.reset(mode, this.speed);
         this.blocks.forEach((b, i) => {
             b.group.position.z = 15 - i * LENGTH;
             if (b.train) b.train.position.x = i === 2 ? -11 : 20;
-            b.group.visible = b.group.position.z > -165;
+            b.group.visible = this.blockVisible(b);
             this.setPosters(b, 0);
         });
+    }
+
+    blockVisible(block) {
+        const z = block.group.position.z;
+        return z > -165 && !this.crossings.coversBlock(this.distance - z + LENGTH / 2);
     }
 
     setPosters(b, era) {
@@ -383,6 +399,7 @@ export class World {
         let nearest = -Infinity;
         let index = -1;
         for (const block of this.blocks) {
+            if (!block.group.visible) continue;
             for (const stand of block.newsstands) {
                 const z = block.group.position.z + stand.z;
                 if (z > -38 && z < -9 && z > nearest) {
@@ -400,6 +417,8 @@ export class World {
         this.distance += step;
         this.landmarks.update(this.distance);
         this.light.update(this.distance);
+        this.crossings?.update(this.distance, this.light.night.value);
+        this.events?.update(dt, this.distance, this.speed);
         this.trainTime += dt * 7;
         for (const b of this.blocks) {
             b.group.position.z += step;
@@ -407,7 +426,7 @@ export class World {
                 b.group.position.z -= LENGTH * BLOCKS;
                 this.setPosters(b, districtAt(this.distance - b.group.position.z + LENGTH / 2));
             }
-            b.group.visible = b.group.position.z > -165;
+            b.group.visible = this.blockVisible(b);
             if (b.train) b.train.position.x = ((this.trainTime + (b === this.blocks[2] ? 20 : 52)) % 70) - 35;
             for (const person of b.residents) person.visible = b.group.position.z + person.position.z > -45;
         }

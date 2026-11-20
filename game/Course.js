@@ -81,6 +81,23 @@ const stages = [
 ];
 
 const protections = ['rainbow', 'kafiyeh', 'covidMask'];
+const stuntCards = [
+    [
+        [null, 'jump', null, 'slide', null, 'choice'],
+        ['choice', null, 'slide', null, 'jump', null]
+    ],
+    [
+        ['jump', 'slide', null, 'choice', null],
+        ['slide', 'choice', null, 'jump', 'slide', null],
+        [null, 'choice', 'slide', 'jump', null]
+    ],
+    [
+        ['jump', 'slide', 'choice', null, 'slide'],
+        ['slide', 'jump', null, 'choice', 'jump'],
+        ['choice', 'slide', 'jump', 'slide', null],
+        [null, 'jump', 'choice', 'slide', 'jump']
+    ]
+];
 
 export function courseSpeed(distance, mode = 'day') {
     if (mode === 'night') return Math.min(62, Math.sqrt(29 ** 2 + 0.84 * distance));
@@ -89,8 +106,8 @@ export function courseSpeed(distance, mode = 'day') {
 }
 
 function rowGap(distance, minimum, mode) {
-    // Keep enough time for a full jump and a fresh input between consecutive gates.
-    return Math.max(minimum, Math.ceil(courseSpeed(distance + 70, mode) * 0.82));
+    // Leave room to land, change lanes and time another action at full speed.
+    return Math.max(minimum, Math.ceil(courseSpeed(distance + 90, mode) * 0.97));
 }
 
 function choose(cards, previous, random) {
@@ -98,27 +115,53 @@ function choose(cards, previous, random) {
     return choices[Math.floor(random() * choices.length)];
 }
 
-function trafficRow(distance, slots, mirror, random, stampStep = 4) {
+function trafficRow(distance, slots, mirror, random, cueStep = 4) {
     const lanes = mirror ? [...slots].reverse() : slots;
     return {
         distance,
         lanes: lanes.map(key => (key === 'protest' ? `protest${Math.floor(random() * 3)}` : key)),
         exitLane: lanes.indexOf(EXIT),
-        stampStep
+        cueStep
     };
 }
 
 export function* streetCourse(random = Math.random, mode = 'day') {
     const night = mode === 'night';
     let distance = 0;
+    let lastExit;
     if (!night) {
         const opening = choose(openings, null, random);
         const mirrorOpening = random() < 0.5;
         distance = 28;
         for (const [i, slots] of opening.entries()) {
             if (i > 0) distance += 32;
-            yield trafficRow(distance, slots, mirrorOpening, random);
+            const row = trafficRow(distance, slots, mirrorOpening, random);
+            lastExit = row.exitLane;
+            yield row;
         }
+    }
+
+    let card = night ? [null, null, 'jump', 'slide', null, 'choice'] : ['jump', null, 'slide', null, 'choice'];
+    let cardIndex = 0;
+    let lastStuntLane;
+    function nextRow(slots, mirror, cueStep) {
+        if (cardIndex === card.length) {
+            const difficulty = distance + (night ? 260 : 0);
+            card = choose(stuntCards[difficulty < 510 ? 0 : difficulty < 1150 ? 1 : 2], card, random);
+            cardIndex = 0;
+        }
+        const gate = card[cardIndex++];
+        if (!gate) {
+            const row = trafficRow(distance, slots, mirror, random, cueStep);
+            lastExit = row.exitLane;
+            return row;
+        }
+        const lane = lastStuntLane === undefined ? lastExit : (lastStuntLane + 1 + Math.floor(random() * 2)) % 3;
+        lastStuntLane = lane;
+        const lanes = ['gateBlock', 'gateBlock', 'gateBlock'];
+        lanes[lane] = gate === 'slide' ? 'slideGate' : 'jumpGate';
+        if (gate === 'choice') lanes[(lane + 1 + Math.floor(random() * 2)) % 3] = 'slideGate';
+        return { distance, lanes, gate, cueStep };
     }
 
     let previousGate;
@@ -129,7 +172,7 @@ export function* streetCourse(random = Math.random, mode = 'day') {
     for (let cycle = 0; ; cycle++) {
         const stage = stages[night || distance >= 950 ? 3 : distance < 220 ? 0 : distance < 610 ? 1 : 2];
         const speed = courseSpeed(distance, mode);
-        const stampStep = Math.max(4, Math.round(speed * 0.14));
+        const cueStep = Math.max(4, Math.round(speed * 0.14));
         const gap = rowGap(distance, stage.gap, mode) + Math.floor(random() * 4);
         const pickupDistance = distance + Math.max(21, Math.ceil(speed * 0.42));
         const protectionDue = pickupDistance >= nextProtection;
@@ -145,13 +188,13 @@ export function* streetCourse(random = Math.random, mode = 'day') {
         distance += night && cycle === 0 ? 42 : gap + (recovery ? Math.max(19, Math.ceil(speed * 0.44)) : 0);
 
         previousGate = choose(stage.gates, previousGate, random);
-        yield trafficRow(distance, previousGate, random() < 0.5, random, stampStep);
+        yield nextRow(previousGate, random() < 0.5, cueStep);
 
         previousSequence = choose(stage.sequences, previousSequence, random);
         const mirror = random() < 0.5;
         for (const slots of previousSequence) {
             distance += rowGap(distance, stage.gap, mode);
-            yield trafficRow(distance, slots, mirror, random, stampStep);
+            yield nextRow(slots, mirror, cueStep);
         }
     }
 }

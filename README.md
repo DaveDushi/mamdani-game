@@ -6,9 +6,9 @@ A portrait-first 3D endless runner by Dave Dushi. In this fictional New York, Ma
 
 Swipe left or right to change lanes, up to jump and down to slide. On a keyboard, use the arrow keys or WASD. Space also jumps. Tap the pause button or press P or Escape to pause and reread the last street sign. In Outfits, drag or use the turn buttons to inspect each costume. The Posters gallery contains all nine City Hall prints with large-text captions.
 
-Run beneath the Canal Street lanterns, the Union Square marquee and the City Hall arch. The district changes every 240 metres. A jump over a cab, a slide under cover or a last-second sidestep earns a clean move. Three in a row earn a three-stamp bonus. The City Wire prints a front page about the obstacle that caught you.
+Follow the painted arrows through the three lanes. Jump the low striped barriers and slide under the overhead beams. When both routes are marked, pick either stunt. The route crosses the Brooklyn and Manhattan bridges and passes through the Queens–Midtown and Brooklyn–Battery tunnels. Watch the sidewalks for the fare strike, bagel bailout and mobile press unit. The City Wire prints a front page about the obstacle that caught you.
 
-Distance determines your score. One collision starts a five-second chase. A second collision during the chase ends the run and the Stamp Office takes half your stamps, rounded down. Bank 30 of the remaining stamps across runs to unlock Night Shift, a faster course with wet streets, rarer pickups and a separate local best. Outfits stay free. See [game rules](game-rules.md) for obstacles and power-ups.
+Distance determines your score. One collision starts a five-second chase. A second collision during the chase ends the run. The Stamp Office takes 90 out of every 100 food stamps. Bank 150 after tax across completed runs to unlock Night Shift, a faster course with wet streets, rarer pickups and a separate local best. Outfits stay free. See [game rules](game-rules.md) for obstacles and power-ups.
 
 ## Run locally
 

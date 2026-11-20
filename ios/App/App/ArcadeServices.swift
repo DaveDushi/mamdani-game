@@ -15,7 +15,7 @@ final class ArcadeServices: CAPPlugin, CAPBridgedPlugin {
     private static var analyticsConfigured = false
     let identifier = "ArcadeServices"
     let jsName = "ArcadeServices"
-    let pluginMethods = [
+    let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "logEvent", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "supportAvailability", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openSupport", returnType: CAPPluginReturnPromise)

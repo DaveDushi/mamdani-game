@@ -126,7 +126,7 @@
             <div class="hud-top">
                 <div class="run-metrics">
                     <div class="distance"><small>Distance</small><b id="score">0</b><em> m</em></div>
-                    <div class="stamps"><i class="ticket-icon">★</i><span id="food-stamps">0</span></div>
+                    <div class="pace" title="Food stamps held after each 100-stamp audit"><small>Stamps held</small><b id="food-stamps">0</b></div>
                     <div class="pace"><small>Pace</small><b id="pace">1.0×</b></div>
                 </div>
                 <button id="pause-btn" class="tool" aria-label="Pause run">
@@ -177,13 +177,13 @@
                     <div class="press-sketch" aria-hidden="true"></div>
                     <h2 id="result-headline">Mayor caught.</h2>
                     <p id="result-copy"></p>
-                    <p class="audit-line">The five-year plan lasted <b id="run-seconds">0 seconds</b>.</p>
+                    <p class="audit-line">The five-year plan lasted <b id="run-seconds">0 seconds</b>. Clean moves · <b id="final-moves">0</b></p>
                 </div>
                 <div class="result-totals">
                     <div class="stats">
                         <div><small>Distance run</small><strong id="final-distance">0 m</strong></div>
+                        <div><small>Collected</small><strong id="final-gross">0</strong></div>
                         <div><small>Stamp tax</small><strong id="final-tax">0</strong></div>
-                        <div><small>Clean moves</small><strong id="final-moves">0</strong></div>
                     </div>
                     <div class="bank-receipt">
                         <div><strong id="result-banked"></strong><span id="result-wallet"></span></div>
@@ -211,10 +211,10 @@
                 <p class="slug">Runner's manual</p>
                 <h2>How to play</h2>
                 <div class="manual">
-                    <p><b>Change lanes</b><span>← → or A / D. Swipe sideways on a phone. A trail of three stamps marks an open lane.</span></p>
-                    <p><b>Jump the cab</b><span>↑, W or Space. Swipe up to jump.</span></p>
+                    <p><b>Change lanes</b><span>Follow the cream chevrons through the gate. Use ← →, A / D, or swipe sideways. Only a gold ticket pays a stamp.</span></p>
+                    <p><b>Jump a hurdle</b><span>Yellow ↑ means jump over the hurdle. Press ↑, W or Space, or swipe up.</span></p>
                     <p>
-                        <b>Slide under cover</b><span>↓ or S. Swipe down for a scaffold or halal cart.</span>
+                        <b>Slide under a beam</b><span>Cyan ↓ means slide under the beam. Press ↓ or S, or swipe down.</span>
                     </p>
                 </div>
                 <p>
@@ -224,8 +224,12 @@
                 <p>
                     The rainbow flag grants seven seconds of invincibility and pulls in stamps. A keffiyeh
                     shields you for five seconds. A mask clears traffic for three. Chain three clean dodges,
-                    jumps or slides within five seconds of each other for three bonus stamps. City Hall takes
-                    half at the finish.
+                    jumps or slides within five seconds of each other for one bonus stamp.
+                </p>
+                <p>
+                    For every 100 stamps collected, City Hall takes 90 and you keep 10.
+                    The same rate applies to the rest at the finish. Even one stamp adds 0.1 to your wallet.
+                    Bank 150 to unlock Night Shift.
                 </p>
                 <button class="solid" data-home>Back to menu</button>
             </div>
@@ -245,8 +249,8 @@
                 </p>
                 <p>
                     You're Mamdani. Trump wants the receipts for your five-year plan, and City Hall wants you
-                    across town in five minutes. Run. The Stamp Office takes half your haul, even if you never
-                    make the hearing.
+                    across town in five minutes. Run. The Stamp Office keeps nine tenths of every haul.
+                    Your share goes toward a Night Shift pass.
                 </p>
                 <button class="solid" id="close-story-btn" data-home>Back to menu</button>
                 <div class="credits">

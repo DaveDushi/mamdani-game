@@ -10,7 +10,7 @@ import { Input } from './Input.js';
 import { ParticleSystem } from './ParticleSystem.js';
 import { ObstacleManager } from './ObstacleManager.js';
 import { PowerupManager } from './PowerupManager.js';
-import { ScoreManager } from './ScoreManager.js';
+import { ScoreManager, stampReceipt } from './ScoreManager.js';
 import { editionLines, stuntLines } from './CityWire.js';
 import { captions } from './Posters.js';
 
@@ -153,6 +153,7 @@ export class Run {
         this.obstacleManager.reset(mode);
         this.particles.reset();
         this.scoreManager.reset();
+        this.reportedAuditGross = 0;
         this.elapsed = 0;
         this.noticeTime = 0;
         this.pulseTime = 0;
@@ -275,10 +276,14 @@ export class Run {
         this.noticeTime = 1.3;
     }
     bulletin(message, source = 'City wire', urgent = false) {
-        if (!urgent && this.wireTime > 0 && (this.hud['wire-source'].textContent !== 'City wire' || this.wireTime > 1.8)) return false;
+        if (!urgent && this.wireTime > 0) {
+            if (this.wireUrgent) return false;
+            if (source !== 'Stamp audit' && (this.hud['wire-source'].textContent !== 'City wire' || this.wireTime > 1.8)) return false;
+        }
         this.hud['wire-source'].textContent = source;
         this.hud['wire-copy'].textContent = message;
         this.hud['wire-flash'].hidden = false;
+        this.wireUrgent = urgent;
         this.wireTime = source === 'City wire' ? 3.6 : 4.3;
         return true;
     }
@@ -307,6 +312,13 @@ export class Run {
     }
     updateHud() {
         const p = this.player;
+        const auditedGross = this.scoreManager.auditedGross;
+        if (auditedGross > this.reportedAuditGross && !this.trump.isChasing && p.confusionTimer <= 0 && this.pulseTime <= 0) {
+            const { gross, tax, keptTenths } = stampReceipt(auditedGross - this.reportedAuditGross);
+            if (this.bulletin(gross + ' collected · ' + tax + ' tax · ' + keptTenths / 10 + ' kept', 'Stamp audit')) {
+                this.reportedAuditGross = auditedGross;
+            }
+        }
         const card = this.hud['pickup-card'];
         const active = this.pickupOrder.filter(type => p[type + 'Timer'] > 0);
         const primary = active[active.length - 1];
@@ -334,7 +346,7 @@ export class Run {
             ['score', this.scoreManager.getDisplayScore()],
             ['pace', (this.world.speed / 17.5).toFixed(1) + '×'],
             ['food-stamps', this.scoreManager.foodStamps],
-            ['district', this.world.district],
+            ['district', this.world.crossings?.currentName || this.world.currentEventLabel || this.world.district],
             ['effect', effect]
         ]) {
             if (this.hud[key].textContent !== String(value)) this.hud[key].textContent = value;
@@ -434,7 +446,7 @@ export class Run {
                 this.sound.music(false, true);
                 this.sound.play('end');
                 impact(true);
-                this.onEnd(score.getDisplayScore(), score.applyFinalTax(), hit);
+                this.onEnd(score.getDisplayScore(), score.grossStamps, hit);
                 return;
             }
             trump.startChase(player.mesh.position.x);
@@ -461,12 +473,12 @@ export class Run {
             const lines = stuntLines[traffic.lastStunt];
             const printed = this.bulletin(lines[(this.cleanMoves - 1) % lines.length]);
             if (!printed && this.noticeTime <= 0) {
-                this.notify({ cab: 'Clean jump', slide: 'Clean slide', sidestep: 'Clean dodge' }[traffic.lastStunt], 'clean');
+                this.notify({ cab: 'Clean jump', jump: 'Clean jump', slide: 'Clean slide', sidestep: 'Clean dodge' }[traffic.lastStunt], 'clean');
             }
             this.sound.play('stunt');
             if (this.streak % 3 === 0) {
-                score.addFoodStamps(3);
-                this.notify('Clean streak +3 stamps');
+                score.addFoodStamps(1);
+                this.notify('Clean streak +1 stamp');
             }
         }
         particles.update(dt);

@@ -5,6 +5,18 @@ export const editionLines = {
 };
 
 const receipts = {
+    jumpGate: [
+        ['Red tape stops mayor in his tracks.', 'City Hall spent the ribbon-cutting budget on the ribbon.'],
+        ['Mayor fails to clear a low bar.', 'The appointments committee has already voted to lower it.']
+    ],
+    slideGate: [
+        ['Mayor hits the spending cap.', 'The comptroller says this is the first time anyone at City Hall has noticed it.'],
+        ['City raises rent. Forgets to raise beam.', 'Aides described the clearance as affordable.']
+    ],
+    gateBlock: [
+        ['City opens lane for future use.', 'The concrete is temporary. The committee that approved it is permanent.'],
+        ['Mayor runs into his own road closure.', 'His office has asked the barricade to join the transition team.']
+    ],
     taxi: [
         [
             'Mayor freezes fare. Cab keeps moving.',
@@ -43,6 +55,7 @@ export function frontPage(cause, edition) {
 }
 
 export const stuntLines = {
+    jump: ['Mayor clears the spending cap.', 'Red tape cleared. More red tape on order.', 'Mayor gets over budget hurdle. Budget still short.'],
     cab: ['Cab fare successfully evaded.', 'Mayor takes public transit. Briefly, on the roof.', 'Yellow cab crosses picket line. Mayor crosses cab.'],
     slide: ['Budget passes under the table.', 'For once, City Hall comes in under something.', 'Mayor lowers his position on street vendors.'],
     sidestep: ['Mayor dodges a follow-up question.', 'Campaign pivots sharply on transportation.', 'Aide confirms the dodge was fully funded.']

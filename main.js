@@ -5,7 +5,7 @@ import { Shop } from './game/Shop.js';
 import { startAnalytics, track, trackScreen, setupSupportLinks } from './game/Analytics.js';
 import { Sound } from './game/Sound.js';
 import { ApiClient } from './game/ApiClient.js';
-import { NIGHT_SHIFT_STAMPS, availableMode, emptyWallet, readWallet, startAttempt } from './game/Progression.js';
+import { NIGHT_SHIFT_STAMPS, availableMode, emptyWallet, readWallet, startAttempt, walletBalance } from './game/Progression.js';
 
 const $ = (id) => document.getElementById(id);
 startAnalytics();
@@ -68,14 +68,15 @@ const dispatches = [
 let dispatchIndex = 0;
 function paintMenu() {
     const mode = selectedMode();
-    const unlocked = wallet.stamps >= NIGHT_SHIFT_STAMPS;
+    const unlocked = wallet.nightUnlocked;
+    const balance = walletBalance(wallet);
     $('mode-night').disabled = !unlocked;
     $('night-lock').toggleAttribute('hidden', unlocked);
     $('mode-day').setAttribute('aria-pressed', String(mode === 'day'));
     $('mode-night').setAttribute('aria-pressed', String(mode === 'night'));
     $('menu-wallet').textContent = unlocked
-        ? stampCount(wallet.stamps) + ' banked · Night Shift unlocked'
-        : wallet.stamps + '/' + NIGHT_SHIFT_STAMPS + ' stamps banked to unlock Night Shift';
+        ? stampCount(balance) + ' banked · Night Shift unlocked'
+        : balance.toLocaleString() + '/' + NIGHT_SHIFT_STAMPS + ' stamps banked to unlock Night Shift';
     if (!walletAvailable) $('menu-wallet').textContent = 'Stamp wallet unavailable on this device.';
     $('start-btn').querySelector('span').textContent = 'Start ' + modeNames[mode];
     $('menu-best-label').textContent = mode === 'night' ? 'Night best' : 'Day best';
@@ -170,7 +171,7 @@ async function enter(mode, requested) {
         if (mode === 'run') {
             const attempt = startAttempt(availableMode(requested ?? selectedMode(), wallet));
             activeAttempt = attempt;
-            run.onEnd = (distance, tax, cause) => finish(attempt, distance, tax, cause);
+            run.onEnd = (distance, gross, cause) => finish(attempt, distance, gross, cause);
             resultVersion++;
             show('hud');
             run.start(attempt.mode);
@@ -263,27 +264,26 @@ if (!installed()) {
     else if (/Android/i.test(navigator.userAgent))
         $('pwa-prompt').textContent = 'Choose Install app in your browser menu to keep the game.';
 }
-async function finish(attempt, distance, tax, cause) {
+async function finish(attempt, distance, gross, cause) {
     if (activeAttempt !== attempt) return;
     activeAttempt = null;
     const version = ++resultVersion;
     const night = attempt.mode === 'night';
-    const kept = run.scoreManager.foodStamps;
     const cleanMoves = run.cleanMoves;
     const seconds = Math.floor(run.elapsed);
-    track('game_end', { run_mode: attempt.mode, distance_m: distance, stamps_kept: kept, clean_moves: cleanMoves });
     const result = { mode: attempt.mode, distance };
     lastResult = result;
     if (!night) localStorage.setItem('mamdani_best_score', Math.max(best(), distance));
     let receipt;
     try {
-        receipt = await attempt.bank(kept, distance);
+        receipt = await attempt.bank(gross, distance);
         if (receipt.unlocked) track('unlock_achievement', { achievement_id: 'night_shift' });
         wallet = receipt.wallet;
         walletAvailable = true;
     } catch {
         walletAvailable = false;
     }
+    track('game_end', { run_mode: attempt.mode, distance_m: distance, stamps_collected: gross, stamps_kept: receipt?.kept ?? 0, clean_moves: cleanMoves });
     if (version !== resultVersion) return;
     const issue = (Number(localStorage.getItem('mamdani_edition')) || 0) + 1;
     localStorage.setItem('mamdani_edition', String(issue));
@@ -294,13 +294,15 @@ async function finish(attempt, distance, tax, cause) {
     $('final-moves').textContent = cleanMoves;
     $('run-seconds').textContent = seconds + ' second' + (seconds === 1 ? '' : 's');
     $('final-distance').textContent = metres(distance);
-    $('final-tax').textContent = tax;
-    $('result-banked').textContent = receipt ? '+' + stampCount(kept) + ' banked' : 'Stamps could not be saved';
-    $('result-wallet').textContent = receipt ? 'Wallet · ' + wallet.stamps.toLocaleString() : '';
-    const remaining = NIGHT_SHIFT_STAMPS - wallet.stamps;
+    $('final-gross').textContent = gross.toLocaleString();
+    $('final-tax').textContent = receipt ? receipt.tax.toLocaleString() : '—';
+    $('result-banked').textContent = receipt ? '+' + stampCount(receipt.kept) + ' banked' : 'Stamps could not be saved';
+    const balance = walletBalance(wallet);
+    $('result-wallet').textContent = receipt ? 'Wallet · ' + balance.toLocaleString() : '';
+    const remaining = NIGHT_SHIFT_STAMPS - balance;
     $('result-progress').textContent = !receipt ? 'Stamp wallet unavailable on this device.'
         : receipt.unlocked ? 'Night Shift unlocked!'
-        : remaining > 0 ? stampCount(remaining) + ' to unlock Night Shift.'
+        : !wallet.nightUnlocked ? stampCount(remaining) + ' to unlock Night Shift.'
         : 'Night Shift unlocked';
     $('play-night').hidden = !receipt?.unlocked;
     $('result-progress').parentElement.classList.toggle('just-unlocked', !!receipt?.unlocked);
