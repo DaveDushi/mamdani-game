@@ -14,13 +14,13 @@ export default {
         if (request.method !== 'GET' && request.method !== 'HEAD') {
             return new Response(null, { status: 405, headers: { Allow: 'GET, HEAD' } });
         }
-        const transfer = url.hostname === 'mamdanirun.com' && url.pathname === '/transfer-save.html';
+        const transfer = url.hostname === 'mamdanirun.com' && /^\/transfer-save(?:\.html)?\/?$/.test(url.pathname);
         if (transfer && Date.now() >= transferEndsAt) {
             return new Response(null, { status: 410, headers: { 'Cache-Control': 'no-store' } });
         }
 
         const upstream = new URL(pagesOrigin);
-        upstream.pathname = pagesPath + url.pathname;
+        upstream.pathname = pagesPath + (url.pathname === '/' ? '/index.html' : url.pathname);
         upstream.search = url.search;
         const headers = new Headers();
         for (const name of ['Accept', 'Range', 'If-None-Match', 'If-Modified-Since', 'If-Range']) {
@@ -36,6 +36,9 @@ export default {
         const location = response.headers.get('Location');
         if (location && response.status >= 300 && response.status < 400) {
             const target = new URL(location, upstream);
+            if (target.origin !== pagesOrigin) {
+                return new Response('Game temporarily unavailable', { status: 503, headers: { 'Cache-Control': 'no-store' } });
+            }
             if (target.origin === pagesOrigin && target.pathname.startsWith(pagesPath + '/')) {
                 url.pathname = target.pathname.slice(pagesPath.length);
                 url.search = target.search;
