@@ -400,7 +400,7 @@ export class Run {
     prepareRace(rival) {
         if (this.preparingRival === rival.id || this.preparedRivals.has(rival.id) || this.elapsed < this.raceRetryAt) return;
         this.preparingRival = rival.id;
-        this.raceStage ??= new RaceStage(this.cast, this.player);
+        this.raceStage ??= new RaceStage(this.cast, this.player, this.renderer);
         this.raceStage.prepare(rival).then(() => {
             this.preparedRivals.add(rival.id);
         }).catch(() => {

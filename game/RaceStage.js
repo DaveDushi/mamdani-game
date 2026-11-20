@@ -13,6 +13,13 @@ const ink = 0x17374b;
 const steel = 0x758995;
 const cream = 0xffecd0;
 
+function spareFrame() {
+    return new Promise(resolve => requestAnimationFrame(() => {
+        if (window.requestIdleCallback) window.requestIdleCallback(resolve, { timeout: 80 });
+        else resolve();
+    }));
+}
+
 function canvasMap(canvas) {
     const map = new THREE.CanvasTexture(canvas);
     map.colorSpace = THREE.SRGBColorSpace;
@@ -229,8 +236,10 @@ class Athlete {
 }
 
 export class RaceStage {
-    constructor(cast, player) {
+    constructor(cast, player, renderer) {
         this.cast = cast;
+        this.renderer = renderer;
+        this.warmedTextures = new WeakSet();
         this.loader = new GLTFLoader();
         this.cache = new Map();
         this.pending = new Map();
@@ -276,9 +285,62 @@ export class RaceStage {
 
     prepare(rival) {
         if (!this.pending.has(rival.id)) {
-            this.pending.set(rival.id, this.loadAthlete(rival.id).then(athlete => this.cache.set(rival.id, athlete)));
+            const loading = Promise.all([this.loadAthlete(rival.id), this.ready]).then(async ([athlete]) => {
+                if (this.renderer) await this.warm(athlete);
+                this.cache.set(rival.id, athlete);
+            });
+            this.pending.set(rival.id, loading.catch(error => {
+                this.pending.delete(rival.id);
+                throw error;
+            }));
         }
-        return Promise.all([this.ready, this.pending.get(rival.id)]);
+        return this.pending.get(rival.id);
+    }
+
+    async warm(athlete) {
+        const renderer = this.renderer, scene = this.scene, camera = this.camera;
+        await spareFrame();
+        if (!this.active) for (const [original, copy] of this.wardrobe) copy.visible = original.visible;
+        const previous = new Set(renderer.info.programs || []);
+        await Promise.all([renderer.compileAsync(scene, camera), renderer.compileAsync(athlete.root, camera, scene)]);
+
+        // Three normally looks up uniforms between first draws. On ANGLE each lookup can then
+        // wait for the previous draw. Resolve the new programs before submitting any geometry.
+        for (const program of renderer.info.programs || []) {
+            if (previous.has(program) || !program.getUniforms) continue;
+            await spareFrame();
+            program.getUniforms();
+        }
+        const textures = new Set();
+        const collect = object => {
+            if (!object.isMesh) return;
+            for (const value of Object.values(object.material)) {
+                if (value?.isTexture && !this.warmedTextures.has(value)) textures.add(value);
+            }
+        };
+        scene.traverseVisible(collect);
+        athlete.root.traverseVisible(collect);
+        for (const texture of textures) {
+            await spareFrame();
+            renderer.initTexture(texture);
+            this.warmedTextures.add(texture);
+        }
+
+        // A real draw also initializes the skinned vertex buffers and alpha-cutout shadow pass.
+        // The empty scissor uses the screen's shader variants without writing any street pixels.
+        await spareFrame();
+        const scissor = renderer.getScissor(new THREE.Vector4()), enabled = renderer.getScissorTest();
+        const addRival = !athlete.root.parent;
+        if (addRival) scene.add(athlete.root);
+        try {
+            renderer.setScissor(0, 0, 0, 0);
+            renderer.setScissorTest(true);
+            renderer.render(scene, camera);
+        } finally {
+            renderer.setScissor(scissor);
+            renderer.setScissorTest(enabled);
+            if (addRival) scene.remove(athlete.root);
+        }
     }
 
     async loadAthlete(id) {

@@ -78,6 +78,13 @@ export class RacePanel {
         this.keyHint = this.element.querySelector('#race-keys');
         hud.append(this.element);
 
+        // iPhone smart zoom can move the finish button offscreen during repeated sprint taps.
+        const keepTrackInView = event => {
+            if (event.cancelable && !event.target.closest('.race-continue')) event.preventDefault();
+        };
+        for (const type of ['touchstart', 'touchend']) {
+            this.element.addEventListener(type, keepTrackInView, { passive: false });
+        }
         this.element.addEventListener('pointerdown', event => {
             if (event.button === 0) this.tap();
         });
