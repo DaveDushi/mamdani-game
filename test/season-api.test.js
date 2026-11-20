@@ -11,6 +11,7 @@ const { Capacitor } = await import('@capacitor/core');
 const { ApiClient } = await import('../game/ApiClient.js');
 
 const origin = 'https://score.test';
+const publishedApi = 'https://api.mamdanirun.com';
 
 function stubWeb(t, responses) {
     const requests = [];
@@ -31,15 +32,15 @@ test('season reads request fresh data and distinguish an empty board from an unr
         { ok: true, record: null }, { ok: true, record: 1050 }, { ok: true, record: '1050' },
         { entries: [] }, new Error('Offline')
     ]);
-    const api = new ApiClient(origin);
+    const api = new ApiClient();
     assert.deepEqual(await api.getSeasonRecord(), { score: null });
     assert.deepEqual(await api.getSeasonRecord(), { score: 1050 });
     assert.equal(await api.getSeasonRecord(), null);
     assert.deepEqual(await api.getSeasonLeaderboard(), []);
     assert.equal(await api.getSeasonLeaderboard(), null);
     assert.deepEqual(requests.map(({ url }) => url), [
-        origin + '/seasons/2.3.1/record', origin + '/seasons/2.3.1/record', origin + '/seasons/2.3.1/record',
-        origin + '/seasons/2.3.1/leaderboard?limit=50', origin + '/seasons/2.3.1/leaderboard?limit=50'
+        publishedApi + '/seasons/2.3.1/record', publishedApi + '/seasons/2.3.1/record', publishedApi + '/seasons/2.3.1/record',
+        publishedApi + '/seasons/2.3.1/leaderboard?limit=50', publishedApi + '/seasons/2.3.1/leaderboard?limit=50'
     ]);
     assert.ok(requests.every(request => request.method === 'GET' && request.cache === 'no-store'));
 });
@@ -91,7 +92,7 @@ test('Capacitor reads the shared record and sends private profile operations ove
             ? { ok: true, record: null }
             : { ok: true, qualified: true, previousRecord: null, record: 1051 }
     }));
-    const api = new ApiClient(origin);
+    const api = new ApiClient();
     const claim = { playerId: 'player-1', attemptId: 'attempt-1', score: 1051, mode: 'night' };
     assert.deepEqual(await api.getSeasonRecord(), { score: null });
     assert.deepEqual(await api.claimSeasonRecord(claim), {
@@ -104,9 +105,9 @@ test('Capacitor reads the shared record and sends private profile operations ove
     assert.deepEqual(calls.mock.calls.map(({ arguments: [, , options] }) => [
         options.url, options.method, options.data, options.responseType
     ]), [
-        [origin + '/seasons/2.3.1/record', 'GET', undefined, 'json'],
-        [origin + '/seasons/2.3.1/ios/record/claim', 'POST',
+        [publishedApi + '/seasons/2.3.1/record', 'GET', undefined, 'json'],
+        [publishedApi + '/seasons/2.3.1/ios/record/claim', 'POST',
             { key: 'player-1', attemptId: 'attempt-1', score: 1051, mode: 'night' }, 'json'],
-        [origin + '/seasons/2.3.1/ios/delete', 'POST', { key: 'player-1' }, 'json']
+        [publishedApi + '/seasons/2.3.1/ios/delete', 'POST', { key: 'player-1' }, 'json']
     ]);
 });

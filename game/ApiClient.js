@@ -1,7 +1,7 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { SEASON } from '../backend/src/season-rules.js';
 
-const live = 'https://api.mamdanirun.cc';
+const live = 'https://api.mamdanirun.com';
 const localHosts = ['localhost', '127.0.0.1', '[::1]'];
 const seasonPath = '/seasons/' + SEASON;
 const fresh = { cache: 'no-store' };

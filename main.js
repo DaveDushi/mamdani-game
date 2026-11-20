@@ -7,6 +7,7 @@ import { startAnalytics, track, setupSupportLinks } from './game/Analytics.js';
 import { Sound } from './game/Sound.js';
 import { loadCast, loadMayor, loadOutfit } from './game/Cast.js';
 import { ApiClient } from './game/ApiClient.js';
+import { offerDomainMove } from './game/DomainMove.js';
 import {
     NIGHT_SHIFT_STAMPS, availableMode, emptyWallet, onWalletChange, purchaseSpeedUpgrade,
     readWallet, recordFamilyWin, startAttempt, walletBalance, walletLifetime
@@ -147,6 +148,7 @@ document.querySelector('.sound-toggle').addEventListener('click', () => {
 });
 updateSound();
 home();
+offerDomainMove();
 const preview = $('outfit-preview');
 let drag = null;
 // Keep a preview swipe from consuming the next tap on a shop button.

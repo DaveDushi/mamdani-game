@@ -4,7 +4,7 @@ const stream = 'G-M4V8F77Y5F';
 const ios = Capacitor.getPlatform() === 'ios';
 const services = registerPlugin('ArcadeServices');
 const publishedWeb = !Capacitor.isNativePlatform() &&
-    ['mamdanirun.cc', 'www.mamdanirun.cc'].includes(location.hostname);
+    ['mamdanirun.com', 'www.mamdanirun.com'].includes(location.hostname);
 
 export function startAnalytics() {
     if (!publishedWeb) return;

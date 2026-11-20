@@ -62,7 +62,7 @@ export function onWalletChange(listener) {
     changes?.addEventListener('message', listener);
 }
 
-function openWallet() {
+export function openWallet() {
     if (!database) {
         database = new Promise((resolve, reject) => {
             const request = indexedDB.open('mamdani_progression', 1);

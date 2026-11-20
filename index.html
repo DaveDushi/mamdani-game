@@ -9,6 +9,7 @@
             content="Run as Mamdani through New York in a satirical 3D arcade chase. Dodge yellow cabs, collect food stamps, and outrun Trump."
         />
         <title>Mamdani Run! • Borough Arcade</title>
+        <link rel="canonical" href="https://mamdanirun.com/" />
         <link rel="icon" href="./favicon.png" />
         <link rel="apple-touch-icon" href="./favicon.png" />
         <link rel="manifest" href="./manifest.webmanifest" />
@@ -118,6 +119,7 @@
             <aside class="wire home-wire" aria-label="City Wire">
                 <button id="story-btn" type="button" title="Read the story">City Wire</button>
                 <p>Mayor endorses today’s march. Aide sent ahead to find out what it’s for.</p>
+                <button id="move-save" type="button" hidden>Copy saved game to mamdanirun.com before Nov 21, 14:00 UTC</button>
             </aside>
             <footer class="home-footer">
                 <div class="home-record">
@@ -311,8 +313,8 @@
                         data-support-link hidden
                         >Buy Dave a coffee</a
                     ><button id="feedback-btn" class="text-btn" hidden>Send feedback</button>
-                    <a href="https://api.mamdanirun.cc/privacy" target="_blank" rel="noopener">Privacy policy</a>
-                    <a href="https://api.mamdanirun.cc/support" target="_blank" rel="noopener">Support</a>
+                    <a href="https://api.mamdanirun.com/privacy" target="_blank" rel="noopener">Privacy policy</a>
+                    <a href="https://api.mamdanirun.com/support" target="_blank" rel="noopener">Support</a>
                     <button id="privacy-btn" class="text-btn" hidden>Online play and data</button>
                 </div>
                 <p id="pwa-prompt" class="install"></p>
@@ -355,7 +357,7 @@
                 <h2>Campaign shop</h2>
                 <div class="shop-sections" role="group" aria-label="Shop section">
                     <button id="show-training" type="button" aria-controls="training-panel" aria-pressed="true">Sprint training</button>
-                    <button id="show-outfits" type="button" aria-controls="outfits-panel" aria-pressed="false">Free outfits</button>
+                    <button id="show-outfits" type="button" aria-controls="outfits-panel" aria-pressed="false">Sponsored by Soros</button>
                 </div>
                 <div id="training-panel">
                     <div class="training-heading"><h3>Family sprints</h3><b id="speed-level"></b></div>
@@ -394,7 +396,7 @@
                     <button id="cancel-delete-online-data" type="button" class="plain">Cancel</button>
                 </div>
                 <p id="privacy-status" role="status"></p>
-                <p><a href="https://api.mamdanirun.cc/privacy" target="_blank" rel="noopener">Privacy policy</a></p>
+                <p><a href="https://api.mamdanirun.com/privacy" target="_blank" rel="noopener">Privacy policy</a></p>
                 <button type="button" class="plain" data-home>Back to menu</button>
             </div>
         </section>

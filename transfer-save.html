@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex" />
+        <title>Copy saved game · Mamdani Run</title>
+        <link rel="stylesheet" href="./style.css" />
+    </head>
+    <body>
+        <main class="overlay">
+            <section class="paper compact">
+                <h1>Copy saved game</h1>
+                <p id="transfer-status" role="status">Reading your saved game from the original tab…</p>
+                <a href="/">Play on mamdanirun.com</a>
+            </section>
+        </main>
+        <script type="module">
+            import { receiveDomainMove } from './game/DomainMove.js';
+            receiveDomainMove(document.getElementById('transfer-status'));
+        </script>
+    </body>
+</html>
