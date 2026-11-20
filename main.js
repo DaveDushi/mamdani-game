@@ -143,24 +143,32 @@ document.querySelector('.sound-toggle').addEventListener('click', () => {
 });
 updateSound();
 home();
-$('turn-left').onclick = () => fittingRoom?.rotate(-Math.PI / 4);
-$('turn-right').onclick = () => fittingRoom?.rotate(Math.PI / 4);
-let lastDrag = null;
-$('shop-screen').addEventListener('pointerdown', (e) => {
-    if (e.target !== $('shop-screen')) return;
-    lastDrag = e.clientX;
-    e.currentTarget.setPointerCapture(e.pointerId);
+const preview = $('outfit-preview');
+let drag = null;
+// Keep a preview swipe from consuming the next tap on a shop button.
+preview.addEventListener('touchstart', e => {
+    if (e.cancelable) e.preventDefault();
+}, { passive: false });
+preview.addEventListener('pointerdown', e => {
+    if (!fittingRoom?.active || !e.isPrimary || e.button !== 0 || drag) return;
+    drag = { id: e.pointerId, x: e.clientX };
+    preview.setPointerCapture(e.pointerId);
 });
-$('shop-screen').addEventListener('pointermove', (e) => {
-    if (lastDrag !== null) {
-        fittingRoom?.rotate((e.clientX - lastDrag) * 0.014);
-        lastDrag = e.clientX;
-    }
+preview.addEventListener('pointermove', e => {
+    if (drag?.id !== e.pointerId || !fittingRoom?.active) return;
+    const dx = e.clientX - drag.x;
+    if (dx) fittingRoom.rotate(dx * 0.014);
+    drag.x = e.clientX;
 });
-for (const type of ['pointerup', 'pointercancel'])
-    $('shop-screen').addEventListener(type, () => {
-        lastDrag = null;
-    });
+preview.addEventListener('lostpointercapture', e => {
+    if (drag?.id === e.pointerId) drag = null;
+});
+preview.addEventListener('keydown', e => {
+    if (!fittingRoom?.active || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    fittingRoom.rotate(e.key === 'ArrowLeft' ? -Math.PI / 4 : Math.PI / 4);
+});
 setupPosters(() => show('poster-room', 'poster-next'));
 const previewStatus = $('preview-status');
 let status = $('load-status');
@@ -379,6 +387,7 @@ window.addEventListener('keydown', (e) => {
         else if (view === 'pause-screen') resume();
         else if (view === 'rankings-screen') $('close-rankings').click();
         else if (view === 'registration-modal') show('game-over-screen', 'join-lb-btn');
+        else if (view === 'game-over-screen') $('game-over-screen').querySelector('[data-home]').click();
         else if (view !== 'start-screen') home();
     } else if (e.code === 'KeyP' && (view === 'hud' || view === 'pause-screen')) {
         if (view === 'hud') pause();
@@ -418,7 +427,8 @@ function showResultArt(overtime) {
     const file = overtime ? 'takeover-finish.webp' : 'american-finish.webp';
     const src = import.meta.env.BASE_URL + 'art/' + file;
     const figure = $('result-illustration');
-    if (figure.firstElementChild?.getAttribute('src') === src) return;
+    const previous = figure.querySelector('img');
+    if (previous?.getAttribute('src') === src) return;
     // A reused img can keep painting its previous portrait while the new source loads.
     const art = new Image(1050, 700);
     art.id = 'result-art';
@@ -427,7 +437,11 @@ function showResultArt(overtime) {
         : 'Donald Trump waves at a New York race with a United States flag behind him.';
     art.decoding = 'async';
     art.src = src;
-    figure.replaceChildren(art);
+    if (previous) previous.replaceWith(art);
+    else figure.prepend(art);
+    $('result-caption').textContent = overtime
+        ? 'Zohran Mamdani in New York after the 100% takeover.'
+        : 'Donald Trump waves to the crowd at the New York race.';
 }
 
 async function finish(attempt, distance, gross, cause) {
@@ -476,7 +490,7 @@ async function finish(attempt, distance, gross, cause) {
         : !wallet.nightUnlocked ? stampCount(remaining) + ' to unlock Night Shift.'
         : 'Night Shift unlocked';
     $('play-night').hidden = !receipt?.unlocked;
-    const familyLine = 'Family races · ' + familyWins + '/' + RIVALS.length + ' this run';
+    const familyLine = familyWins + '/' + RIVALS.length + ' this run';
     $('result-family').textContent = walletAvailable && wallet.familyBest > familyWins
         ? familyLine + ' · Best ' + wallet.familyBest + '/' + RIVALS.length
         : familyLine;
@@ -485,8 +499,8 @@ async function finish(attempt, distance, gross, cause) {
     $('pb-score').textContent = metres(night ? wallet.nightBest : best());
     $('pb-rank-display').textContent = '';
     $('join-lb-btn').hidden = !!localStorage.getItem('mamdani_name');
-    document.querySelector('.results').scrollTop = 0;
     show('game-over-screen', 'restart-btn');
+    document.querySelector('.results').scrollTop = 0;
     loadBoard(version, result);
 }
 
@@ -517,16 +531,31 @@ function showStandings(list, entries) {
         list.textContent = entries ? 'No scores on the season board yet.' : 'The standings could not be loaded.';
         return;
     }
-    const rows = document.createDocumentFragment();
+    const table = document.createElement('table');
+    table.setAttribute('aria-label', 'Season distance rankings');
+    const header = table.createTHead().insertRow();
+    for (const label of ['Rank', 'Runner', 'Distance']) {
+        const column = document.createElement('th');
+        column.scope = 'col';
+        column.textContent = label;
+        header.append(column);
+    }
+    const rows = table.createTBody();
+    const localId = localStorage.getItem('mamdani_player_id');
     entries.forEach((entry, index) => {
-        const row = document.createElement('div');
+        const row = rows.insertRow();
         row.className = 'leaderboard-item';
-        const place = document.createElement('b');
-        const name = document.createElement('span');
-        const value = document.createElement('b');
-        place.textContent = index + 1;
+        row.insertCell().textContent = index + 1;
+        const runner = row.insertCell();
+        const name = document.createElement('bdi');
         name.textContent = entry.name || 'Anonymous';
-        value.textContent = metres(entry.score);
+        runner.append(name);
+        if (localId && entry.player_id === localId) {
+            const you = document.createElement('small');
+            you.className = 'rank-owner';
+            you.textContent = 'You';
+            runner.append(you);
+        }
         if (entry.social) {
             const link = document.createElement('a');
             const handle = String(entry.social).replace(/^@/, '');
@@ -534,12 +563,11 @@ function showStandings(list, entries) {
             link.href = 'https://truthsocial.com/@' + encodeURIComponent(handle);
             link.target = '_blank';
             link.rel = 'noopener';
-            name.append(link);
+            runner.append(link);
         }
-        row.append(place, name, value);
-        rows.append(row);
+        row.insertCell().textContent = metres(entry.score);
     });
-    list.append(rows);
+    list.append(table);
 }
 
 async function standings(list, retry, current) {
@@ -557,6 +585,7 @@ let standingsRequest = 0;
 function openRankings() {
     const request = ++standingsRequest;
     show('rankings-screen', 'close-rankings');
+    $('rankings-list').scrollTop = 0;
     return standings($('rankings-list'), $('rankings-retry'), () => view === 'rankings-screen' && request === standingsRequest);
 }
 $('rankings-btn').onclick = openRankings;
@@ -575,7 +604,7 @@ async function loadBoard(version, result, retryScore = false) {
     retry.hidden = true;
     const rank = await postScore(result, retryScore);
     if (!current()) return;
-    if (!rank.ok) $('pb-rank-display').textContent = ' · Saved locally. Tap Retry to post.';
+    if (!rank.ok) $('pb-rank-display').textContent = 'Saved locally. Tap Retry to post.';
     const entries = await standings(list, retry, current);
     if (!current()) return;
     if (!rank.ok) {
@@ -584,7 +613,7 @@ async function loadBoard(version, result, retryScore = false) {
     }
     const listed = entries?.findIndex(entry => entry.player_id === result.playerId) ?? -1;
     const position = listed >= 0 ? listed + 1 : rank.rank;
-    $('pb-rank-display').textContent = position > 0 ? ' · Season rank #' + position : '';
+    $('pb-rank-display').textContent = position > 0 ? 'Season rank #' + position : '';
 }
 $('result-board-retry').onclick = () => loadBoard(++resultVersion, lastResult, true);
 $('join-lb-btn').onclick = () => show('registration-modal', 'reg-name');
@@ -610,6 +639,7 @@ $('register-form').onsubmit = async (e) => {
         if (view === 'registration-modal' && version === resultVersion) {
             show('game-over-screen', 'restart-btn');
             $('join-lb-btn').hidden = true;
+            $('restart-btn').scrollIntoView({ block: 'nearest' });
             loadBoard(++resultVersion, lastResult);
         }
     } else $('reg-error').textContent = 'Couldn’t save your name. Try again.';

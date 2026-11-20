@@ -4,7 +4,7 @@ A portrait-first 3D endless runner by Dave Dushi. In this fictional New York, Ma
 
 ## Play
 
-Swipe left or right to change lanes, up to jump and down to slide. On a keyboard, use the arrow keys or WASD. Space also jumps. Tap the pause button or press P or Escape to pause and reread the last street sign. In Shop → Free outfits, drag or use the turn buttons to inspect each costume. The Posters gallery contains all nine City Hall prints with large-text captions.
+Swipe left or right to change lanes, up to jump and down to slide. On a keyboard, use the arrow keys or WASD. Space also jumps. Tap the pause button or press P or Escape to pause and reread the last street sign. In Shop → Free outfits, drag the preview to inspect a costume. With the preview focused, use the left and right arrow keys to turn it. The Posters gallery contains all nine City Hall prints with large-text captions.
 
 Follow the lane markings. The opening stunt gates teach the moves. Jump low hurdles, slide under beams, or clear the waist-high ticket rail either way. The route crosses the Brooklyn and Manhattan bridges and passes through the Queens–Midtown and Brooklyn–Battery tunnels. Watch the sidewalks for the fare strike, bagel bailout and mobile press unit. On a loss, City Wire runs a Stars and Stripes front page with the score and stamp receipt.
 
@@ -14,7 +14,7 @@ Race Donald Jr., Ivanka, Eric, Tiffany and Barron in order. On the opening cours
 
 After five wins in one run, go beyond both 9 km and the live season record. The game confirms your place online before Donald’s 100 m final. A clean opening campaign takes about four minutes. A season record above 9 km moves the checkpoints farther out. Each win changes one sixth of the city. Beat Donald to complete the takeover and continue in endless Overtime at 10% higher speed.
 
-In version 2.3.2, Day Run and Night Shift continue to share the Season 2.3.1 distance rankings. Earlier scores stay on the historical board.
+In version 2.3.3, Day Run and Night Shift continue to share the Season 2.3.1 distance rankings. Earlier scores stay on the historical board.
 
 ## Run locally
 

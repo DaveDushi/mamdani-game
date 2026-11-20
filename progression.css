@@ -48,39 +48,6 @@
     padding-inline: 14px;
     white-space: nowrap;
 }
-.bank-receipt {
-    margin-top: 10px;
-    padding: 9px 12px;
-    background: #e8e0cb;
-    border-left: 3px solid #937640;
-}
-.bank-receipt > div {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 2px 10px;
-}
-#result-banked {
-    font: 700 20px/1.1 Condensed, sans-serif;
-}
-#result-wallet {
-    font-size: 14px;
-    font-weight: 700;
-}
-.bank-receipt p {
-    margin: 3px 0 0;
-    font-size: 14px;
-}
-.bank-receipt.just-unlocked {
-    border-color: #956419;
-    background: #ffe096;
-}
-.just-unlocked #result-progress {
-    font: italic 900 26px/1 Condensed, sans-serif;
-    text-transform: uppercase;
-    margin-top: 7px;
-}
 #shop-screen.preparing-preview {
     background: radial-gradient(ellipse at 48% 38%, #70868a, #213640 78%);
 }
@@ -98,10 +65,16 @@
 }
 #shop-screen {
     touch-action: pan-y;
+    grid-template: 'wardrobe preview' minmax(0, 1fr) / minmax(0, 350px) minmax(0, 1fr);
     padding-left: max(var(--side), env(safe-area-inset-left));
     padding-right: max(12px, env(safe-area-inset-right));
 }
+#outfit-preview { grid-area: preview; place-self: stretch; touch-action: none; cursor: grab; }
+#outfit-preview:active { cursor: grabbing; }
+#outfit-preview:focus-visible { outline: 3px solid #56b9d3; outline-offset: -3px; }
+.preparing-preview #outfit-preview { visibility: hidden; }
 #shop-screen .wardrobe {
+    grid-area: wardrobe;
     display: grid;
     grid-template-rows: auto auto minmax(0, 1fr) auto;
     gap: 12px;
@@ -163,7 +136,10 @@
     .cover-copy .run-controls { width: min(100%, 300px); }
     .cover-copy .deck { margin-block: 10px; }
     .cover-copy .subactions { margin-top: 8px; }
-    #shop-screen { padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right)); }
+    #shop-screen {
+        grid-template: 'preview' minmax(0, 1fr) 'wardrobe' auto / minmax(0, 1fr);
+        padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+    }
     #shop-screen .wardrobe { width: min(100%, 440px); max-height: 54svh; padding: 14px; gap: 7px; }
     #shop-screen h2 { font-size: 32px; }
 }
@@ -197,8 +173,7 @@
     .training-heading h3 { font-size: 20px; }
     #outfits-panel {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        grid-template-areas: 'outfits outfits' 'sponsor rotate';
+        grid-template-areas: 'outfits' 'sponsor';
         align-items: center;
         align-content: start;
         gap: 4px;
@@ -219,9 +194,6 @@
     }
     #shop-screen .outfit span { width: 12px; height: 12px; }
     #shop-screen .outfit b:empty { display: none; }
-    #shop-screen .turn-controls { grid-area: rotate; gap: 5px; margin: 0; }
-    #shop-screen .turn-controls button { min-width: 34px; min-height: 34px; }
-    #shop-screen .turn-controls span { font-size: 11px; }
     #shop-screen #close-shop-btn {
         grid-area: back;
         min-height: 34px;
@@ -231,37 +203,11 @@
 }
 @media (min-aspect-ratio: 1/1) and (max-height: 430px) {
     #shop-screen {
+        grid-template-columns: min(48vw, 340px) minmax(0, 1fr);
         padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
             max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
     }
     #shop-screen .wardrobe { width: min(48vw, 340px); }
-    #game-over-screen {
-        padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
-            max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
-    }
-    .results.paper {
-        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-        grid-template-areas: "mast mast" "story totals" "board board";
-        grid-template-rows: auto;
-        gap: 7px 12px;
-        padding: 8px 12px;
-    }
-    .results .frontpage-mast { padding-block: 3px 4px; }
-    .results .frontpage-mast b { font-size: 23px; }
-    .results .frontpage-mast span, .results .audit-line { font-size: 11px; }
-    .results #result-headline { font-size: clamp(22px, 4.1vw, 32px); margin: 0; }
-    .results #result-copy { margin-block: 4px; font-size: 14px; }
-    .results .result-illustration { margin-block: 5px; }
-    .results .result-illustration img { aspect-ratio: 16 / 9; }
-    .results .stats { gap: 5px; padding-block: 5px; }
-    .results .stats small { font-size: 11px; letter-spacing: .02em; white-space: nowrap; }
-    .results .stats strong { font-size: 24px; margin-top: 4px; }
-    .results .stats #final-distance { font-size: 28px; }
-    .results .bank-receipt { margin-top: 6px; padding: 5px 7px; }
-    .results .bank-receipt p, .results #result-wallet { font-size: 13px; }
-    .results .just-unlocked #result-progress { font-size: 20px; margin-top: 4px; }
-    .results .best-line { margin-block: 6px; }
-    .results .action-row button { padding: 5px 11px; }
 }
 @media (max-height: 530px) and (min-aspect-ratio: 1/1) {
     #start-screen .cover-copy {

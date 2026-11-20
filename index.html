@@ -181,46 +181,57 @@
             </div>
         </section>
         <section id="game-over-screen" class="overlay hidden" aria-labelledby="result-headline">
-            <div class="paper results">
+            <article class="paper newsprint results">
                 <header class="frontpage-mast">
-                    <b>The City Wire</b><span id="result-edition">Final edition</span>
+                    <b class="wire-nameplate">The City Wire</b>
+                    <div class="wire-folio"><span>New York City</span><span id="result-edition"></span></div>
                 </header>
                 <div class="result-story">
-                    <h2 id="result-headline">Trump returns.</h2>
-                    <figure class="result-illustration" id="result-illustration"></figure>
+                    <h2 id="result-headline"></h2>
                     <p id="result-copy"></p>
-                    <p class="audit-line">The five-year plan lasted <b id="run-seconds">0 seconds</b>. Clean moves · <b id="final-moves">0</b></p>
+                    <figure class="result-illustration" id="result-illustration">
+                        <figcaption id="result-caption"></figcaption>
+                    </figure>
                 </div>
-                <div class="result-totals">
-                    <div class="stats">
-                        <div><small>Distance run</small><strong id="final-distance">0 m</strong></div>
-                        <div><small>Collected</small><strong id="final-gross">0</strong></div>
-                        <div><small>Stamp tax</small><strong id="final-tax">0</strong></div>
-                    </div>
+                <div class="result-actions">
+                    <div class="result-score"><span>Distance run</span><strong id="final-distance"></strong></div>
                     <div class="action-row">
-                        <button class="solid" id="restart-btn">Run again</button>
+                        <button class="solid" id="restart-btn">Run again <span aria-hidden="true">↗</span></button>
                         <button class="plain" data-home>Menu</button>
                     </div>
                     <p class="load-status" role="status" id="result-load-status" hidden></p>
+                </div>
+                <div class="result-totals">
+                    <h3>Run ledger</h3>
+                    <dl class="agate">
+                        <div><dt id="result-best-label">Best on this device</dt><dd id="pb-score"></dd></div>
+                        <div><dt>Run time</dt><dd id="run-seconds"></dd></div>
+                        <div><dt>Clean moves</dt><dd id="final-moves"></dd></div>
+                        <div><dt>Family races</dt><dd id="result-family"></dd></div>
+                    </dl>
+                    <p id="pb-rank-display" aria-live="polite"></p>
                     <div class="bank-receipt">
-                        <div><strong id="result-banked"></strong><span id="result-wallet"></span></div>
+                        <h3>Stamp receipt</h3>
+                        <dl class="agate">
+                            <div><dt>Stamps collected</dt><dd id="final-gross"></dd></div>
+                            <div><dt>City Hall tax (90%)</dt><dd id="final-tax"></dd></div>
+                        </dl>
+                        <div class="receipt-balance"><strong id="result-banked"></strong><span id="result-wallet"></span></div>
                         <p id="result-progress"></p>
-                        <p id="result-family"></p>
                         <button id="play-night" class="text-btn" hidden>Play Night Shift →</button>
                         <button id="result-shop" class="text-btn" type="button">Sprint training →</button>
                     </div>
-                    <p class="best-line">
-                        <span id="result-best-label">Day Run best</span> <b id="pb-score">0 m</b> <span id="pb-rank-display"></span>
-                    </p>
                 </div>
-                <div id="day-board">
-                    <h3>Season 2.3.1 rankings</h3>
-                    <p>Day Run and Night Shift</p>
-                    <div id="leaderboard-list" aria-live="polite"></div>
+                <section id="day-board" aria-labelledby="result-standings-heading">
+                    <div class="standings-heading">
+                        <h3 id="result-standings-heading">Rankings</h3>
+                        <button id="join-lb-btn" class="text-btn">Name your score</button>
+                    </div>
+                    <div class="standings-scope"><span>Day Run and Night Shift</span><span>Season 2.3.1 · Top 50</span></div>
+                    <div id="leaderboard-list" class="standings-list" aria-live="polite"></div>
                     <button id="result-board-retry" class="text-btn" hidden>Retry</button>
-                    <button id="join-lb-btn" class="text-btn">Name your score</button>
-                </div>
-            </div>
+                </section>
+            </article>
         </section>
         <section id="instructions-modal" class="overlay hidden" tabindex="-1">
             <div class="paper">
@@ -286,14 +297,19 @@
             </article>
         </section>
         <section id="rankings-screen" class="overlay hidden" aria-label="Season 2.3.1 rankings for Day Run and Night Shift">
-            <div class="paper rankings-paper">
-                <div class="rankings-heading">
-                    <div><p class="slug">Season 2.3.1 · Top 50</p><h2>Rankings</h2><span>Day Run and Night Shift</span></div>
+            <article class="paper newsprint rankings-paper">
+                <header class="frontpage-mast">
+                    <b class="wire-nameplate">The City Wire</b>
+                    <div class="wire-folio"><span>New York City</span><span>Season 2.3.1</span></div>
+                </header>
+                <div class="standings-heading">
+                    <h2>Rankings</h2>
                     <button id="close-rankings" class="plain">Close</button>
                 </div>
-                <div id="rankings-list" aria-live="polite"></div>
+                <div class="standings-scope"><span>Day Run and Night Shift</span><span>Top 50</span></div>
+                <div id="rankings-list" class="standings-list" aria-live="polite"></div>
                 <button id="rankings-retry" class="text-btn" hidden>Try again</button>
-            </div>
+            </article>
         </section>
         <section id="poster-room" class="overlay hidden" aria-label="Street posters">
             <div class="poster-wall">
@@ -312,6 +328,7 @@
         </section>
         <section id="shop-screen" class="fitting hidden">
             <p id="preview-status" role="status" hidden></p>
+            <div id="outfit-preview" tabindex="0" role="application" aria-label="Outfit preview. Use the left and right arrow keys to turn." aria-keyshortcuts="ArrowLeft ArrowRight"></div>
             <div class="paper wardrobe">
                 <h2>Campaign shop</h2>
                 <div class="shop-sections" role="group" aria-label="Shop section">
@@ -338,10 +355,6 @@
                 <div id="outfits-panel" hidden>
                     <p>Five looks. Same speed.</p>
                     <div id="shop-items"></div>
-                    <div class="turn-controls">
-                        <button type="button" id="turn-left" aria-label="Turn model left">↶</button><span>Rotate model</span
-                        ><button type="button" id="turn-right" aria-label="Turn model right">↷</button>
-                    </div>
                 </div>
                 <button class="plain" id="close-shop-btn" data-home>Back to menu</button>
             </div>
