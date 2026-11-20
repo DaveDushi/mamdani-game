@@ -1,6 +1,6 @@
 # Season leaderboard
 
-The existing `game-backend` Worker serves `api.mamdanirun.cc`. Its original module handles registration, feedback, legacy scores and the scheduled mail job. The 2.3.1 routes use two new tables in its existing D1 database. Player names come from the shared `players` table.
+The `game-backend` Worker serves `api.mamdanirun.com`. Existing clients can use the temporary `api.mamdanirun.cc` binding until November 21, 2026 at 14:00 UTC. At that cutoff, the Worker retires the old hostname and rejects requests from the old site's browser origins. Deployments require only the `.com` custom domain. The original module handles registration, feedback, legacy scores and the scheduled mail job. The 2.3.1 routes use two new tables in its existing D1 database. Player names come from the shared `players` table.
 
 ## Routes under `/seasons/2.3.1`
 

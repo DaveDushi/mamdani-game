@@ -1,0 +1,12 @@
+{
+    "name": "mamdani-run-web",
+    "account_id": "972f8c0c21865ac5fa34b14cfb73479e",
+    "main": "index.js",
+    "compatibility_date": "2026-11-20",
+    "workers_dev": false,
+    "preview_urls": false,
+    "routes": [
+        { "pattern": "mamdanirun.com", "custom_domain": true },
+        { "pattern": "www.mamdanirun.com", "custom_domain": true }
+    ]
+}

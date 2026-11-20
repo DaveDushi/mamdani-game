@@ -20,7 +20,7 @@ const pages = {
 <p>Mamdani Run is an unofficial fictional arcade satire by Dave Dushi.</p>
 <p>To contact the developer or report a problem, <a href="${issues}">open an issue on GitHub</a>. Include your app version and device model. GitHub issues are public, so leave out personal information.</p>
 <p>On iPhone, open City Wire and choose Online play and data to enable or disable online play or delete your online scores.</p>
-<p><a href="/privacy">Privacy policy</a> · <a href="https://mamdanirun.cc">Play on the web</a></p>`
+<p><a href="/privacy">Privacy policy</a> · <a href="https://mamdanirun.com">Play on the web</a></p>`
     }
 };
 

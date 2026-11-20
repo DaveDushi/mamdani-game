@@ -14,7 +14,7 @@
         "logs": { "enabled": true, "head_sampling_rate": 1, "persist": true, "invocation_logs": true },
         "traces": { "enabled": false, "head_sampling_rate": 1, "persist": true }
     },
-    "vars": { "CORS": "https://mamdanirun.cc" },
+    "vars": { "CORS": "https://mamdanirun.com" },
     "d1_databases": [{
         "binding": "game_d1",
         "database_name": "game-d1",
@@ -22,5 +22,5 @@
         "migrations_dir": "migrations"
     }],
     "triggers": { "crons": ["0 0 L * *"] },
-    "routes": [{ "pattern": "api.mamdanirun.cc", "custom_domain": true }]
+    "routes": [{ "pattern": "api.mamdanirun.com", "custom_domain": true }]
 }

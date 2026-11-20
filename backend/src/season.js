@@ -7,14 +7,11 @@ const recordQuery = 'SELECT MAX(score) AS record FROM season_scores WHERE season
 const improveScore = `ON CONFLICT(season, player_id) DO UPDATE SET score = excluded.score, created_at = excluded.created_at
     WHERE excluded.score > season_scores.score`;
 
-function response(data, status, request, env) {
-    const origin = request.headers.get('Origin');
+function response(data, status) {
     const headers = {
-        'Access-Control-Allow-Origin': origin === 'https://www.mamdanirun.cc' ? origin : env.CORS || 'https://mamdanirun.cc',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
-        'Cache-Control': 'no-store',
-        'Vary': 'Origin'
+        'Cache-Control': 'no-store'
     };
     return data === null ? new Response(null, { status, headers }) : Response.json(data, { status, headers });
 }
@@ -101,7 +98,7 @@ export async function seasonRequest(request, env) {
     const ios = route.startsWith('ios/');
     const path = ios ? route.slice(4) : route;
     const db = env.game_d1;
-    const reply = (body, status = 200) => response(body, status, request, env);
+    const reply = (body, status = 200) => response(body, status);
     if (request.method === 'OPTIONS') return reply(null, 204);
     if (request.method === 'GET') {
         if (path === 'record') {
