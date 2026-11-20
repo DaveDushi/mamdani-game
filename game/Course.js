@@ -13,6 +13,14 @@ const openings = [
     [
         ['halal', null, EXIT], ['scaffold', 'taxi', EXIT],
         ['taxi', EXIT, 'protest'], [EXIT, 'protest', 'scaffold']
+    ],
+    [
+        [EXIT, null, 'taxi'], ['protest', EXIT, 'halal'],
+        ['scaffold', 'taxi', EXIT], ['halal', 'protest', EXIT]
+    ],
+    [
+        ['protest', null, EXIT], ['taxi', EXIT, 'scaffold'],
+        [EXIT, 'halal', 'taxi'], [EXIT, 'scaffold', 'protest']
     ]
 ];
 
@@ -24,6 +32,7 @@ const trafficPairs = [
 const lanes = [0, 1, 2];
 const stunts = ['jump', 'slide', 'rail', 'choice'];
 const afterJump = ['jump', 'slide', 'slide', 'slide', 'rail', 'choice'];
+const marathonLanding = ['slide', 'slide', 'slide', 'slide', 'slide', 'rail'];
 const movingEncounters = ['delivery-dolly', 'signal-boom'];
 const linkedCrews = [
     ['delivery-dolly', 'signal-boom'],
@@ -33,14 +42,27 @@ const linkedCrews = [
 const firstEncounterAt = [1050, 2050];
 const lateTurnPatterns = [.42, .64, .88];
 
+// Beats specify a gate, lane-change probability (0 holds, 1 turns) and timing offset in seconds.
+const patterns = [
+    { at: 0, beats: [['jump', 0, .08], ['slide', 1, -.09]] },
+    { at: 0, beats: [['slide', 1, .02], ['rail', 1, -.10]] },
+    { at: 0, beats: [['rail', 0, .04], ['jump', 1, -.12]] },
+    { at: 0, beats: [['choice', 1, .08], ['slide', 0, -.14]] },
+    { at: 900, beats: [['slide', 0, .10], ['jump', 0, -.09], ['slide', 1, -.15]] },
+    { at: 900, beats: [['rail', 1, .10], ['slide', 1, -.10], ['choice', 0, -.08]] },
+    { at: 900, beats: [['jump', 1, .08], ['slide', 1, -.14], ['rail', 0, -.05]] },
+    { at: 2500, beats: [['choice', 0, .08], ['slide', 1, -.13], ['jump', 1, -.10], ['slide', 0, -.16]] },
+    { at: 2500, beats: [['slide', 1, .08], ['rail', 0, -.12], ['slide', 1, -.15], ['choice', 1, -.10]] }
+];
+
 const tiers = [
     { at: 0,     seconds: 1.36, move: .25, minimum: 1, maximum: 2 },
-    { at: 450,   seconds: 1.14, move: .48, minimum: 2, maximum: 3 },
-    { at: 1400,  seconds: 1.00, move: .63, minimum: 4, maximum: 6 },
-    { at: 3500,  seconds: 0.90, move: .74, minimum: 5, maximum: 8 },
-    { at: 8500,  seconds: 0.81, move: .84, minimum: 6, maximum: 10 },
-    { at: 22000, seconds: 0.73, move: .91, minimum: 8, maximum: 13 },
-    { at: 50000, seconds: 0.66, move: .96, minimum: 10, maximum: 16 }
+    { at: 450,   seconds: 1.05, move: .48, minimum: 2, maximum: 3 },
+    { at: 1400,  seconds: .89, move: .63, minimum: 4, maximum: 6 },
+    { at: 3500,  seconds: .82, move: .74, minimum: 5, maximum: 8 },
+    { at: 8500,  seconds: .73, move: .84, minimum: 6, maximum: 10 },
+    { at: 22000, seconds: .66, move: .91, minimum: 8, maximum: 13 },
+    { at: 50000, seconds: .60, move: .96, minimum: 10, maximum: 16 }
 ];
 
 const longRun = [
@@ -119,8 +141,7 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
         return lanes.filter(lane => previous.every(last => Math.abs(last - lane) <= 1));
     }
 
-    function row(gate, seconds, move) {
-        const cueStep = advance(seconds, canJump(gate));
+    function row(gate, seconds, move, bonusRoute = false) {
         const reachable = reachableLanes();
         const lane = nextLane(previous[0], reachable, move, random);
         previous = [lane];
@@ -128,8 +149,18 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
             const slots = [...pick(trafficPairs, random)];
             if (random() < 0.5) slots.reverse();
             slots.splice(lane, 0, EXIT);
-            return streetRow(distance, slots, cueStep, random);
+            const sideLanes = reachable.filter(other => Math.abs(lane - other) === 1);
+            const bonusLane = bonusRoute && sideLanes.length ? pick(sideLanes, random) : undefined;
+            if (bonusLane !== undefined) {
+                slots[bonusLane] = pick(['taxi', 'halal', 'scaffold'], random);
+                previous.push(bonusLane);
+            }
+            const cueStep = advance(seconds, bonusLane !== undefined && slots[bonusLane] === 'taxi');
+            const event = streetRow(distance, slots, cueStep, random);
+            if (bonusLane !== undefined) event.bonusLane = bonusLane;
+            return event;
         }
+        const cueStep = advance(seconds, canJump(gate));
         const slots = ['gateBlock', 'gateBlock', 'gateBlock'];
         slots[lane] = gate === 'choice' ? 'jumpGate' : gate + 'Gate';
         if (gate === 'choice') {
@@ -211,6 +242,7 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
     let seenProtest = false;
     let lastStunt;
     let repeated = 0;
+    let recentPatterns = [];
     while (true) {
         const effort = night ? distance * 1.2 + 200 : distance;
         while (tierIndex + 1 < tiers.length && effort >= tiers[tierIndex + 1].at) tierIndex++;
@@ -226,7 +258,7 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
             yield { distance: pickupDistance, pickupLane: previous[0], pickup };
             nextProtection = pickupDistance + Math.max(night ? 1650 : 1200, Math.ceil(speed * (night ? 34 : 29)));
         }
-        const breakTime = effort < 3500 ? Math.max(1.50, tier.seconds + .28) : 1.26 + random() * .68;
+        const breakTime = Math.max(1.06, tier.seconds + .22) + random() * .52;
         const taught = introduced === movingEncounters.length;
         const ice = taught && distance >= nextIce;
         const civic = taught && !ice ? selectCivic(distance) : null;
@@ -237,7 +269,7 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
         } else if (carriage) {
             yield carriageRow(Math.max(1.68, breakTime), move, overtime);
         } else {
-            yield row(null, breakTime, move);
+            yield row(null, breakTime, move, effort >= 450 && !civic && random() < .55);
         }
         if (civic === 'protest-line') {
             yield protestRow('tape', 1.18, move, overtime);
@@ -258,6 +290,17 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
         const crews = linked && distance >= 30000 && random() < .74 ? pick(linkedCrews, random) : null;
         const separation = crews ? 2 + Math.floor(random() * 2) : 0;
         const linkedAt = linked ? firstLink + Math.floor(random() * (length - firstLink - separation)) : -1;
+        // Long blocks can fit two different sequences, with a loose beat between them.
+        const planned = Array(length);
+        const span = length >= 8 ? Math.floor((length - 1) / 2) : length;
+        for (let start = 0; start + span <= length; start += span + 1) {
+            const available = patterns.filter(p => effort >= p.at && p.beats.length <= span && !recentPatterns.includes(p));
+            if (!available.length) continue;
+            const pattern = pick(available, random);
+            const offset = start + Math.floor(random() * (span - pattern.beats.length + 1));
+            pattern.beats.forEach((beat, index) => { planned[offset + index] = beat; });
+            recentPatterns = [...recentPatterns.slice(-2), pattern];
+        }
         for (let i = 0; i < length; i++) {
             const first = i === linkedAt;
             const second = crews && i === linkedAt + separation;
@@ -266,17 +309,26 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
                 const fork = id === 'signal-boom' && distance >= 15000 && random() < .65;
                 yield movingRow(id, 1.05 + random() * .35, move, overtime, fork);
             }
-            const options = previousJump && effort >= 3500 ? afterJump : stunts;
+            // More low runs at marathon pace keep the beat moving while the player lands.
+            const options = previousJump && effort >= 50000 ? marathonLanding :
+                previousJump && effort >= 3500 ? afterJump : stunts;
             const mayFork = reachableLanes().length > 1;
-            const gate = pick(options.filter(type => (repeated < 2 || type !== lastStunt) &&
-                (mayFork || type !== 'choice')), random);
+            const [plannedGate, turn = move, timing] = planned[i] ?? [];
+            const allowed = options.filter(type => (repeated < 2 || type !== lastStunt) &&
+                (mayFork || type !== 'choice'));
+            const gate = allowed.includes(plannedGate) ? plannedGate : pick(allowed, random);
             repeated = gate === lastStunt ? repeated + 1 : 1;
             lastStunt = gate;
             const beat = random();
-            const gap = beat < .36 ? -.06 - random() * .08 : beat < .86 ? -.04 + random() * .11 : .14 + random() * .18;
-            const recovery = i === 0 && ice ? 1.60 : i === 0 && carriage ? 1.18 : .60;
-            const seconds = first || second ? 1.05 + random() * .25 : Math.max(recovery, tier.seconds + gap);
-            yield row(gate, seconds, move);
+            const gap = timing ?? (beat < .36 ? -.06 - random() * .08 : beat < .86 ? -.04 + random() * .11 : .14 + random() * .18);
+            const recovery = i === 0 && ice ? 1.60 : i === 0 && carriage ? 1.18 : distance < 450 ? 1.27 : .60;
+            const seconds = first || second ? (crews ? 1.05 : Math.max(.86, tier.seconds + .15)) + random() * .25 :
+                Math.max(recovery, tier.seconds + gap);
+            const event = row(gate, seconds, turn);
+            if (plannedGate && distance >= 450 && (gate === 'jump' || gate === 'slide')) {
+                event.streetProp = gate === 'jump' ? 'taxi' : pick(['halal', 'scaffold'], random);
+            }
+            yield event;
         }
     }
 }

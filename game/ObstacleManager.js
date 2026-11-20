@@ -120,7 +120,8 @@ export class ObstacleManager {
                 const gate = { hit: false, lanes: row.lanes };
                 row.lanes.forEach((key, lane) => {
                     const x = (lane - 1) * 3;
-                    const obstacle = this.add(civicGateKey(key, row.encounter), x, z, 'route', 1.02, row.encounter);
+                    const model = key !== 'gateBlock' && row.streetProp ? row.streetProp : civicGateKey(key, row.encounter);
+                    const obstacle = this.add(model, x, z, 'route', 1.02, row.encounter);
                     obstacle.gate = gate;
                     if (key === 'gateBlock') return;
                     const jump = key === 'jumpGate';
@@ -143,7 +144,14 @@ export class ObstacleManager {
                     if (!key || (open && lane === row.exitLane)) return;
                     const x = (lane - 1) * 3;
                     const obstacle = this.add(key, x, z, 'route', 1.02, row.encounter);
-                    if (key === 'signalBoom' && lane === row.actionLane) {
+                    if (lane === row.bonusLane) {
+                        const jump = key === 'taxi';
+                        const height = jump ? 2.42 : .55;
+                        this.markLane(x, z, row, jump ? 'jumpCue' : 'slideCue');
+                        this.add('coin', x, z + row.cueStep, 'route', height);
+                        obstacle.gate = { hit: false, lanes: row.lanes };
+                        this.add('coin', x, z, 'route', height).gate = obstacle.gate;
+                    } else if (key === 'signalBoom' && lane === row.actionLane) {
                         const jump = row.encounter.position === 'low';
                         this.markLane(x, z, row, jump ? 'jumpCue' : 'slideCue');
                         this.add('coin', x, z, 'route', jump ? 2.42 : .54);

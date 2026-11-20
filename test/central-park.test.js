@@ -2,22 +2,22 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Group, Mesh, MeshBasicMaterial, Scene } from 'three';
 import { CentralPark } from '../game/CentralPark.js';
-import { parkRoute, PARK_LENGTH, parkStart } from '../game/ParkRoute.js';
+import { parkRoute, parkStart } from '../game/ParkRoute.js';
 import { ParkArt } from '../game/ParkArt.js';
-import { courseSpeed, streetCourse } from '../game/Course.js';
+import { courseSpeed } from '../game/Course.js';
 import { streetClear } from '../game/Crossings.js';
 
 function fixture() {
     const start = parkStart(33351);
-    let seed = 24010;
-    const rows = [];
-    for (const row of streetCourse(() => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296), 'night', () => true)) {
-        if (row.distance >= start - 160) rows.push(row);
-        if (row.distance > start + PARK_LENGTH + 100) break;
-    }
+    // Replay the street that originally exposed a missed dock at 20 Hz.
+    const rows = [
+        { distance: 33351, gate: 'rail', lanes: ['railGate', 'gateBlock', 'gateBlock'] },
+        { distance: 33432, gate: 'jump', lanes: ['gateBlock', 'jumpGate', 'gateBlock'] },
+        { distance: 33567, exitLane: 0, iceLane: 1, lanes: [null, 'rentIce', null] },
+        { distance: 33698, gate: 'slide', lanes: ['gateBlock', 'slideGate', 'gateBlock'] }
+    ];
     const speed = courseSpeed(start, 'night') * 1.1;
     const plan = parkRoute(start, rows, 'night', true);
-    assert.equal(rows.find(row => row.distance === 33351).lanes[0], 'railGate');
     assert.ok(plan && plan.entry > 33351 && plan.entry < 33432);
     const ctx = { fillRect() {}, strokeRect() {}, fillText() {}, measureText: () => ({ width: 100 }) };
     globalThis.document = { createElement: () => ({ getContext: () => ctx }) };

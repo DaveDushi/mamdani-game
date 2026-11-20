@@ -38,7 +38,8 @@ function layout(seed, size, mode = 'day') {
 
 function legalLanes(row) {
     if (row.gate) return lanes.filter(lane => row.lanes[lane] !== 'gateBlock');
-    return row.actionLane === undefined ? [row.exitLane] : [row.exitLane, row.actionLane];
+    const side = row.actionLane ?? row.bonusLane;
+    return side === undefined ? [row.exitLane] : [row.exitLane, side];
 }
 
 function worldWithoutScenery(mode = 'day') {
@@ -72,7 +73,7 @@ test('both shifts gain speed through sixty kilometres and stay bounded in Overti
     }
 });
 
-test('six openings give the starting lane time to react and still close every fixed lane', () => {
+test('ten openings give the starting lane time to react and still close every fixed lane', () => {
     const openings = new Set();
     for (let seed = 1; seed <= 64; seed++) {
         const events = layout(seed, 700);
@@ -94,7 +95,7 @@ test('six openings give the starting lane time to react and still close every fi
             }
         }
     }
-    assert.equal(openings.size, 6);
+    assert.equal(openings.size, 10);
 });
 
 test('late sequences mix more actions without removing any route or recovery window', () => {
@@ -454,7 +455,7 @@ test('all generated pieces are pooled and painted lane cues lead to one collecti
                 advanceTo(row.distance);
                 for (const [lane, slot] of row.lanes.entries()) {
                     if (!slot || (!row.encounter && lane === row.exitLane)) continue;
-                    const key = row.encounter?.id === 'protest-line'
+                    const key = slot !== 'gateBlock' && row.streetProp ? row.streetProp : row.encounter?.id === 'protest-line'
                         ? ({ slideGate: 'policeTape', jumpGate: 'fallenPlacard', gateBlock: 'marchBarrier' }[slot] ?? slot) : slot;
                     keys.add(key);
                     assert.ok(traffic.models[key] && traffic.pool[key], key);
@@ -670,7 +671,7 @@ test('one ticket rail pays one stamp and move for either clear, and hits a stand
 });
 
 function courseTrial(seed, mode, { at = 0, size = 36, strategy = 'jumpChoice', dt = step,
-    overtime = false, jumpLead = 0.35, actionInterval = 0 } = {}) {
+    overtime = false, jumpLead = 0.35, actionInterval = 0, takeBonus = false } = {}) {
     const source = streetCourse(seededRandom(seed), mode, () => overtime);
     let first;
     do { first = source.next().value; } while (!first.lanes || first.distance < at);
@@ -696,9 +697,11 @@ function courseTrial(seed, mode, { at = 0, size = 36, strategy = 'jumpChoice', d
         const takeSlide = railLane >= 0 ? strategy === 'slideChoice' :
             jumpLane < 0 || (strategy === 'slideChoice' && slideLane >= 0);
         const preferred = strategy === 'slideChoice' ? slideLane : jumpLane;
-        const target = row.gate ? (railLane >= 0 ? railLane : takeSlide ? slideLane : jumpLane)
+        const detour = takeBonus && row.bonusLane !== undefined;
+        const target = detour ? row.bonusLane : row.gate ? (railLane >= 0 ? railLane : takeSlide ? slideLane : jumpLane)
             : boom >= 0 && preferred >= 0 && strategy !== 'laneOnly' ? preferred : exitLane;
-        const action = strategy !== 'laneOnly' && (row.gate || target === boom || target === preferred && boom >= 0)
+        const action = detour ? (row.lanes[target] === 'taxi' ? 'up' : 'down') :
+            strategy !== 'laneOnly' && (row.gate || target === boom || target === preferred && boom >= 0)
             ? (row.gate ? (takeSlide ? 'down' : 'up') : target === slideLane ? 'down' : 'up') : null;
         let acted = false;
         while (world.distance < distance + 2.1) {
@@ -725,8 +728,19 @@ function courseTrial(seed, mode, { at = 0, size = 36, strategy = 'jumpChoice', d
             time += dt;
         }
     }
-    return { stamps, rows: rows.length, cleared, strikes };
+    return { stamps, rows: rows.length, bonusRows: rows.filter(row => row.bonusLane !== undefined).length, cleared, strikes };
 }
+
+test('the stunt detour pays a second stamp and rejoins the next row from either lane', () => {
+    for (const mode of ['day', 'night']) for (const at of [500, 5000, 60000]) {
+        for (const takeBonus of [false, true]) {
+            const trial = courseTrial(19, mode, { at, size: 160, overtime: true, dt: 1/20, takeBonus });
+            assert.ok(trial.bonusRows > 0);
+            assert.deepEqual(trial.strikes, [], mode + ' ' + at);
+            assert.equal(trial.stamps, trial.rows + (takeBonus ? trial.bonusRows : 0), mode + ' ' + at);
+        }
+    }
+});
 
 test('unchanged player physics clear both routes through every tier and the Overtime cap', () => {
     for (const mode of ['day', 'night']) {

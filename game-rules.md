@@ -27,7 +27,9 @@ Jump over a cab or striped barrier, slide under cover, or narrowly dodge traffic
 
 After the opening streets, a 78° Heatwave gives you 16 seconds to earn two stamps for each three-move streak. Its clock pauses for rides and family sprints. The Stamp Office includes the bonus in your taxable earnings.
 
-The opening gates teach one move at a time. Moving obstacles appear after the opening streets. Later, a dolly or boom can lead straight into another lane change, jump or slide. The gaps vary, and Night Shift reaches those combinations sooner.
+The opening gates teach one move at a time. Farther down the street, look past the first obstacle. You might duck under a scaffold, jump a cab in the same lane, then slide one lane over. These sequences get longer and the gaps get shorter. Night Shift reaches them sooner.
+
+At a split, a single stamp marks the open lane. Two stamps over a taxi or under a cart or scaffold mark the stunt route. Either route leaves time to reach the next obstacle.
 
 A head-on wall hit ends an unprotected run immediately. Other traffic hits bring Trump into pursuit. Stay clear for five seconds to shake him. A second hit during the chase ends the run. Each 100 stamps collected triggers a 90-stamp audit. At the finish, City Hall settles the remainder at the same rate. Partial progress toward the next banked stamp carries across completed runs.
 
