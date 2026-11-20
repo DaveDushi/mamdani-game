@@ -17,4 +17,6 @@ Jump over a cab, slide under a cart or scaffold, or narrowly dodge traffic to ea
 
 A first unprotected collision brings Trump into pursuit. Stay clear for five seconds to shake him. A second hit during the chase ends the run. Distance in metres determines your leaderboard score. At the finish, City Hall taxes half your stamps, rounded down.
 
-Your best distance and selected suit stay on the device. All four suits are available from the Outfits screen and have the same gameplay abilities.
+The runner wears each active pickup until its timer expires. Your best distance and selected outfit stay on the device. All five looks are available from the Outfits screen and have the same gameplay abilities.
+
+Passing protest signs and street posters get a large-print caption. Pause to reread the last one, or open Posters from the menu to browse all nine prints.

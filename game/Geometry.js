@@ -85,18 +85,23 @@ export function labelMaterial(lines, paper, ink, width = 512, height = 160) {
     ctx.fillStyle = paper;
     ctx.fillRect(0, 0, width, height);
     ctx.strokeStyle = ink;
-    ctx.lineWidth = 4;
-    ctx.strokeRect(7, 7, width - 14, height - 14);
+    const inset = Math.max(3, Math.round(height * 0.035));
+    ctx.lineWidth = Math.max(2, inset * 0.5);
+    ctx.strokeRect(inset, inset, width - 2 * inset, height - 2 * inset);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = ink;
     lines.forEach((line, i) => {
-        ctx.font = 'bold ' + Math.floor((height * 0.67) / lines.length) + 'px Arial';
-        ctx.fillText(line, width / 2, ((i + 0.5) * height) / lines.length + 2, width * 0.9);
+        const size = (height * 0.92) / lines.length;
+        ctx.font = '700 ' + size + 'px Condensed, Arial';
+        const fit = Math.min(1, (width - 4 * inset) / ctx.measureText(line).width);
+        ctx.font = '700 ' + Math.floor(size * fit) + 'px Condensed, Arial';
+        ctx.fillText(line, width / 2, height * (0.09 + (0.82 * (i + 0.5)) / lines.length));
     });
     const map = new THREE.CanvasTexture(canvas);
     map.colorSpace = THREE.SRGBColorSpace;
-    return new THREE.MeshLambertMaterial({ map });
+    map.anisotropy = 4;
+    return new THREE.MeshBasicMaterial({ map, toneMapped: false });
 }
 
 export const artLoads = [];

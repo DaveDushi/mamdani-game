@@ -113,7 +113,7 @@ async function enter(mode) {
                 import('./game/Run.js'),
                 import('./game/RunnerModel.js')
             ]);
-            const cast = await loadCast();
+            const [cast] = await Promise.all([loadCast(), document.fonts.load('700 16px Condensed')]);
             run = new Run($('game-canvas'), sound, finish, cast);
             await run.ready;
         }

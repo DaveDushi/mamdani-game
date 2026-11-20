@@ -6,7 +6,7 @@ let castRequest;
 
 export function loadCast() {
     if (!castRequest) {
-        const names = ['mayor', 'chaser', 'commuter', 'new-yorker'];
+        const names = ['mayor', 'chaser', 'commuter', 'new-yorker', 'apparel'];
         castRequest = Promise.all(
             names.map(async (name) => [
                 name,
@@ -14,6 +14,10 @@ export function loadCast() {
             ])
         )
             .then(Object.fromEntries)
+            .then((cast) => {
+                cast.mayor.apparel = cast.apparel.scene;
+                return cast;
+            })
             .catch((error) => {
                 castRequest = null;
                 throw error;
@@ -29,7 +33,8 @@ export class RunnerModel {
         this.root.add(this.figure);
         this.figure.updateMatrixWorld(true);
         this.sockets = {};
-        for (const name of chaser ? ['LeftHand'] : ['Neck', 'Spine2', 'Head']) {
+        if (chaser) {
+            const name = 'LeftHand';
             const bone = this.figure.getObjectByName('mixamorig' + name);
             const mount = new THREE.Group();
             bone.getWorldPosition(mount.position);
@@ -42,16 +47,34 @@ export class RunnerModel {
 
         const outfit = this.figure.getObjectByName(chaser ? 'Outfit_original' : 'Outfit_formal');
         this.material = outfit.material = outfit.material.clone();
-        this.tint = { value: new THREE.Color(1, 1, 1) };
-        this.material.onBeforeCompile = (shader) => {
-            shader.uniforms.suitTint = this.tint;
-            shader.fragmentShader =
-                'uniform vec3 suitTint;\n' +
-                shader.fragmentShader.replace(
-                    '#include <map_fragment>',
-                    '#include <map_fragment>\nfloat wool = smoothstep(0.002, 0.035, diffuseColor.b - diffuseColor.r);\ndiffuseColor.rgb *= mix(vec3(1.), suitTint, wool);'
-                );
-        };
+        if (!chaser) {
+            this.suits = new Map([['default', outfit]]);
+            this.headwear = new Map();
+            // The clothing was tailored in the mayor's bind pose. All layers follow his live skeleton.
+            for (const piece of [...asset.apparel.children]) {
+                if (piece.isBone) continue;
+                piece.traverse((part) => {
+                    if (!part.isSkinnedMesh) return;
+                    part.bind(outfit.skeleton, outfit.bindMatrix);
+                    part.material.emissive = this.material.emissive;
+                    if (part.morphTargetInfluences?.length === 2) this.flagCloth = part;
+                });
+                this.figure.add(piece);
+                piece.visible = false;
+                if (piece.name.startsWith('Suit_')) this.suits.set(piece.name.slice(5), piece);
+                if (piece.name.startsWith('Head_')) this.headwear.set(piece.name.slice(5), piece);
+            }
+            this.scarf = this.figure.getObjectByName('Keffiyeh');
+            this.flag = this.figure.getObjectByName('Rainbow_flag');
+            const fasteners = this.figure.getObjectByName('Flag_fasteners');
+            this.flag.add(fasteners);
+            fasteners.visible = true;
+            this.mask = this.figure.getObjectByName('Fitted_mask');
+            this.hairStraps = this.figure.getObjectByName('Elastic_over_hair');
+            this.clothStraps = this.figure.getObjectByName('Elastic_over_cloth');
+            this.mask.add(this.hairStraps, this.clothStraps);
+            this.setOutfit('default');
+        }
         this.figure.traverse((part) => {
             if (!part.isMesh) return;
             part.castShadow = true;
@@ -67,10 +90,23 @@ export class RunnerModel {
         this.pose(0, 0, 0, 0, true);
     }
 
-    setColors(color) {
-        const base = new THREE.Color(0x344b65),
-            target = new THREE.Color(color);
-        this.tint.value.setRGB(target.r / base.r, target.g / base.g, target.b / base.b);
+    setOutfit(id) {
+        if (this.cap) this.cap.visible = false;
+        if (this.suit) this.suit.visible = false;
+        this.suit = this.suits.get(id) || this.suits.get('default');
+        this.suit.visible = true;
+        this.cap = this.headwear.get(id);
+        this.wear(this.scarf.visible, this.flag.visible, this.mask.visible);
+    }
+
+    wear(scarf, flag, mask) {
+        this.scarf.visible = scarf;
+        this.flag.visible = flag;
+        this.mask.visible = mask;
+        if (this.cap) this.cap.visible = !scarf;
+        const overCloth = scarf || this.cap?.name === 'Head_worker';
+        this.hairStraps.visible = !overCloth;
+        this.clothStraps.visible = overCloth;
     }
 
     pose(phase, slide, air, lean, idle = false) {
@@ -89,5 +125,9 @@ export class RunnerModel {
         this.crouch.setEffectiveWeight(slide);
         this.crouch.time = 0.6 + ((phase * 0.1) % 1.8);
         this.mixer.update(0);
+        if (this.flag?.visible) {
+            this.flagCloth.morphTargetInfluences[0] = Math.sin(phase * 0.85) * 0.8;
+            this.flagCloth.morphTargetInfluences[1] = Math.cos(phase * 0.85) * 0.8;
+        }
     }
 }

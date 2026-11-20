@@ -604,11 +604,56 @@ h1 strong {
     color: var(--gold);
     letter-spacing: 0.045em;
 }
-#notice {
+.hud-calls {
     position: absolute;
-    top: 19%;
-    left: 50%;
-    transform: translateX(-50%) skew(-4deg);
+    top: calc(max(16px, env(safe-area-inset-top)) + 58px);
+    left: max(18px, env(safe-area-inset-left));
+    right: max(18px, env(safe-area-inset-right));
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 5px 12px;
+    align-items: start;
+}
+#pickup-card {
+    --stripe: #ffe189;
+    grid-area: 1 / 1;
+    justify-self: start;
+    width: max-content;
+    max-width: 100%;
+    color: #fff9e9;
+    background: #14232b;
+    border-left: 5px solid var(--stripe);
+    box-shadow: 0 2px 6px #07101650;
+    padding: 6px 10px 4px;
+}
+#pickup-card[data-kind='covidMask'] { --stripe: #a1ecf0; }
+#pickup-card[data-kind='rainbow'] { --stripe: #ffb6e6; }
+.pickup-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+}
+#pickup-title {
+    font: 700 clamp(25px, 2.5vw, 35px)/1 Condensed, sans-serif;
+}
+#pickup-seconds {
+    font: 700 17px/1 Barlow, sans-serif;
+    font-variant-numeric: tabular-nums;
+    color: var(--stripe);
+}
+#pickup-detail {
+    display: block;
+    padding-block: 2px 5px;
+    font: 700 clamp(15px, 1.2vw, 17px)/1.1 Barlow, sans-serif;
+}
+#pickup-card i { display: block; height: 3px; background: #48545a; }
+#pickup-meter { display: block; height: 100%; background: var(--stripe); transform-origin: left; }
+#pickup-card[data-kind='rainbow'] u { background: linear-gradient(90deg,#ff7f89,#ffbe69,#f9e881,#9be4b5,#91c5fa,#deb4ff); }
+#notice {
+    grid-area: 2 / 1 / 3 / -1;
+    justify-self: center;
+    transform: skew(-4deg);
     white-space: nowrap;
     text-transform: uppercase;
     font: var(--display);
@@ -625,9 +670,8 @@ h1 strong {
     background: #972e26;
 }
 #chase-card {
-    position: absolute;
-    top: calc(max(18px, env(safe-area-inset-top)) + 57px);
-    right: max(18px, env(safe-area-inset-right));
+    grid-area: 1 / 2;
+    justify-self: end;
     display: flex;
     align-items: center;
     gap: 7px;
@@ -661,6 +705,12 @@ h1 strong {
     background: #ffca67;
     transform-origin: left;
 }
+@media (max-width: 560px) {
+    .hud-calls { grid-template-columns: minmax(0, 1fr); }
+    #chase-card { grid-area: 1 / 1; }
+    #pickup-card { grid-area: 2 / 1; }
+    #notice { grid-area: 3 / 1; }
+}
 #wire-flash {
     position: absolute;
     bottom: calc(max(17px, env(safe-area-inset-bottom)) + 47px);
@@ -669,7 +719,7 @@ h1 strong {
     display: flex;
     align-items: stretch;
     color: #18232c;
-    background: #f4e7cebf;
+    background: #fff3dbf7;
     box-shadow: 0 2px 9px #09162038;
 }
 #wire-flash b {
@@ -689,7 +739,7 @@ h1 strong {
     align-self: center;
     padding: 6px 9px;
     font:
-        700 clamp(12px, 1.3vw, 16px)/1.18 Barlow,
+        700 clamp(16px, 1.3vw, 18px)/1.18 Barlow,
         sans-serif;
 }
 #effect {
@@ -1066,7 +1116,7 @@ h1 strong {
 .poster-wall {
     width: min(100%, 480px);
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
     max-height: 100%;
     gap: 12px;
     justify-items: center;
@@ -1088,9 +1138,17 @@ h1 strong {
 .poster-print {
     background: url('/art/posters.webp') 0 0 / 300% 300%;
     aspect-ratio: 360/520;
-    width: min(100%, 43svh);
+    width: min(100%, 40svh, max(85px, calc((100svh - 222px) * 0.69)));
     box-shadow: 5px 6px #0f1920;
 }
+#poster-caption {
+    margin: 0;
+    text-align: center;
+    font-weight: 700;
+    font-size: clamp(16px, 2vw, 20px);
+    line-height: 1.2;
+}
+#pause-print { line-height: 1.3; }
 #poster-room {
     background: #15232bf8;
 }

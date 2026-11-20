@@ -16,7 +16,7 @@ const stone = 0xc8bda8;
 const trim = 0xe1d7bc;
 
 function sign(group, text, bg, ink, x, y, z, w, h, angle = 0) {
-    const plate = new THREE.Mesh(face, labelMaterial(text, bg, ink, 768, 140));
+    const plate = new THREE.Mesh(face, labelMaterial(text, bg, ink, 768, Math.round(768 * h / w)));
     plate.scale.set(w, h, 1);
     plate.position.set(x, y, z);
     plate.rotation.y = angle;
@@ -130,7 +130,7 @@ function theatre(b, group) {
     }
     sign(
         group,
-        ['UNION SQUARE', 'TONIGHT: THE RENT IS TOO DAMN HIGH'],
+        ['UNION SQUARE   •   RENT: THE MUSICAL'],
         '#f0ddad',
         '#552f2b',
         0,
@@ -179,7 +179,7 @@ function cityHall(b, group) {
     }
     b.box(0xa2957a, 0, 8.06, 0, 14.5, 0.73, 1.95);
     b.box(trim, 0, 8.52, 0, 14.9, 0.23, 2.21);
-    sign(group, ['CITY HALL  •  BUDGET HEARING'], '#a89d88', '#382f29', 0, 8.07, 1.0, 10.3, 0.62);
+    sign(group, ['CITY HALL   •   BUDGET HEARING'], '#ffefc9', '#302922', 0, 8.07, 1.0, 10.3, 0.62);
     b.box(0x637975, 0, 8.82, 0, 7.45, 0.32, 1.79);
     b.shape(round, bronze, 0, 9.95, 0, 0.046, 2.3, 0.046);
     b.box(0xb74739, 0.47, 10.51, 0, 0.93, 0.54, 0.065);

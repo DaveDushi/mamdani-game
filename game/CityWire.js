@@ -35,7 +35,7 @@ export function frontPage(cause, edition) {
 }
 
 export const stuntLines = {
-    cab: ['Cab fare successfully evaded.', 'Mayor takes public transit. Briefly, on the roof.'],
-    slide: ['Budget passes under the table.', 'For once, City Hall comes in under something.'],
-    sidestep: ['Mayor dodges a follow-up question.', 'Campaign pivots sharply on transportation.']
+    cab: ['Cab fare successfully evaded.', 'Mayor takes public transit. Briefly, on the roof.', 'Yellow cab crosses picket line. Mayor crosses cab.'],
+    slide: ['Budget passes under the table.', 'For once, City Hall comes in under something.', 'Mayor lowers his position on street vendors.'],
+    sidestep: ['Mayor dodges a follow-up question.', 'Campaign pivots sharply on transportation.', 'Aide confirms the dodge was fully funded.']
 };

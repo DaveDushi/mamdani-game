@@ -12,12 +12,13 @@ import { ObstacleManager } from './ObstacleManager.js';
 import { PowerupManager } from './PowerupManager.js';
 import { ScoreManager } from './ScoreManager.js';
 import { editionLines, stuntLines } from './CityWire.js';
+import { captions } from './Posters.js';
 
 const STEP = 1 / 60;
-const effectNames = {
-    kafiyeh: 'Keffiyeh shield',
-    rainbow: 'Rainbow invincibility',
-    covidMask: 'Traffic cleared'
+const pickups = {
+    kafiyeh: { title: 'Allah Akbar', detail: 'Keffiyeh · Collision shield', short: 'Keffiyeh shield' },
+    rainbow: { title: 'Full spectrum immunity', detail: 'Rainbow · Invincible + magnet', short: 'Invincible + magnet' },
+    covidMask: { title: 'listen to Fauci', detail: 'COVID mask · Traffic cleared', short: 'Clear street' }
 };
 export class Run {
     constructor(canvas, sound, onEnd, cast) {
@@ -67,8 +68,15 @@ export class Run {
                 'district',
                 'effect',
                 'notice',
+                'pickup-card',
+                'pickup-title',
+                'pickup-detail',
+                'pickup-seconds',
+                'pickup-meter',
                 'wire-flash',
                 'wire-copy',
+                'wire-source',
+                'pause-print',
                 'chase-card',
                 'chase-meter',
                 'chase-seconds'
@@ -113,12 +121,19 @@ export class Run {
         this.scoreManager.reset();
         this.elapsed = 0;
         this.noticeTime = 0;
+        this.pickupOrder = [];
+        this.pickupDuration = {};
+        this.hud['pickup-card'].hidden = true;
+        this.hud['pickup-card'].removeAttribute('data-kind');
         this.cleanMoves = 0;
         this.streak = 0;
         this.lastStuntAt = -10;
         this.pursuitFrame = 0;
         this.lastDistrict = this.world.district;
         this.wireTime = 0;
+        this.nextPrintAt = 0.8;
+        this.lastPrint = '';
+        this.hud['pause-print'].hidden = true;
         this.hud['wire-flash'].hidden = true;
         this.hud.notice.textContent = '';
         this.hud.notice.removeAttribute('data-tone');
@@ -191,23 +206,56 @@ export class Run {
         this.hud.notice.textContent = message;
         this.noticeTime = 1.3;
     }
-    bulletin(message) {
+    bulletin(message, source = 'City wire', urgent = false) {
+        if (!urgent && this.wireTime > 0 && (this.hud['wire-source'].textContent !== 'City wire' || this.wireTime > 1.8)) return;
+        this.hud['wire-source'].textContent = source;
         this.hud['wire-copy'].textContent = message;
         this.hud['wire-flash'].hidden = false;
-        this.wireTime = 3.6;
+        this.wireTime = source === 'City wire' ? 3.6 : 4.3;
+    }
+    readStreet() {
+        if (this.elapsed < this.nextPrintAt || this.wireTime > 0) return;
+        let source = 'Placard';
+        let message = '';
+        let nearest = -Infinity;
+        for (const object of this.obstacleManager.obstacles) {
+            const z = object.mesh.position.z;
+            if (object.type === 'protestor' && z > -45 && z < -3 && z > nearest) {
+                nearest = z;
+                message = object.mesh.userData.placard;
+            }
+        }
+        if (!message || message === this.lastPrint) {
+            source = 'Poster';
+            message = captions[this.world.approachingPoster()];
+        }
+        if (!message || message === this.lastPrint) return;
+        this.bulletin(message, source);
+        this.lastPrint = message;
+        this.nextPrintAt = this.elapsed + 7;
+        this.hud['pause-print'].textContent = source + ' · ' + message;
+        this.hud['pause-print'].hidden = false;
     }
     updateHud() {
         const p = this.player;
-        const timers = [
-            [p.rainbowTimer, 'Invincible + magnet'],
-            [p.kafiyehTimer, 'Keffiyeh shield'],
-            [p.covidMaskTimer, 'Clear street'],
-            [p.confusionTimer, 'Haram! Reversed']
-        ];
-        const effect = timers
-            .filter(([seconds]) => seconds > 0)
-            .map(([seconds, label]) => label + ' · ' + Math.ceil(seconds) + 's')
-            .join('\n');
+        const card = this.hud['pickup-card'];
+        const active = this.pickupOrder.filter(type => p[type + 'Timer'] > 0);
+        const primary = active[active.length - 1];
+        card.hidden = !primary;
+        if (primary) {
+            const remaining = p[primary + 'Timer'];
+            if (card.dataset.kind !== primary) {
+                card.dataset.kind = primary;
+                this.hud['pickup-title'].textContent = pickups[primary].title;
+                this.hud['pickup-detail'].textContent = pickups[primary].detail;
+            }
+            const seconds = Math.ceil(remaining) + 's';
+            if (this.hud['pickup-seconds'].textContent !== seconds) this.hud['pickup-seconds'].textContent = seconds;
+            this.hud['pickup-meter'].style.transform = 'scaleX(' + remaining / this.pickupDuration[primary] + ')';
+        }
+        const secondary = active.slice(0, -1).map(type => pickups[type].short + ' · ' + Math.ceil(p[type + 'Timer']) + 's');
+        if (p.confusionTimer > 0) secondary.push('Haram! Reversed · ' + Math.ceil(p.confusionTimer) + 's');
+        const effect = secondary.join('\n');
         this.hud['chase-card'].hidden = !this.trump.isChasing;
         if (this.trump.isChasing) {
             this.hud['chase-meter'].style.transform = 'scaleX(' + this.trump.chaseTimer / 5 + ')';
@@ -260,7 +308,10 @@ export class Run {
         const power = powers.checkCollisions(player);
         if (power) {
             player.activatePowerup(power);
-            this.notify(effectNames[power]);
+            this.pickupOrder = this.pickupOrder.filter(type => type !== power);
+            this.pickupOrder.push(power);
+            this.pickupDuration[power] = player[power + 'Timer'];
+            this.updateHud();
             this.sound.play('power');
             impact();
             particles.spawnParticles(player.mesh.position, 14, 0xf0d997, 1.2);
@@ -294,7 +345,7 @@ export class Run {
             if (player.rainbowTimer <= 0) {
                 player.activateConfusion();
                 this.notify('Haram!', 'warning');
-                this.bulletin('Both swipe axes reversed for five seconds.');
+                this.bulletin('Both swipe axes reversed for five seconds.', 'City wire', true);
                 this.sound.play('haram');
                 particles.spawnParticles(player.mesh.position, 12, 0xa95fbc, 1.2);
             }
@@ -312,7 +363,7 @@ export class Run {
             player.flashRed();
             this.shake = 0.38;
             this.notify('Stumble!', 'warning');
-            this.bulletin('Trump would like a word about those receipts.');
+            this.bulletin('Trump would like a word about those receipts.', 'City wire', true);
             this.sound.play('chase');
             impact(true);
             particles.spawnParticles(player.mesh.position, 16, 0xe5ad69, 1.45);
@@ -348,6 +399,7 @@ export class Run {
         }
         this.hudTimer -= dt;
         if (this.hudTimer <= 0) {
+            this.readStreet();
             this.updateHud();
             this.hudTimer = 0.08;
         }

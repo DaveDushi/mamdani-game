@@ -33,29 +33,9 @@ export class Player {
         this.mesh.scale.setScalar(1.1);
         scene.add(this.mesh);
         this.shadow = groundShadow(scene, 1.36, 2.0);
-        const scarf = new Batch();
-        for (let i = 0; i < 7; i++)
-            scarf.oval(
-                i % 2 ? 0x403d3c : 0xded7c3,
-                0,
-                0.007 - i * 0.009,
-                0.009,
-                0.095 + i * 0.003,
-                0.019,
-                0.086 + i * 0.003
-            );
-        this.scarf = scarf.mesh();
-        this.rig.sockets.Neck.add(this.scarf);
-        const sash = new Batch();
-        [0xb95a54, 0xdb9854, 0xe7c574, 0x548b76, 0x5e85ae, 0x97799b].forEach((color, i) =>
-            sash.box(color, (i - 2.5) * 0.01, -0.06, -0.117, 0.011, 0.39, 0.013, 0, 0, -0.51)
-        );
-        this.sash = sash.mesh();
-        this.rig.sockets.Spine2.add(this.sash);
-        const mask = new Batch();
-        mask.oval(0xa4d1ce, 0, 0.062, 0.094, 0.084, 0.048, 0.035);
-        this.mask = mask.mesh();
-        this.rig.sockets.Head.add(this.mask);
+        this.scarf = this.rig.scarf;
+        this.sash = this.rig.flag;
+        this.mask = this.rig.mask;
         const aura = new Batch();
         const arc = new THREE.TorusGeometry(0.54, 0.027, 4, 12, Math.PI / 3 - 0.035);
         [0xf36264, 0xf39443, 0xf3dd5c, 0x66b37b, 0x5899d7, 0xa57dce].forEach((color, i) => {
@@ -114,8 +94,7 @@ export class Player {
         this.confusionTimer = 0;
         this.hitTime = 0;
         this.kafiyehTimer = this.rainbowTimer = this.covidMaskTimer = 0;
-        this.hasKafiyeh = this.hasRainbow = this.hasCovidMask = false;
-        this.scarf.visible = this.sash.visible = this.mask.visible = false;
+        this.updateWearables();
         this.flagAura.visible = this.bottleStars.visible = false;
         this.rig.material.emissive.setHex(0);
         this.rig.pose(0, 0, 0, 0, true);
@@ -126,7 +105,7 @@ export class Player {
     }
 
     setSkin(data) {
-        this.rig.setColors(data.suitColor, data.color);
+        this.rig.setOutfit(data.id);
     }
 
     activatePowerup(type) {
@@ -136,6 +115,15 @@ export class Player {
             this.confusionTimer = 0;
         }
         if (type === 'covidMask') this.covidMaskTimer = 3;
+        this.updateWearables();
+    }
+
+    updateWearables() {
+        this.hasKafiyeh = this.kafiyehTimer > 0;
+        this.hasRainbow = this.rainbowTimer > 0;
+        this.hasCovidMask = this.covidMaskTimer > 0;
+        this.rig.wear(this.hasKafiyeh, this.hasRainbow, this.hasCovidMask);
+        this.flagAura.visible = this.hasRainbow;
     }
 
     get invincible() {
@@ -154,11 +142,8 @@ export class Player {
         this.kafiyehTimer = Math.max(0, this.kafiyehTimer - dt);
         this.rainbowTimer = Math.max(0, this.rainbowTimer - dt);
         this.covidMaskTimer = Math.max(0, this.covidMaskTimer - dt);
-        this.hasKafiyeh = this.scarf.visible = this.kafiyehTimer > 0;
-        this.hasRainbow = this.sash.visible = this.rainbowTimer > 0;
-        this.hasCovidMask = this.mask.visible = this.covidMaskTimer > 0;
+        this.updateWearables();
         this.confusionTimer = Math.max(0, this.confusionTimer - dt);
-        this.flagAura.visible = this.hasRainbow;
         this.bottleStars.visible = this.confusionTimer > 0;
         if (this.flagAura.visible) this.flagAura.rotation.z += dt * 2;
         if (this.bottleStars.visible) {

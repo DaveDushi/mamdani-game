@@ -1,4 +1,9 @@
-const captions = [
+export const placards = [
+    ['FREE PALESTINE', 'FREE MICS'],
+    ['PROTEST', 'THIS PROTEST'],
+    ['NATIONALIZE', 'BRUNCH']
+];
+export const captions = [
     'Our Fair Share. One for you. Nine for the committee.',
     'Public Parking. Cars abolished. Meters retained.',
     'Seize the Suite. Reserved for senior Party officials.',
@@ -16,6 +21,7 @@ export function setupPosters(open) {
         index = (index + step + captions.length) % captions.length;
         print.style.backgroundPosition = (index % 3) * 50 + '% ' + Math.floor(index / 3) * 50 + '%';
         print.setAttribute('aria-label', captions[index]);
+        document.getElementById('poster-caption').textContent = captions[index];
         document.getElementById('poster-count').textContent = index + 1 + ' / ' + captions.length;
     }
     document.getElementById('posters-btn').onclick = () => {

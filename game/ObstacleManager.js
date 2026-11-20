@@ -1,4 +1,7 @@
 import { streetProps } from './StreetProps.js';
+import { streetCourse } from './Course.js';
+
+const LOOKAHEAD = 83;
 
 const bounds = {
     taxi: [0.83, 1.28, 1.66],
@@ -41,59 +44,44 @@ export class ObstacleManager {
         this.scene.remove(obj.mesh);
         this.pool[obj.key].push(obj);
     }
-    reset() {
+    reset(random = Math.random) {
         for (let i = this.obstacles.length - 1; i >= 0; i--) this.remove(i);
-        for (let i = 0; i < 4; i++) this.add('coin', 0, -9 - i * 2.7);
-        this.add('taxi', -3, -24);
-        this.add('protest0', 0, -42);
-        this.add('scaffold', 3, -57);
-        this.spawnIn = 0;
-        this.pattern = 0;
-        this.powerIndex = 0;
+        this.course = streetCourse(random);
+        this.nextRow = this.course.next().value;
+        this.add('coin', 0, -5);
+        this.add('coin', 0, -8.5);
+        this.fillCourse(0);
         this.lastStunt = null;
+    }
+    fillCourse(distance) {
+        while (this.nextRow.distance <= distance + LOOKAHEAD) {
+            const row = this.nextRow;
+            const z = distance - row.distance;
+            if (row.lanes) {
+                row.lanes.forEach((key, lane) => {
+                    if (key && lane !== row.exitLane) this.add(key, (lane - 1) * 3, z);
+                });
+                const x = (row.exitLane - 1) * 3;
+                for (const lead of [12, 8, 4]) this.add('coin', x, z + lead);
+            } else {
+                const x = (row.pickupLane - 1) * 3;
+                this.add('coin', x, z + 5);
+                this.powerups.spawnPowerup(x, z, row.pickup);
+                this.add('coin', x, z - 5);
+            }
+            this.nextRow = this.course.next().value;
+        }
     }
     clear() {
         for (let i = this.obstacles.length - 1; i >= 0; i--)
             if (this.obstacles[i].type !== 'coin') this.remove(i);
     }
     update(dt, speed, distance) {
-        this.spawnIn -= speed * dt;
-        if (this.spawnIn <= 0) {
-            const lane = (Math.floor(Math.random() * 3) - 1) * 3;
-            const roll = Math.random(),
-                z = -83;
-            if (this.pattern % 6 === 0) {
-                const type = ['rainbow', 'kafiyeh', 'covidMask'][this.powerIndex++ % 3];
-                this.powerups.spawnPowerup(this.pattern === 0 ? 3 : lane, z, type);
-            } else if (roll < 0.31) {
-                for (let j = 0; j < 4; j++) this.add('coin', lane, z - j * 2.6);
-            } else {
-                const kind =
-                    roll < 0.54
-                        ? 'taxi'
-                        : roll < 0.67
-                          ? 'halal'
-                          : roll < 0.8
-                            ? 'scaffold'
-                            : roll < 0.86
-                              ? 'alcohol'
-                              : 'protest' +
-                                ((Math.floor(distance / 1000) + Math.floor(Math.random() * 3)) % 3);
-                this.add(kind, lane, z);
-                if (distance > 95 && this.pattern % 3 === 1) {
-                    const nextLane = lane === 3 ? 0 : lane + 3;
-                    this.add(kind === 'taxi' ? 'scaffold' : 'taxi', nextLane, z);
-                    // A stamp trail leads into the open lane before a two-obstacle gate.
-                    const openLane = -lane - nextLane;
-                    for (let j = 0; j < 3; j++) this.add('coin', openLane, z + 7 - j * 2.6);
-                }
-            }
-            this.pattern++;
-            this.spawnIn = Math.max(17, speed * 0.82) + Math.random() * 4;
-        }
+        const step = speed * dt;
+        this.fillCourse(distance - step);
         for (let i = this.obstacles.length - 1; i >= 0; i--) {
             const obj = this.obstacles[i];
-            obj.mesh.position.z += speed * dt;
+            obj.mesh.position.z += step;
             if (obj.type === 'coin') {
                 obj.mesh.rotation.y = 0.5 * Math.sin(distance * 0.085 + obj.mesh.position.z * 0.2);
                 obj.mesh.rotation.z = 0.13;

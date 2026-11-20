@@ -18,8 +18,8 @@ export class Wardrobe {
         this.scene.background = new THREE.CanvasTexture(c);
         this.scene.background.colorSpace = THREE.SRGBColorSpace;
         this.camera = new THREE.PerspectiveCamera(33, 1, 0.1, 30);
-        this.scene.add(new THREE.HemisphereLight(0xffefda, 0x8c9cac, 1.6));
-        const key = new THREE.DirectionalLight(0xffe8cc, 2.5);
+        this.scene.add(new THREE.HemisphereLight(0xfff7ea, 0x96a3ad, 1.6));
+        const key = new THREE.DirectionalLight(0xffefdc, 2.5);
         key.position.set(-2, 4, 3.3);
         key.castShadow = true;
         Object.assign(key.shadow.camera, { left: -2, right: 2, top: 2, bottom: -2 });
@@ -47,7 +47,7 @@ export class Wardrobe {
     open() {
         this.active = true;
         this.time = 1.7;
-        this.turn = Math.PI - 0.23;
+        this.turn = Math.PI + 0.21;
         this.scene.add(this.player.mesh, this.player.shadow);
         this.resize();
         this.last = performance.now();

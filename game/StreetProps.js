@@ -1,12 +1,14 @@
 import * as THREE from 'three';
 import { Batch, labelMaterial, profile } from './Geometry.js';
 
+import { placards } from './Posters.js';
+
 const tire = new THREE.CylinderGeometry(1, 1, 1, 16);
 const gold = 0xe1a237,
     rubber = 0x30343b,
     glass = 0x445d65;
 function plate(group, lines, paper, ink, x, y, z, w, h) {
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), labelMaterial(lines, paper, ink));
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), labelMaterial(lines, paper, ink, 512, Math.round(512 * h / w)));
     mesh.position.set(x, y, z);
     group.add(mesh);
     return mesh;
@@ -146,16 +148,13 @@ export function pedestrian(cast, index) {
 
 function protestor(cast, index) {
     const b = new Batch();
-    b.box(0x8a6849, 0.28, 1.49, 0.3, 0.052, 1.68, 0.048);
-    b.box(0xb4a388, 0.28, 2.27, 0.29, 1.22, 0.82, 0.055);
+    b.box(0x8a6849, 0.24, 1.66, 0.3, 0.06, 1.92, 0.048);
+    b.box(0x583f2c, 0.24, 2.52, 0.29, 1.94, 1.12, 0.055);
     const group = new THREE.Group();
     group.add(pedestrian(cast, index), b.mesh());
-    const lines = [
-        ['FREE PALESTINE', 'FREE MEGAPHONES'],
-        ['PROTEST THE', 'LAST PROTEST'],
-        ['NATIONALIZE', 'BRUNCH']
-    ][index];
-    plate(group, lines, '#e5d6b7', '#783c32', 0.28, 2.27, 0.325, 1.18, 0.79);
+    const paper = ['#fff2cf', '#ffdf76', '#ffefe5'][index];
+    plate(group, placards[index], paper, '#352521', 0.24, 2.52, 0.325, 1.89, 1.07);
+    group.userData.placard = placards[index].join(' / ');
     return group;
 }
 

@@ -14,102 +14,12 @@ const streetNames = ['CANAL ST', 'BROADWAY', 'BOWERY', 'SPRING ST', 'CENTRE ST']
 const cream = 0xe5d3ac,
     iron = 0x475655;
 
-function asphalt() {
-    const c = document.createElement('canvas');
-    c.width = 512;
-    c.height = 2048;
-    const ctx = c.getContext('2d');
-    ctx.fillStyle = '#696663';
-    ctx.fillRect(0, 0, 512, 2048);
-    let seed = 74914;
-    const rand = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
-    for (let i = 0; i < 57000; i++) {
-        ctx.fillStyle = rand() > 0.52 ? 'rgba(238,218,192,.09)' : 'rgba(29,37,45,.12)';
-        ctx.fillRect(rand() * 512, rand() * 2048, 1 + rand() * 2, 1 + rand() * 2);
-    }
-    for (const x of [46, 116, 223, 285, 397, 457]) {
-        const lane = ctx.createLinearGradient(x - 22, 0, x + 22, 0);
-        lane.addColorStop(0, 'rgba(40,38,39,0)');
-        lane.addColorStop(0.5, 'rgba(40,38,39,.12)');
-        lane.addColorStop(1, 'rgba(40,38,39,0)');
-        ctx.fillStyle = lane;
-        ctx.fillRect(x - 22, 0, 44, 2048);
-    }
-    ctx.fillStyle = '#cdbb97';
-    for (const x of [161, 351]) for (let y = 350; y < 1940; y += 230) ctx.fillRect(x, y, 5, 110);
-    ctx.fillStyle = '#dbd2ba';
-    for (let x = 13; x < 512; x += 54) ctx.fillRect(x, 225, 28, 93);
-    ctx.fillRect(4, 345, 504, 5);
-    ctx.fillStyle = '#b49451';
-    ctx.fillRect(2, 320, 4, 1690);
-    ctx.fillRect(506, 320, 4, 1690);
-    ctx.save();
-    ctx.translate(425, 1160);
-    ctx.scale(0.62, 1.5);
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 55px Arial';
-    ctx.fillStyle = '#c1bba9';
-    ctx.fillText('BUS', 0, 0);
-    ctx.fillText('ONLY', 0, 62);
-    ctx.restore();
-    for (let i = 0; i < 9; i++) {
-        let x = rand() * 512,
-            y = rand() * 2048;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        for (let j = 0; j < 7; j++) {
-            x += rand() * 14 - 6;
-            y += rand() * 20;
-            ctx.lineTo(x, y);
-        }
-        ctx.strokeStyle = 'rgba(52,48,47,.36)';
-        ctx.lineWidth = 1.4;
-        ctx.stroke();
-    }
-    for (let i = 0; i < 2; i++) {
-        const x = i ? 83 : 308,
-            y = i ? 1538 : 851;
-        ctx.fillStyle = '#4f504e';
-        ctx.strokeStyle = '#797873';
-        ctx.beginPath();
-        ctx.arc(x, y, 15, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        for (let k = -8; k <= 8; k += 4) {
-            ctx.fillRect(x - 8, y + k, 16, 1);
-            ctx.beginPath();
-            ctx.moveTo(x - 8, y + k);
-            ctx.lineTo(x + 8, y + k);
-            ctx.stroke();
-        }
-    }
-    // The near building faces shade the curb and part of the travel lane.
-    ctx.fillStyle = 'rgba(24,34,49,.16)';
-    ctx.beginPath();
-    ctx.moveTo(0, 360);
-    ctx.lineTo(99, 405);
-    ctx.lineTo(99, 669);
-    ctx.lineTo(63, 696);
-    ctx.lineTo(63, 865);
-    ctx.lineTo(128, 907);
-    ctx.lineTo(128, 1410);
-    ctx.lineTo(80, 1383);
-    ctx.lineTo(80, 1920);
-    ctx.lineTo(0, 1855);
-    ctx.closePath();
-    ctx.fill();
-    const texture = new THREE.CanvasTexture(c);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = 8;
-    return texture;
-}
-
 function signAtlas() {
     const signs = [
         ...streetNames,
-        'FLATBUSH BUS LANE',
-        'RENT FREEZE HEARING',
-        'DEPT. OF DETOURS',
+        'BUS LANE',
+        'RENT FREEZE',
+        'DETOUR DEPT.',
         'THE CITY WIRE',
         'SUBWAY   N  Q  R'
     ];
@@ -126,13 +36,14 @@ function signAtlas() {
         ctx.strokeStyle = '#e4dbbd';
         ctx.lineWidth = 3;
         ctx.strokeRect(6, y + 5, 500, 70);
-        ctx.font = 'bold 49px Arial';
-        ctx.fillStyle = '#fbefcf';
+        ctx.font = '700 61px Condensed, Arial';
+        ctx.fillStyle = '#fff9e9';
         ctx.fillText(name, 256, y + 43, 470);
     });
     const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
-    return new THREE.MeshLambertMaterial({ map: t, vertexColors: true });
+    t.anisotropy = 4;
+    return new THREE.MeshBasicMaterial({ map: t, toneMapped: false });
 }
 
 function streetLamp(batch, side, z, withSignal) {
@@ -191,34 +102,9 @@ function subwayTrain(material) {
     return cars.mesh(material);
 }
 
-function pavement() {
-    const c = document.createElement('canvas');
-    c.width = c.height = 256;
-    const ctx = c.getContext('2d');
-    ctx.fillStyle = '#aaa294';
-    ctx.fillRect(0, 0, 256, 256);
-    let state = 161;
-    for (let i = 0; i < 7500; i++) {
-        state = (Math.imul(1664525, state) + 1013904223) >>> 0;
-        ctx.fillStyle = i % 2 ? 'rgba(36,40,43,.09)' : 'rgba(244,232,206,.16)';
-        ctx.fillRect(state & 255, (state >>> 16) & 255, (i % 3) + 1, 1);
-    }
-    ctx.fillStyle = '#858279';
-    ctx.fillRect(0, 0, 2, 256);
-    ctx.fillRect(0, 0, 256, 2);
-    ctx.fillStyle = '#c5bdae';
-    ctx.fillRect(2, 1, 1, 255);
-    ctx.fillRect(1, 2, 255, 1);
-    const texture = new THREE.CanvasTexture(c);
-    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.repeat.set(4, 20);
-    texture.anisotropy = 4;
-    return texture;
-}
-
 function block(index, mats, cast) {
     let train = null;
+    const newsstands = [];
     const paving = new Batch();
     const group = new THREE.Group(),
         details = new Batch(),
@@ -309,13 +195,14 @@ function block(index, mats, cast) {
             details.box(awning, side * (wallX - 0.93), height * 0.22 - 0.15, z, 0.08, 0.22, depth * 0.74);
             if (j === (sideIndex ? 0 : 1)) {
                 const az = z + 3.4,
-                    ax = side * 6.35,
-                    angle = -side * 0.16;
+                    ax = side * 6.65,
+                    angle = -side * 0.27;
                 const col = (index + sideIndex) % 3;
-                details.box(0x354441, ax, 2.3, az, 2.1, 3.04, 0.13, 0, angle);
+                newsstands.push({ z: az, col });
+                details.box(0x354441, ax, 2.68, az, 2.78, 3.95, 0.13, 0, angle);
                 for (const foot of [-0.64, 0.64]) details.box(iron, ax + foot, 0.48, az, 0.09, 0.9, 0.1);
-                details.box(0xb4ac90, ax, 3.86, az + 0.09, 2.19, 0.1, 0.36, 0, angle);
-                ads.shape(face, 0xffffff, ax, 2.3, az + 0.09, 2.0, 2.9, 1, 0, angle, 0, [
+                details.box(0xb4ac90, ax, 4.69, az + 0.09, 2.87, 0.1, 0.36, 0, angle);
+                ads.shape(face, 0xffffff, ax, 2.68, az + 0.09, 2.66, 3.84, 1, 0, angle, 0, [
                     col / 3 + 0.001,
                     0.668,
                     1 / 3 - 0.002,
@@ -325,14 +212,14 @@ function block(index, mats, cast) {
         }
         streetLamp(details, side, -5.3, index % 2 === sideIndex);
         streetLamp(details, side, -32, false);
-        signs.shape(face, 0xffffff, side * 5.43, 3.15, -5.18, 2.24, 0.38, 1, 0, -side * 0.24, 0, [
+        signs.shape(face, 0xffffff, side * 5.63, 4.13, -5.18, 2.86, 0.52, 1, 0, -side * 0.24, 0, [
             0,
             1 - (index + 1) / 10,
             1,
             1 / 10
         ]);
         if (index % 2 === sideIndex) {
-            signs.shape(face, 0xffffff, side * 6.24, 2.64, -28, 2.65, 0.57, 1, 0, -side * 0.18, 0, [
+            signs.shape(face, 0xffffff, side * 6.24, 2.79, -28, 2.95, 0.59, 1, 0, -side * 0.18, 0, [
                 0,
                 1 - (6 + (index % 3)) / 10,
                 1,
@@ -410,6 +297,7 @@ function block(index, mats, cast) {
         group,
         train,
         posters,
+        newsstands,
         fronts,
         posterEra: 0,
         residents: group.children.filter((c) => c.userData.streetResident)
@@ -419,11 +307,16 @@ function block(index, mats, cast) {
 export class World {
     constructor(scene, cast, light) {
         this.light = light;
+        const paving = artTexture('pavement');
+        paving.wrapS = paving.wrapT = THREE.RepeatWrapping;
+        paving.repeat.set(4, 20);
+        const road = artTexture('asphalt');
+        road.anisotropy = 8;
         const mats = {
             walls: new THREE.MeshLambertMaterial({ map: artTexture('facades'), vertexColors: true }),
             district: new THREE.MeshLambertMaterial({ map: artTexture('districts'), vertexColors: true }),
-            paving: new THREE.MeshLambertMaterial({ map: pavement() }),
-            road: light.roadMaterial(asphalt()),
+            paving: new THREE.MeshLambertMaterial({ map: paving }),
+            road: light.roadMaterial(road),
             ads: new THREE.MeshBasicMaterial({ map: artTexture('posters') }),
             trees: new THREE.MeshBasicMaterial({
                 map: artTexture('locust'),
@@ -454,7 +347,7 @@ export class World {
     }
 
     reset() {
-        this.speed = 13;
+        this.speed = 17.5;
         this.distance = 0;
         this.trainTime = 0;
         this.landmarks.update(0);
@@ -479,8 +372,23 @@ export class World {
         b.posterEra = era;
     }
 
+    approachingPoster() {
+        let nearest = -Infinity;
+        let index = -1;
+        for (const block of this.blocks) {
+            for (const stand of block.newsstands) {
+                const z = block.group.position.z + stand.z;
+                if (z > -38 && z < -9 && z > nearest) {
+                    nearest = z;
+                    index = block.posterEra * 3 + stand.col;
+                }
+            }
+        }
+        return index;
+    }
+
     update(dt) {
-        this.speed = Math.min(31, this.speed + 0.4 * dt);
+        this.speed = Math.min(37, this.speed + 0.72 * dt);
         const step = this.speed * dt;
         this.distance += step;
         this.landmarks.update(this.distance);

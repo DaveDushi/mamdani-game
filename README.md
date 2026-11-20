@@ -4,7 +4,7 @@ A portrait-first 3D endless runner by Dave Dushi. In this fictional New York, Ma
 
 ## Play
 
-Swipe left or right to change lanes, up to jump and down to slide. On a keyboard, use the arrow keys or WASD. Space also jumps. Tap the pause button or press P or Escape to pause. In Outfits, drag or use the turn buttons to inspect the four suits. The Posters gallery contains all nine City Hall prints.
+Swipe left or right to change lanes, up to jump and down to slide. On a keyboard, use the arrow keys or WASD. Space also jumps. Tap the pause button or press P or Escape to pause and reread the last street sign. In Outfits, drag or use the turn buttons to inspect each costume. The Posters gallery contains all nine City Hall prints with large-text captions.
 
 Run beneath the Canal Street lanterns, the Union Square marquee and the City Hall arch. The district changes every 240 metres. A jump over a cab, a slide under cover or a last-second sidestep earns a clean move. Three in a row earn a three-stamp bonus. The City Wire prints a front page about the obstacle that caught you.
 

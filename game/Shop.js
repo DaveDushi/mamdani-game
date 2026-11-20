@@ -1,8 +1,9 @@
 export const outfits = [
-    { id: 'default', name: 'Civilian', suitColor: 0x344b65, color: 0xb67852 },
-    { id: 'rebel', name: 'Rebel', suitColor: 0x656b46, color: 0x976444 },
-    { id: 'activist', name: 'Activist', suitColor: 0xa9546a, color: 0xc99060 },
-    { id: 'worker', name: 'Worker', suitColor: 0x4b7187, color: 0xbc835c }
+    { id: 'default', name: 'Civilian', swatch: '#344b65' },
+    { id: 'rebel', name: 'Hamas parody fatigues', swatch: 'linear-gradient(35deg, #43503a 34%, #a69e76 35% 54%, #738056 55%)' },
+    { id: 'worker', name: 'Antifa black bloc', swatch: 'linear-gradient(140deg, #4b5055 45%, #24272d 46%)' },
+    { id: 'activist', name: 'LGBTQ+ Pride', swatch: 'linear-gradient(#df4355 17%, #e99146 17% 33%, #e9c14d 33% 50%, #43a476 50% 67%, #4d85bd 67% 83%, #8c5ca7 83%)' },
+    { id: 'imam', name: 'Imam robes', swatch: 'linear-gradient(90deg, #2c534e 36%, #c1a46a 36% 48%, #e7dcc0 48%)' }
 ];
 
 export class Shop {
@@ -12,7 +13,8 @@ export class Shop {
             const button = document.createElement('button');
             button.className = 'outfit';
             const swatch = document.createElement('span');
-            swatch.style.background = '#' + skin.suitColor.toString(16);
+            swatch.style.background = skin.swatch;
+            swatch.style.flexShrink = '0';
             button.append(swatch, skin.name, document.createElement('b'));
             button.addEventListener('click', () => {
                 this.selected = skin;
