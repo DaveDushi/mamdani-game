@@ -1,0 +1,7 @@
+{
+  "appId": "cc.mamdanirun.game",
+  "appName": "Mamdani Run",
+  "webDir": "dist",
+  "backgroundColor": "#14212c",
+  "ios": { "contentInset": "never", "scrollEnabled": false, "backgroundColor": "#14212c" }
+}

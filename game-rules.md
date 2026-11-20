@@ -1,59 +1,20 @@
-# Mamdani Run: Escape Trump! - Game Rules & Overview
+# Mamdani Run game rules
 
-## Story
-The year is 2025. Trump has declared himself Emperor, and the world has descended into chaos. You play as **Mamdani**, the last intellectual. Your mission is to run for your life, survive the dystopian streets, and collect food stamps to pay your taxes while avoiding the temptations of alcohol and the wrath of the Emperor.
+Run through three lanes of New York traffic. Swipe left or right to change lanes, up to jump, or down to slide. The arrow keys and WASD also work. Space jumps. Tap pause, press P or press Escape to pause.
 
-## Objective
-- **Run** as far as possible to escape.
-- **Collect Food Stamps** (Coins) to increase your score and pay taxes.
-- **Avoid Obstacles** to maintain your health and speed.
-- **Survive** the chase if you get hit.
+| Encounter | How to play it |
+| --- | --- |
+| Yellow taxi | Jump or change lanes. |
+| Protester | Change lanes. |
+| Scaffold or halal cart | Slide underneath or change lanes. |
+| Bottle | Avoid it. “Haram!” reverses left/right and jump/slide for five seconds. |
+| Food stamp | Collect it to add one stamp to your wallet. |
+| Mask | Clears traffic for three seconds. |
+| Keffiyeh | Protects you from traffic collisions for five seconds. |
+| Rainbow | Grants seven seconds of invincibility, blocks bottle confusion, and attracts nearby stamps. |
 
-## Controls
+Jump over a cab, slide under a cart or scaffold, or narrowly dodge traffic to earn a clean move. Chain three with less than five seconds between moves for three extra stamps.
 
-### Keyboard
-- **Move Left**: `Arrow Left` or `A`
-- **Move Right**: `Arrow Right` or `D`
-- **Jump**: `Arrow Up`, `W`, or `Space`
-- **Slide**: `Arrow Down` or `S`
+A first unprotected collision brings Trump into pursuit. Stay clear for five seconds to shake him. A second hit during the chase ends the run. Distance in metres determines your leaderboard score. At the finish, City Hall taxes half your stamps, rounded down.
 
-### Touch (Mobile)
-- **Move Left**: Swipe Left
-- **Move Right**: Swipe Right
-- **Jump**: Swipe Up
-- **Slide**: Swipe Down
-
-## Game Objects
-
-### Characters
-- **Mamdani (Player)**: The protagonist.
-- **Trump**: The antagonist who chases you. He appears if you stumble (hit an obstacle).
-
-### Collectibles
-- **Food Stamps (Coins)**: The main currency. Collecting them increases your score. Be warned: 50% of your food stamps are taken as taxes!
-
-### Power-ups
-- **Covid Mask** 😷: Clears the obstacles 6ft away.
-- **Kafiyeh** 🍉: Grants temporary invincibility. (Visual: Sparkles).
-- **Rainbow** 🌈: Acts as a magnet, attracting nearby stamps to you.
-
-### Obstacles
-- **Taxi**: Short obstacle. You can **jump** over it.
-- **Protestor**: Tall obstacle. You must **dodge** (move left/right).
-- **Scaffold**: High obstacle. You must **slide** under.
-- **Halal Cart**: High obstacle. You must **slide** under.
-- **Alcohol**: A trap! Hitting it causes **Haram** (controls get switched up).
-
-## Mechanics
-
-### Health & Damage
-1.  **First Hit**: If you hit an obstacle without protection, you will flash red, and **Trump will start chasing you**.
-2.  **Second Hit**: If you hit another obstacle while Trump is chasing you, it is **Game Over**.
-3.  **Recovery**: If you survive for a while without hitting another obstacle, Trump will fall back, and you will recover.
-
-### Taxes
-- A "Tax Notification" will appear, reminding you that **50% of your collected food stamps** are deducted as taxes. This is applied to your final score.
-
-### Shop
-- You can access the **Shop** from the main menu.
-- **Skins**: Civilian, Rebel, Activist, Worker. All skins are currently **Paid for by Soros**!
+Your best distance and selected suit stay on the device. All four suits are available from the Outfits screen and have the same gameplay abilities.

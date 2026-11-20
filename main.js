@@ -1,591 +1,308 @@
-import * as THREE from 'three';
-import { GameState } from './game/GameState.js';
-import { World } from './game/World.js';
-import { Player } from './game/Player.js';
-import { ObstacleManager } from './game/ObstacleManager.js';
-import { Input } from './game/Input.js';
-import { ScoreManager } from './game/ScoreManager.js';
-import { Trump } from './game/Trump.js';
-import { PowerupManager } from './game/PowerupManager.js';
-import { ParticleSystem } from './game/ParticleSystem.js';
+import { Capacitor } from '@capacitor/core';
+import { setupPosters } from './game/Posters.js';
+import { frontPage } from './game/CityWire.js';
 import { Shop } from './game/Shop.js';
+import { Sound } from './game/Sound.js';
 import { ApiClient } from './game/ApiClient.js';
 
-// Scene Setup
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87CEEB); // Sky blue
-scene.fog = new THREE.Fog(0x87CEEB, 7, 100);
-
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const isMobile = window.innerWidth < 768;
-// Zoom out slightly on mobile to see side lanes better
-camera.position.set(0, 5, isMobile ? 10 : 6);
-camera.lookAt(0, 0, -5);
-
-const renderer = new THREE.WebGLRenderer({ canvas: document.querySelector('#game-canvas'), antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-
-// Lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-scene.add(ambientLight);
-
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-dirLight.position.set(5, 10, 5);
-dirLight.castShadow = true;
-scene.add(dirLight);
-
-// Game Components
-const gameState = new GameState();
-const world = new World(scene);
-const player = new Player(scene);
-const powerupManager = new PowerupManager(scene);
-const obstacleManager = new ObstacleManager(scene, player, powerupManager);
-const scoreManager = new ScoreManager();
-const trump = new Trump(scene);
-const input = new Input();
-const particles = new ParticleSystem(scene);
-const shop = new Shop(player, scoreManager);
-const apiClient = new ApiClient();
-
-// UI Elements
-const startScreen = document.getElementById('start-screen');
-const hud = document.getElementById('hud');
-const gameOverScreen = document.getElementById('game-over-screen');
-const scoreEl = document.getElementById('score');
-const foodStampsEl = document.getElementById('food-stamps');
-const bestScoreEl = document.getElementById('best-score');
-
-
-const startBtn = document.getElementById('start-btn');
-const restartBtn = document.getElementById('restart-btn');
-const shopBtn = document.getElementById('shop-btn');
-const goHomeBtn = document.getElementById('go-home-btn');
-const instructionsBtn = document.getElementById('instructions-btn');
-const storyModal = document.getElementById('story-modal');
-const instructionsModal = document.getElementById('instructions-modal');
-const closeStoryBtn = document.getElementById('close-story-btn');
-const closeInstructionsBtn = document.getElementById('close-instructions-btn');
-
-// Leaderboard UI
-const registrationModal = document.getElementById('registration-modal');
-// const leaderboardModal = document.getElementById('leaderboard-modal'); // Removed
-const submitScoreBtn = document.getElementById('submit-score-btn');
-const joinLbBtn = document.getElementById('join-lb-btn'); // New button
-const regNameInput = document.getElementById('reg-name');
-const regSocialInput = document.getElementById('reg-social');
-const regErrorMsg = document.getElementById('reg-error');
-const leaderboardList = document.getElementById('leaderboard-list');
-const pbScoreEl = document.getElementById('pb-score');
-const pbRankDisplay = document.getElementById('pb-rank-display');
-
-// Player Identity
-let playerId = localStorage.getItem('mamdani_player_id');
-if (!playerId) {
-    playerId = crypto.randomUUID();
-    localStorage.setItem('mamdani_player_id', playerId);
+const $ = (id) => document.getElementById(id);
+const screenIds = [
+    'start-screen',
+    'hud',
+    'pause-screen',
+    'game-over-screen',
+    'story-modal',
+    'instructions-modal',
+    'shop-screen',
+    'poster-room',
+    'registration-modal',
+    'feedback-modal'
+];
+const sound = new Sound(),
+    api = new ApiClient();
+let run,
+    loading,
+    view,
+    resultVersion = 0,
+    finalScore = 0;
+const shop = new Shop((skin) => {
+    if (run) {
+        run.player.setSkin(skin);
+        run.wardrobe.render();
+    }
+});
+const best = () => Number(localStorage.getItem('mamdani_best_score')) || 0;
+const metres = (n) => Number(n).toLocaleString() + ' m';
+const homeOverlay = new Set(['story-modal', 'instructions-modal', 'feedback-modal']);
+function show(id, focus) {
+    view = id;
+    for (const key of screenIds) {
+        const visible = key === id || (key === 'start-screen' && homeOverlay.has(id));
+        $(key).classList.toggle('hidden', !visible);
+        $(key).inert = key !== id;
+    }
+    if (focus) $(focus)?.focus({ preventScroll: true });
 }
-
-// Event Listeners
-startBtn.addEventListener('click', startGame);
-restartBtn.addEventListener('click', startGame);
-shopBtn.addEventListener('click', () => shop.show());
-goHomeBtn.addEventListener('click', () => {
-    gameOverScreen.classList.add('hidden');
-    startScreen.classList.remove('hidden');
-    gameState.setState('START');
+const dispatches = [
+    'Mayor endorses today’s march. Aide sent ahead to find out what it’s for.',
+    'Committee for Faster Buses votes to meet again on foot.',
+    'Pride planning caucus schedules march against its own sponsor.',
+    'Free Palestine rally petitions City Hall for a free megaphone.',
+    'Party caucus sends question about condemning Hamas back to committee.',
+    'City Hall unveils free everything. Budget office requests a transfer.'
+];
+let dispatchIndex = 0;
+function home() {
+    document.querySelector('.wire p').textContent = dispatches[dispatchIndex++ % dispatches.length];
+    run?.stop();
+    resultVersion++;
+    $('load-status').hidden = true;
+    $('menu-best').textContent = metres(best());
+    show('start-screen');
+}
+function updateSound() {
+    const button = document.querySelector('.sound-toggle');
+    button.setAttribute('aria-label', 'Game sound');
+    button.setAttribute('aria-pressed', String(sound.enabled));
+    button.querySelector('span').textContent = sound.enabled ? 'Sound on' : 'Sound off';
+    button.querySelector('use').setAttribute('href', sound.enabled ? '#i-sound' : '#i-mute');
+}
+document.querySelector('.sound-toggle').addEventListener('click', () => {
+    sound.toggle();
+    updateSound();
 });
-instructionsBtn.addEventListener('click', () => {
-    startScreen.classList.add('hidden');
-    instructionsModal.classList.remove('hidden');
+updateSound();
+home();
+$('turn-left').onclick = () => run?.wardrobe.rotate(-Math.PI / 4);
+$('turn-right').onclick = () => run?.wardrobe.rotate(Math.PI / 4);
+let lastDrag = null;
+$('shop-screen').addEventListener('pointerdown', (e) => {
+    if (e.target !== $('shop-screen')) return;
+    lastDrag = e.clientX;
+    e.currentTarget.setPointerCapture(e.pointerId);
 });
-closeInstructionsBtn.addEventListener('click', () => {
-    instructionsModal.classList.add('hidden');
-    startScreen.classList.remove('hidden');
+$('shop-screen').addEventListener('pointermove', (e) => {
+    if (lastDrag !== null) {
+        run?.wardrobe.rotate((e.clientX - lastDrag) * 0.014);
+        lastDrag = e.clientX;
+    }
 });
-closeStoryBtn.addEventListener('click', () => {
-    storyModal.classList.add('hidden');
-    startScreen.classList.remove('hidden');
-    localStorage.setItem('mamdani_story_seen', 'true');
-});
-
-// BMC Tracking
-const bmcWrapper = document.getElementById('bmc-wrapper');
-if (bmcWrapper) {
-    bmcWrapper.addEventListener('click', () => {
-        if (typeof gtag === 'function') {
-            gtag('event', 'bmc_click', {
-                'event_category': 'Engagement',
-                'event_label': 'Buy Me Coffee'
-            });
-        }
+for (const type of ['pointerup', 'pointercancel'])
+    $('shop-screen').addEventListener(type, () => {
+        lastDrag = null;
     });
+setupPosters(() => show('poster-room', 'poster-next'));
+if (!Capacitor.isNativePlatform()) {
+    const analytics = document.createElement('script');
+    analytics.async = true;
+    analytics.src = 'https://www.googletagmanager.com/gtag/js?id=G-M4V8F77Y5F';
+    document.head.append(analytics);
 }
-
-// PWA check
-function isWebApp() {
-    return (
-        window.matchMedia('(display-mode: standalone)').matches ||
-        window.navigator.standalone === true
-    );
-}
-
-function isIos() {
-    return /iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
-
-function isAndroid() {
-    return /Android/i.test(navigator.userAgent);
-}
-
-if (!isWebApp()) {
-    const pwaPrompt = document.getElementById('pwa-prompt');
-    const feedback = document.getElementById('feedback-btn');
-
-    if (pwaPrompt) {
-        if (isIos()) {
-            pwaPrompt.innerHTML = `
-                <p>Add to Home Screen for better game play:</p>
-                <p>1. Tap <strong>Share</strong> <img src="/share-ios.png" class="icon-inline"> </p>
-                <p>2. Select <strong>"Add to Home Screen"</strong></p>
-            `;
-        } else if (isAndroid()) {
-            pwaPrompt.innerHTML = `
-                <p>Add to Home Screen for better game play:</p>
-                <p>Tap <strong>⋮ menu</strong> then <strong>"Add to Home screen"</strong></p>
-            `;
-        } else {
-            pwaPrompt.textContent = "Install this game from your browser menu.";
+const status = $('load-status');
+async function enter(mode) {
+    if (loading) return;
+    sound.unlock();
+    const btn = mode === 'run' ? $('start-btn') : $('shop-btn');
+    try {
+        if (!run) {
+            loading = true;
+            btn.disabled = true;
+            status.hidden = false;
+            status.textContent = 'Opening the street…';
+            const [{ Run }, { loadCast }] = await Promise.all([
+                import('./game/Run.js'),
+                import('./game/RunnerModel.js')
+            ]);
+            const cast = await loadCast();
+            run = new Run($('game-canvas'), sound, finish, cast);
+            await run.ready;
         }
-
-        pwaPrompt.classList.remove('hidden');
-        feedback.classList.add('hidden');
+        if (view !== 'start-screen' && !(view === 'game-over-screen' && mode === 'run')) return;
+        status.hidden = true;
+        run.player.setSkin(shop.selected);
+        if (mode === 'run') {
+            resultVersion++;
+            show('hud');
+            run.start();
+            sound.play('start');
+            window.gtag?.('event', 'game_start');
+        } else {
+            show('shop-screen', 'close-shop-btn');
+            run.showOutfit();
+        }
+    } catch (error) {
+        console.error(error);
+        run = null;
+        status.hidden = false;
+        status.textContent = 'The street could not load. Enable WebGL and try again.';
+    } finally {
+        btn.disabled = false;
+        loading = false;
     }
 }
-
-// Leaderboard Events
-submitScoreBtn.addEventListener('click', handleRegistration);
-if (joinLbBtn) {
-    joinLbBtn.addEventListener('click', () => {
-        registrationModal.classList.remove('hidden');
-    });
+$('start-btn').onclick = () => enter('run');
+$('restart-btn').onclick = () => enter('run');
+$('shop-btn').onclick = () => enter('outfits');
+$('story-btn').onclick = () => show('story-modal', 'close-story-btn');
+$('instructions-btn').onclick = () => show('instructions-modal', 'instructions-modal');
+$('feedback-btn').onclick = () => show('feedback-modal', 'feedback-msg');
+document.querySelectorAll('[data-home]').forEach((b) =>
+    b.addEventListener('click', () => {
+        home();
+        $('start-btn').focus({ preventScroll: true });
+    })
+);
+function pause() {
+    if (view !== 'hud') return;
+    run.pause();
+    show('pause-screen', 'resume-btn');
 }
-
-// Feedback Events
-const feedbackBtn = document.getElementById('feedback-btn');
-const feedbackModal = document.getElementById('feedback-modal');
-const closeFeedbackBtn = document.getElementById('close-feedback-btn');
-const sendFeedbackBtn = document.getElementById('send-feedback-btn');
-const feedbackMsg = document.getElementById('feedback-msg');
-const feedbackStatus = document.getElementById('feedback-status');
-
-if (feedbackBtn) {
-    feedbackBtn.addEventListener('click', () => {
-        if (typeof gtag === 'function') {
-            gtag('event', 'feedback_open', {
-                'event_category': 'Engagement',
-                'event_label': 'Feedback Button'
-            });
-        }
-        startScreen.classList.add('hidden');
-        feedbackModal.classList.remove('hidden');
-        feedbackMsg.value = '';
-        feedbackStatus.style.display = 'none';
-    });
+function resume() {
+    if (view === 'pause-screen') {
+        show('hud');
+        sound.unlock();
+        run.resume();
+    }
 }
-
-if (closeFeedbackBtn) {
-    closeFeedbackBtn.addEventListener('click', () => {
-        feedbackModal.classList.add('hidden');
-        startScreen.classList.remove('hidden');
-    });
-}
-
-if (sendFeedbackBtn) {
-    sendFeedbackBtn.addEventListener('click', async () => {
-        const message = feedbackMsg.value.trim();
-        if (!message) return;
-
-        sendFeedbackBtn.disabled = true;
-        sendFeedbackBtn.innerText = "SENDING...";
-
-        const result = await apiClient.sendFeedback(playerId, message);
-
-        if (result.ok) {
-            feedbackStatus.innerText = "THANKS FOR FEEDBACK!";
-            feedbackStatus.style.color = "#00ff00";
-            feedbackStatus.style.display = "block";
-            setTimeout(() => {
-                feedbackModal.classList.add('hidden');
-                startScreen.classList.remove('hidden');
-                sendFeedbackBtn.disabled = false;
-                sendFeedbackBtn.innerText = "SEND";
-            }, 1500);
-        } else {
-            feedbackStatus.innerText = result.error || "ERROR SENDING.";
-            feedbackStatus.style.color = "red";
-            feedbackStatus.style.display = "block";
-            sendFeedbackBtn.disabled = false;
-            sendFeedbackBtn.innerText = "SEND";
-        }
-    });
-}
-
-// Check Story
-if (!localStorage.getItem('mamdani_story_seen')) {
-    startScreen.classList.add('hidden');
-    storyModal.classList.remove('hidden');
-    storyModal.classList.add('flex');
-}
-
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
+$('pause-btn').onclick = pause;
+$('resume-btn').onclick = resume;
 document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-        gameState.setPaused(true);
-    } else {
-        gameState.setPaused(false);
-        clock.getDelta(); // Discard accumulated time
+    if (document.hidden) pause();
+});
+window.addEventListener('blur', pause);
+window.addEventListener('keydown', (e) => {
+    if (e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.code === 'Escape') {
+        if (view === 'hud') pause();
+        else if (view === 'pause-screen') resume();
+        else if (view === 'registration-modal') show('game-over-screen', 'join-lb-btn');
+        else if (view !== 'start-screen') home();
+    } else if (e.code === 'KeyP' && (view === 'hud' || view === 'pause-screen')) {
+        if (view === 'hud') pause();
+        else resume();
+    } else if (view === 'start-screen' && e.code === 'Enter' && document.activeElement === document.body) {
+        e.preventDefault();
+        enter('run');
     }
 });
 
-function startGame() {
-    if (typeof gtag === 'function') {
-        gtag('event', 'game_start', {
-            'event_category': 'Game',
-            'event_label': 'Start'
+function playerId() {
+    let id = localStorage.getItem('mamdani_player_id');
+    if (!id) {
+        id =
+            crypto.randomUUID?.() ??
+            'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) =>
+                ((c === 'x' ? Math.random() * 16 : 8 + Math.random() * 4) | 0).toString(16)
+            );
+        localStorage.setItem('mamdani_player_id', id);
+    }
+    return id;
+}
+const installed = () =>
+    Capacitor.isNativePlatform() ||
+    matchMedia('(display-mode: standalone)').matches ||
+    navigator.standalone === true;
+if (!installed()) {
+    if (/iPhone|iPad/i.test(navigator.userAgent))
+        $('pwa-prompt').textContent = 'Install on iOS with Share → Add to Home Screen.';
+    else if (/Android/i.test(navigator.userAgent))
+        $('pwa-prompt').textContent = 'Choose Install app in your browser menu to keep the game.';
+}
+function finish(distance, tax, cause) {
+    finalScore = distance;
+    const issue = (Number(localStorage.getItem('mamdani_edition')) || 0) + 1;
+    localStorage.setItem('mamdani_edition', String(issue));
+    const [headline, copy] = frontPage(cause, issue - 1);
+    $('result-edition').textContent = 'Final edition · No. ' + issue;
+    $('result-headline').textContent = headline;
+    $('result-copy').textContent = copy;
+    $('final-moves').textContent = run.cleanMoves;
+    const seconds = Math.floor(run.elapsed);
+    $('run-seconds').textContent = seconds + ' second' + (seconds === 1 ? '' : 's');
+    localStorage.setItem('mamdani_best_score', Math.max(best(), distance));
+    $('final-distance').textContent = metres(distance);
+    $('final-tax').textContent = tax;
+    $('pb-score').textContent = metres(best());
+    $('pb-rank-display').textContent = '';
+    $('join-lb-btn').hidden = !!localStorage.getItem('mamdani_name');
+    show('game-over-screen', 'restart-btn');
+    loadBoard(++resultVersion, distance);
+}
+async function loadBoard(version, score) {
+    const list = $('leaderboard-list');
+    list.textContent = 'Counting the votes…';
+    if (!localStorage.getItem('mamdani_name')) await api.register(playerId(), '', '', installed());
+    const rank = await api.submitScore(playerId(), score);
+    const board = await api.getLeaderboard(50);
+    if (version !== resultVersion) return;
+    const entries = Array.isArray(board) ? board : board?.entries || board?.scores;
+    list.replaceChildren();
+    if (!rank?.ok && !entries?.length)
+        list.textContent = 'Leaderboard offline. Your best is saved on this device.';
+    else if (!entries?.length) list.textContent = 'No scores yet.';
+    else
+        entries.forEach((entry, index) => {
+            const row = document.createElement('div');
+            row.className = 'leaderboard-item';
+            const place = document.createElement('b'),
+                name = document.createElement('span'),
+                value = document.createElement('b');
+            place.textContent = index + 1;
+            name.textContent = entry.name || 'Anonymous';
+            value.textContent = metres(entry.score);
+            if (entry.social) {
+                const link = document.createElement('a'),
+                    handle = String(entry.social).replace(/^@/, '');
+                link.textContent = '@' + handle;
+                link.href = 'https://truthsocial.com/@' + encodeURIComponent(handle);
+                link.target = '_blank';
+                link.rel = 'noopener';
+                name.append(link);
+            }
+            row.append(place, name, value);
+            list.append(row);
         });
-    }
-    gameState.setState('PLAYING');
-    startScreen.classList.add('hidden');
-    gameOverScreen.classList.add('hidden');
-    // leaderboardModal.classList.add('hidden');
-    registrationModal.classList.add('hidden');
-    hud.classList.remove('hidden');
-
-    world.reset();
-    player.reset();
-    obstacleManager.reset();
-    scoreManager.reset();
-    trump.reset();
-    powerupManager.reset();
-    particles.reset();
-    scoreEl.innerText = scoreManager.getDisplayScore();
-    foodStampsEl.innerText = scoreManager.foodStamps;
-
-    // Update Best Score Display
-    const savedBestScore = localStorage.getItem('mamdani_best_score') || 0;
-    if (bestScoreEl) bestScoreEl.innerText = savedBestScore;
-
-    // Process Player Events
-    while (player.events.length > 0) {
-        const event = player.events.shift();
-        if (event.type === 'debuffStart') {
-            showNotification('HARAM!', '#fd1010ff');
-        }
+    if (rank?.ok) {
+        localStorage.setItem('mamdani_best_score', Math.max(best(), Number(rank.bestScore) || 0));
+        $('pb-score').textContent = metres(best());
+        if (rank.rank > 0 && localStorage.getItem('mamdani_name'))
+            $('pb-rank-display').textContent = ' · Rank #' + rank.rank;
     }
 }
-
-async function gameOver() {
-    gameState.setState('GAME_OVER');
-    hud.classList.add('hidden');
-    gameOverScreen.classList.remove('hidden');
-
-    const taxPaid = scoreManager.applyFinalTax();
-    const finalScore = scoreManager.getDisplayScore();
-
-    const finalDistanceEl = document.getElementById('final-distance');
-    const finalTaxEl = document.getElementById('final-tax');
-
-    if (finalDistanceEl) finalDistanceEl.innerText = `${finalScore}m`;
-    if (finalTaxEl) finalTaxEl.innerText = `$${taxPaid}`;
-
-    // Always show leaderboard in the game over screen
-    // This will handle score submission for both registered and anonymous players
-    showLeaderboard(finalScore);
-
-    // Show/Hide Join Button
-    const savedName = localStorage.getItem('mamdani_name');
-    if (!savedName) {
-        if (joinLbBtn) joinLbBtn.style.display = 'block';
-    } else {
-        if (joinLbBtn) joinLbBtn.style.display = 'none';
-    }
-}
-
-async function handleRegistration() {
-    const name = regNameInput.value.trim();
-    const social = regSocialInput.value.trim();
-
+$('join-lb-btn').onclick = () => show('registration-modal', 'reg-name');
+$('cancel-reg').onclick = () => show('game-over-screen', 'join-lb-btn');
+$('register-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const name = $('reg-name').value.trim(),
+        social = $('reg-social').value.trim();
     if (!name) {
-        regErrorMsg.innerText = "NAME IS REQUIRED!";
-        regErrorMsg.style.display = 'block';
+        $('reg-error').textContent = 'Enter a name to join.';
         return;
     }
-
-    regErrorMsg.style.display = 'none';
-    submitScoreBtn.disabled = true;
-    submitScoreBtn.innerText = "SUBMITTING...";
-
-    // Register
-    console.log("registering...");
-    console.log("isWebApp():", isWebApp());
-    const regResult = await apiClient.register(playerId, name, social, isWebApp());
-
-    if (regResult.ok || regResult.updated) {
+    const version = resultVersion;
+    $('submit-score-btn').disabled = true;
+    const result = await api.register(playerId(), name, social, installed());
+    $('submit-score-btn').disabled = false;
+    if (result.ok || result.updated) {
         localStorage.setItem('mamdani_name', name);
         if (social) localStorage.setItem('mamdani_social', social);
-
-        // Submit current score
-        const score = scoreManager.getDisplayScore();
-        await apiClient.submitScore(playerId, score);
-
-        registrationModal.classList.add('hidden');
-
-        // Refresh leaderboard and hide join button
-        showLeaderboard(score);
-        if (joinLbBtn) joinLbBtn.style.display = 'none';
-
-    } else {
-        regErrorMsg.innerText = "ERROR REGISTERING. TRY AGAIN.";
-        regErrorMsg.style.display = 'block';
-    }
-
-    submitScoreBtn.disabled = false;
-    submitScoreBtn.innerText = "SUBMIT SCORE";
-}
-
-async function showLeaderboard(currentScore) {
-    // leaderboardModal.classList.remove('hidden'); // No longer using modal
-    leaderboardList.innerHTML = '<div style="text-align: center; color: #666;">LOADING...</div>';
-
-    // 0. Ensure Player is Registered (Anonymous or Named)
-    if (!localStorage.getItem('mamdani_name')) {
-        try {
-            console.log("Auto-registering...");
-            console.log("isWebApp():", isWebApp());
-            await apiClient.register(playerId, "", "", isWebApp());
-        } catch (e) {
-            console.error("Auto-registration failed:", e);
+        if (view === 'registration-modal' && version === resultVersion) {
+            show('game-over-screen', 'restart-btn');
+            $('join-lb-btn').hidden = true;
+            loadBoard(++resultVersion, finalScore);
         }
-    }
-
-    // 1. Submit Score FIRST to ensure it's recorded
-    const myRankData = await apiClient.submitScore(playerId, currentScore);
-
-    // 2. THEN Fetch Leaderboard Data
-    let data = await apiClient.getLeaderboard(50);
-
-    // Debugging: Handle if data is wrapped in an object (e.g. { scores: [...] } or { entries: [...] })
-    // Debugging: Handle if data is wrapped in an object (e.g. { scores: [...] } or { entries: [...] })
-    if (data && !Array.isArray(data)) {
-        if (data.scores) data = data.scores;
-        else if (data.entries) data = data.entries; // Fix for user issue
-    }
-
-    // Render List
-    leaderboardList.innerHTML = '';
-    if (Array.isArray(data) && data.length > 0) {
-        data.forEach((entry, index) => {
-            const item = document.createElement('div');
-            item.className = 'leaderboard-item';
-
-            let socialHtml = '';
-            if (entry.social) {
-                const handle = entry.social.replace('@', '');
-                socialHtml = `<a href="https://truthsocial.com/@${handle}" target="_blank" class="lb-social-link">@${handle}</a>`;
-            }
-
-            item.innerHTML = `
-                <div class="lb-rank">#${index + 1}</div>
-                <div class="lb-name">${entry.name}${socialHtml}</div>
-                <div class="lb-score">${entry.score}m</div>
-            `;
-            leaderboardList.appendChild(item);
-        });
-    } else {
-        console.log("Leaderboard Data:", data); // Log for debugging
-        leaderboardList.innerHTML = '<div style="text-align: center; color: #666;">NO SCORES YET</div>';
-    }
-
-    // Update Personal Best
-    if (myRankData && myRankData.ok) {
-        pbScoreEl.innerText = `${myRankData.bestScore}m`;
-
-        // Cache best score for HUD
-        localStorage.setItem('mamdani_best_score', myRankData.bestScore);
-        if (bestScoreEl) bestScoreEl.innerText = myRankData.bestScore;
-
-
-
-        const savedName = localStorage.getItem('mamdani_name');
-        if (!savedName) {
-            pbRankDisplay.innerText = "(join to see your rank)";
-        } else {
-            const rankText = myRankData.rank > 0 ? `#${myRankData.rank}` : '-';
-            pbRankDisplay.innerText = `Rank: ${rankText}`;
-        }
-    }
-}
-
-function updateUI() {
-    scoreEl.innerText = scoreManager.getDisplayScore();
-    foodStampsEl.innerText = scoreManager.foodStamps;
-
-    // Process Player Events
-    while (player.events.length > 0) {
-        const event = player.events.shift();
-        if (event.type === 'debuffStart') {
-            showNotification('HARAM!', '#f21111ff');
-        }
-    }
-}
-
-function showNotification(text, color) {
-    const container = document.getElementById('notification-area');
-    const notif = document.createElement('div');
-    notif.className = 'notification';
-    notif.innerText = text;
-    notif.style.color = color;
-
-    container.appendChild(notif);
-
-    // Remove after animation
-    setTimeout(() => {
-        if (container.contains(notif)) {
-            container.removeChild(notif);
-        }
-    }, 2000);
-}
-
-// Game Loop
-const clock = new THREE.Clock();
-
-function animate() {
-    requestAnimationFrame(animate);
-
-    const dt = clock.getDelta();
-
-    if (gameState.isPlaying() && !gameState.isPaused()) {
-        // Update Game Logic
-        world.update(dt);
-        player.update(dt, input);
-        obstacleManager.update(dt, world.speed, world.distance);
-        powerupManager.update(dt, world.speed, player);
-        particles.update(dt);
-
-        scoreManager.update(dt, world.speed);
-        trump.update(dt, player.mesh.position.x);
-
-        // Particle Effects for Player Actions
-        if (input.isJustPressed('up') && player.isGrounded) {
-            particles.spawnParticles(player.mesh.position, 5, 0xffffff, 0.5); // Jump dust
-        }
-        if (input.isJustPressed('down') && player.isGrounded) {
-            particles.spawnParticles(player.mesh.position, 5, 0xaaaaaa, 0.5); // Slide dust
-        }
-
-        // Update UI
-        updateUI();
-
-        // Check Powerup Collisions
-        const powerupType = powerupManager.checkCollisions(player);
-        if (powerupType) {
-            player.activatePowerup(powerupType);
-            particles.spawnParticles(player.mesh.position, 20, 0x00ffff, 2); // Powerup sparkles
-        }
-
-        // Magnet Effect (Rainbow)
-        if (player.hasRainbow) {
-            for (let i = obstacleManager.obstacles.length - 1; i >= 0; i--) {
-                const obj = obstacleManager.obstacles[i];
-                if (obj.type === 'coin') {
-                    const dist = player.mesh.position.distanceTo(obj.mesh.position);
-
-                    // Move towards player if in range
-                    if (dist < 15) {
-                        const direction = new THREE.Vector3().subVectors(player.mesh.position, obj.mesh.position).normalize();
-                        obj.mesh.position.add(direction.multiplyScalar(25 * dt)); // Increased speed slightly
-                    }
-
-                    // Auto-collect if very close (Fixes missing collisions)
-                    if (dist < 1.5) {
-                        scoreManager.addFoodStamps(1);
-                        particles.spawnParticles(player.mesh.position, 10, 0xffd700, 1); // Coin sparkles
-                        obstacleManager.scene.remove(obj.mesh);
-                        obstacleManager.obstacles.splice(i, 1);
-                    }
-                }
-            }
-        }
-
-        if (player.hasCovidMask) {
-            obstacleManager.clear();
-            powerupManager.reset();
-        }
-
-        // Check Obstacle Collisions
-        const collisionResult = obstacleManager.checkCollisions(player);
-        if (collisionResult) {
-            if (collisionResult.type === 'coin') {
-                scoreManager.addFoodStamps(1);
-                particles.spawnParticles(player.mesh.position, 10, 0xffd700, 1); // Coin sparkles
-            } else if (collisionResult.type === 'obstacle') {
-                const subtype = collisionResult.subtype;
-                const isSliding = player.slideTimer > 0;
-
-                if (subtype === 'scaffold' && isSliding) {
-                    // Slide under Scaffold -> Safe (No hit)
-                    // Do nothing, just pass through
-                } else if (subtype === 'halal' && isSliding) {
-                    // Slide under Halal Cart -> Safe
-                    // Do nothing, just pass through
-                } else if (subtype === 'alcohol') {
-                    // Alcohol -> Confusion
-                    player.activateConfusion();
-                    particles.spawnParticles(player.mesh.position, 10, 0x800080, 1); // Purple bubbles
-                    obstacleManager.scene.remove(collisionResult.mesh);
-                    obstacleManager.obstacles.splice(collisionResult.index, 1);
-                } else {
-                    // Standard Hit (Bus, Taxi, Protestor, Halal if not sliding, etc.)
-                    if (player.hasKafiyeh) {
-                        // Invincible!
-                        // Maybe destroy obstacle?
-                        particles.spawnParticles(player.mesh.position, 10, 0xffffff, 1);
-                        obstacleManager.scene.remove(collisionResult.mesh);
-                        obstacleManager.obstacles.splice(collisionResult.index, 1);
-                    } else {
-                        if (trump.isChasing) {
-                            // Second hit while chasing -> Game Over
-                            gameOver();
-                        } else {
-                            // First hit -> Start Chase
-                            trump.startChase();
-
-                            // Visual Feedback
-                            player.flashRed();
-                            particles.spawnParticles(player.mesh.position, 10, 0xff0000, 2); // Hit blood/sparks
-
-                            // Remove obstacle so we don't hit it again immediately
-                            obstacleManager.scene.remove(collisionResult.mesh);
-                            obstacleManager.obstacles.splice(collisionResult.index, 1);
-
-                            setTimeout(() => {
-                                player.resetColor();
-                            }, 100);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-
-    renderer.render(scene, camera);
-}
-
-animate();
+    } else $('reg-error').textContent = 'Could not join. Try again.';
+};
+$('feedback-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const message = $('feedback-msg').value.trim();
+    if (!message) return;
+    $('send-feedback-btn').disabled = true;
+    const response = await api.sendFeedback(playerId(), message);
+    $('send-feedback-btn').disabled = false;
+    $('feedback-status').textContent = response.ok
+        ? 'Feedback sent. Thank you.'
+        : 'Could not send. Try again.';
+    if (response.ok) $('feedback-msg').value = '';
+};
+$('bmc-wrapper').onclick = () => window.gtag?.('event', 'bmc_click');

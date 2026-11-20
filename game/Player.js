@@ -1,380 +1,211 @@
 import * as THREE from 'three';
-import { TextureGenerator } from './TextureGenerator.js';
+import { RunnerModel } from './RunnerModel.js';
+import { Batch } from './Geometry.js';
+
+let contactMap;
+export function groundShadow(scene, w, d) {
+    if (!contactMap) {
+        const c = document.createElement('canvas');
+        c.width = c.height = 64;
+        const ctx = c.getContext('2d'),
+            gradient = ctx.createRadialGradient(32, 32, 2, 32, 32, 32);
+        gradient.addColorStop(0, 'rgba(29,26,36,.55)');
+        gradient.addColorStop(0.5, 'rgba(32,29,38,.32)');
+        gradient.addColorStop(1, 'rgba(32,29,38,0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 64, 64);
+        contactMap = new THREE.CanvasTexture(c);
+    }
+    const shadow = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, d),
+        new THREE.MeshBasicMaterial({ map: contactMap, transparent: true, depthWrite: false })
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.018;
+    scene.add(shadow);
+    return shadow;
+}
 
 export class Player {
-    constructor(scene) {
-        this.scene = scene;
-        this.texGen = new TextureGenerator();
-
-        // Lane Config
-        this.lanes = [-3, 0, 3]; // Left, Center, Right
-        this.currentLane = 1; // Start in Center
-        this.targetX = 0;
-
-        // Physics
-        this.velocity = new THREE.Vector3();
-        this.gravity = -20;
-        this.jumpForce = 8;
-        this.isGrounded = true;
-
-        // Mesh Group
-        this.mesh = new THREE.Group();
-        this.mesh.castShadow = true;
-        this.scene.add(this.mesh);
-
-        // Materials
-        this.skinMat = new THREE.MeshStandardMaterial({ color: 0xd2a679 }); // Skin
-        this.suitMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e }); // Dark Blue Suit
-        const pantsMat = new THREE.MeshStandardMaterial({ color: 0x111111 }); // Black Pants
-        const redMat = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Tie
-
-        // Powerup Materials
-        this.kafiyehMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('kafiyeh') });
-        this.rainbowMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('rainbow_flag') });
-
-        // Head
-        const headGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-        this.head = new THREE.Mesh(headGeo, this.skinMat);
-        this.head.position.y = 1.75;
-        this.head.castShadow = true;
-        this.mesh.add(this.head);
-
-        // Confusion Stars
-        this.starsGroup = new THREE.Group();
-        this.head.add(this.starsGroup);
-        this.starsGroup.visible = false;
-
-        const starGeo = new THREE.TetrahedronGeometry(0.15);
-        const starMat = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xaa8800 });
-        for (let i = 0; i < 5; i++) {
-            const star = new THREE.Mesh(starGeo, starMat);
-            const angle = (i / 5) * Math.PI * 2;
-            star.position.set(Math.cos(angle) * 0.6, 0.4, Math.sin(angle) * 0.6);
-            this.starsGroup.add(star);
+    constructor(scene, asset) {
+        this.rig = new RunnerModel(asset);
+        this.mesh = this.rig.root;
+        this.mesh.scale.setScalar(1.1);
+        scene.add(this.mesh);
+        this.shadow = groundShadow(scene, 1.36, 2.0);
+        const scarf = new Batch();
+        for (let i = 0; i < 7; i++)
+            scarf.oval(
+                i % 2 ? 0x403d3c : 0xded7c3,
+                0,
+                0.007 - i * 0.009,
+                0.009,
+                0.095 + i * 0.003,
+                0.019,
+                0.086 + i * 0.003
+            );
+        this.scarf = scarf.mesh();
+        this.rig.sockets.Neck.add(this.scarf);
+        const sash = new Batch();
+        [0xb95a54, 0xdb9854, 0xe7c574, 0x548b76, 0x5e85ae, 0x97799b].forEach((color, i) =>
+            sash.box(color, (i - 2.5) * 0.01, -0.06, -0.117, 0.011, 0.39, 0.013, 0, 0, -0.51)
+        );
+        this.sash = sash.mesh();
+        this.rig.sockets.Spine2.add(this.sash);
+        const mask = new Batch();
+        mask.oval(0xa4d1ce, 0, 0.062, 0.094, 0.084, 0.048, 0.035);
+        this.mask = mask.mesh();
+        this.rig.sockets.Head.add(this.mask);
+        const aura = new Batch();
+        const arc = new THREE.TorusGeometry(0.54, 0.027, 4, 12, Math.PI / 3 - 0.035);
+        [0xf36264, 0xf39443, 0xf3dd5c, 0x66b37b, 0x5899d7, 0xa57dce].forEach((color, i) => {
+            aura.shape(arc, color, 0, 0, 0, 1, 1, 1, 0, 0, (i * Math.PI) / 3);
+        });
+        arc.dispose();
+        this.flagAura = aura.mesh(new THREE.MeshBasicMaterial({ vertexColors: true }));
+        this.flagAura.rotation.x = -Math.PI / 2;
+        this.flagAura.position.y = 0.06;
+        this.mesh.add(this.flagAura);
+        const stars = new Batch();
+        const star = new THREE.Shape();
+        for (let i = 0; i < 10; i++) {
+            const theta = (i * Math.PI) / 5 + Math.PI / 2,
+                r = i % 2 ? 0.047 : 0.105;
+            const x = Math.cos(theta) * r,
+                y = Math.sin(theta) * r;
+            if (i) star.lineTo(x, y);
+            else star.moveTo(x, y);
         }
-
-        // Hair
-        const hairGeo = new THREE.BoxGeometry(0.55, 0.15, 0.55);
-        this.hair = new THREE.Mesh(hairGeo, new THREE.MeshStandardMaterial({ color: 0x000000 }));
-        this.hair.position.y = 0.3; // On top of head (relative to head center)
-        this.head.add(this.hair);
-
-        // Body
-        const bodyGeo = new THREE.BoxGeometry(0.6, 0.7, 0.3);
-        this.body = new THREE.Mesh(bodyGeo, this.suitMat);
-        this.body.position.y = 1.15;
-        this.body.castShadow = true;
-        this.mesh.add(this.body);
-
-        // Tie
-        const tieGeo = new THREE.BoxGeometry(0.15, 0.4, 0.05);
-        this.tie = new THREE.Mesh(tieGeo, redMat);
-        this.tie.position.set(0, 1.15, 0.16);
-        this.mesh.add(this.tie);
-
-        // Arms
-        const armGeo = new THREE.BoxGeometry(0.2, 0.7, 0.2);
-        this.leftArm = new THREE.Mesh(armGeo, this.suitMat);
-        this.leftArm.position.set(-0.45, 1.15, 0);
-        this.leftArm.castShadow = true;
-        this.mesh.add(this.leftArm);
-
-        this.rightArm = new THREE.Mesh(armGeo, this.suitMat);
-        this.rightArm.position.set(0.45, 1.15, 0);
-        this.rightArm.castShadow = true;
-        this.mesh.add(this.rightArm);
-
-        // Legs
-        const legGeo = new THREE.BoxGeometry(0.25, 0.8, 0.25);
-        this.leftLeg = new THREE.Mesh(legGeo, pantsMat);
-        this.leftLeg.position.set(-0.18, 0.4, 0);
-        this.leftLeg.castShadow = true;
-        this.mesh.add(this.leftLeg);
-
-        this.rightLeg = new THREE.Mesh(legGeo, pantsMat);
-        this.rightLeg.position.set(0.18, 0.4, 0);
-        this.rightLeg.castShadow = true;
-        this.mesh.add(this.rightLeg);
-
-
-        this.slideTimer = 0;
-        this.slideDuration = 0.8; // Seconds
-
-        // Powerups
-        this.hasKafiyeh = false; // Invincibility
-        this.hasRainbow = false; // Magnet
-        this.hasCovidMask = false;
-
-        this.kafiyehTimer = 0;
-        this.rainbowTimer = 0;
-        this.covidMaskTimer = 0;
-
-        this.runTime = 0;
-
-        this.confusionTimer = 0;
-
-        this.events = [];
+        star.closePath();
+        const cut = new THREE.ShapeGeometry(star);
+        for (let i = 0; i < 4; i++) {
+            const theta = (i * Math.PI) / 2;
+            stars.shape(
+                cut,
+                0xffc754,
+                Math.sin(theta) * 0.35,
+                (i % 2) * 0.065,
+                Math.cos(theta) * 0.26,
+                1,
+                1,
+                1,
+                0,
+                theta
+            );
+        }
+        cut.dispose();
+        this.bottleStars = stars.mesh(
+            new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })
+        );
+        this.mesh.add(this.bottleStars);
+        this.reset();
     }
 
     reset() {
         this.currentLane = 1;
-        this.targetX = 0;
-        this.mesh.position.set(0, 0, 0); // Group pivot is at 0
-        this.velocity.set(0, 0, 0);
+        this.mesh.position.set(0, 0, 0);
+        this.mesh.rotation.set(0, 0, 0);
+        this.ySpeed = 0;
         this.isGrounded = true;
-        this.mesh.scale.set(1, 1, 1);
-
         this.slideTimer = 0;
+        this.slideBlend = 0;
+        this.phase = 0;
+        this.buffer = 0;
         this.confusionTimer = 0;
+        this.hitTime = 0;
+        this.kafiyehTimer = this.rainbowTimer = this.covidMaskTimer = 0;
+        this.hasKafiyeh = this.hasRainbow = this.hasCovidMask = false;
+        this.scarf.visible = this.sash.visible = this.mask.visible = false;
+        this.flagAura.visible = this.bottleStars.visible = false;
+        this.rig.material.emissive.setHex(0);
+        this.rig.pose(0, 0, 0, 0, true);
+        this.shadow.position.set(-0.07, 0.018, 0.11);
+        this.shadow.scale.setScalar(1);
+        this.shadow.material.opacity = 1;
+        this.events = [];
+    }
 
-        this.hasKafiyeh = false;
-        this.hasRainbow = false;
-        this.hasCovidMask = false;
-
-        // Reset Visuals
-        this.head.material = this.skinMat;
-        this.body.material = this.suitMat;
-        this.leftArm.material = this.suitMat;
-        this.rightArm.material = this.suitMat;
-        this.starsGroup.visible = false;
-        this.resetColor();
+    setSkin(data) {
+        this.rig.setColors(data.suitColor, data.color);
     }
 
     activatePowerup(type) {
-        if (type === 'kafiyeh') {
-            this.hasKafiyeh = true;
-            this.kafiyehTimer = 5.0;
-            // Visual
-            this.head.material = this.kafiyehMat;
-        } else if (type === 'rainbow') {
-            this.hasRainbow = true;
-            this.rainbowTimer = 7
-            // Visual
-            this.body.material = this.rainbowMat;
-            this.leftArm.material = this.rainbowMat;
-            this.rightArm.material = this.rainbowMat;
-        } else if (type === 'covidMask') {
-            this.hasCovidMask = true;
-            this.covidMaskTimer = 3.0;
+        if (type === 'kafiyeh') this.kafiyehTimer = 5;
+        if (type === 'rainbow') {
+            this.rainbowTimer = 7;
+            this.confusionTimer = 0;
         }
+        if (type === 'covidMask') this.covidMaskTimer = 3;
+    }
+
+    get invincible() {
+        return this.rainbowTimer > 0 || this.kafiyehTimer > 0;
     }
 
     activateConfusion() {
-        this.confusionTimer = 5.0;
-        this.events.push({ type: 'debuffStart', name: 'confusion', duration: 5.0 });
-        this.starsGroup.visible = true;
+        this.confusionTimer = 5;
+        this.events.push('confusion');
     }
-
-    update(dt, input) {
-        // Update Powerup Timers
-        if (this.hasKafiyeh) {
-            this.kafiyehTimer -= dt;
-            if (this.kafiyehTimer <= 0) {
-                this.hasKafiyeh = false;
-                // Reset Visual
-                this.head.material = this.skinMat;
-                this.resetColor();
-            }
-        }
-        if (this.hasRainbow) {
-            this.rainbowTimer -= dt;
-            if (this.rainbowTimer <= 0) {
-                this.hasRainbow = false;
-                // Reset Visual
-                this.body.material = this.suitMat;
-                this.leftArm.material = this.suitMat;
-                this.rightArm.material = this.suitMat;
-                this.resetColor();
-            }
-        }
-        if (this.hasCovidMask) {
-            this.covidMaskTimer -= dt;
-            if (this.covidMaskTimer <= 0) {
-                this.hasCovidMask = false;
-            }
-        }
-
-        if (this.confusionTimer > 0) {
-            this.confusionTimer -= dt;
-            this.starsGroup.rotation.y += dt * 3; // Spin stars
-            if (this.confusionTimer <= 0) {
-                this.confusionTimer = 0;
-                this.starsGroup.visible = false;
-            }
-        }
-
-        // Input Handling with Confusion
-        let moveLeft = input.isJustPressed('left');
-        let moveRight = input.isJustPressed('right');
-        let jump = input.isJustPressed('up');
-        let slide = input.isJustPressed('down');
-
-        if (this.confusionTimer > 0) {
-            // Swap Inputs
-            const tempLeft = moveLeft; moveLeft = moveRight; moveRight = tempLeft;
-            const tempJump = jump; jump = slide; slide = tempJump;
-        }
-
-        // Lane Switching
-        if (moveLeft && this.currentLane > 0) {
-            this.currentLane--;
-        }
-        if (moveRight && this.currentLane < 2) {
-            this.currentLane++;
-        }
-
-        this.targetX = this.lanes[this.currentLane];
-
-        // Smooth movement to lane
-        this.mesh.position.x += (this.targetX - this.mesh.position.x) * 10 * dt;
-
-        // Jumping
-        if (this.isGrounded && jump) {
-            this.velocity.y = this.jumpForce;
-            this.isGrounded = false;
-        }
-
-        // Sliding
-        if (this.slideTimer > 0) {
-            this.slideTimer -= dt;
-            // Hitbox adjustment handled by groundY in gravity logic
-        }
-
-        if (slide) {
-            if (this.isGrounded) {
-                this.slideTimer = this.slideDuration;
-            } else {
-                // Jump Cancel / Air Slide
-                this.slideTimer = this.slideDuration;
-                this.velocity.y = -5; // Gentle drop
-            }
-        }
-
-        // Gravity
-        if (!this.isGrounded) {
-            this.velocity.y += this.gravity * dt;
-            this.mesh.position.y += this.velocity.y * dt;
-
-            // Ground collision
-            const groundY = 0;
-
-            if (this.mesh.position.y <= groundY) {
-                this.mesh.position.y = groundY;
-                this.velocity.y = 0;
-                this.isGrounded = true;
-            }
-        }
-
-        // Animation
-        if (this.slideTimer > 0) {
-            // Slide Pose
-            const slideLean = -Math.PI / 4;
-
-            // Legs forward
-            this.leftLeg.rotation.x = -Math.PI / 2;
-            this.rightLeg.rotation.x = -Math.PI / 2;
-            this.leftLeg.position.set(-0.18, 0.2, 0.3); // Lift and move forward
-            this.rightLeg.position.set(0.18, 0.2, 0.3);
-
-            // Body lean back
-            this.body.rotation.x = slideLean;
-            this.body.position.y = 0.7; // Lower body
-            this.body.position.z = -0.2;
-
-            // Head follow body roughly (or look forward)
-            this.head.position.y = 1.1;
-            this.head.position.z = -0.4;
-            this.head.rotation.x = Math.PI / 6; // Look forward slightly
-
-            // Arms
-            this.leftArm.position.y = 0.7;
-            this.leftArm.position.z = -0.2;
-            this.leftArm.rotation.x = slideLean;
-
-            this.rightArm.position.y = 0.7;
-            this.rightArm.position.z = -0.2;
-            this.rightArm.rotation.x = slideLean;
-
-            // Tie
-            this.tie.position.y = 0.7;
-            this.tie.position.z = -0.04; // Adjust for body lean
-            this.tie.rotation.x = slideLean;
-
-            // Ensure mesh is upright
-            this.mesh.rotation.x = 0;
-
-        } else if (this.isGrounded) {
-            this.runTime += dt * 10;
-
-            // Reset Positions (Defaults)
-            this.resetPoseDefaults();
-
-            // Run Cycle
-            this.leftLeg.rotation.x = Math.sin(this.runTime) * 0.5;
-            this.rightLeg.rotation.x = Math.sin(this.runTime + Math.PI) * 0.5;
-            this.leftArm.rotation.x = Math.sin(this.runTime + Math.PI) * 0.5;
-            this.rightArm.rotation.x = Math.sin(this.runTime) * 0.5;
-        } else {
-            // Reset pose for Jump/Idle
-            this.resetPoseDefaults();
-
-            this.leftLeg.rotation.x = 0;
-            this.rightLeg.rotation.x = 0;
-            this.leftArm.rotation.x = 0;
-            this.rightArm.rotation.x = 0;
-        }
-    }
-
     flashRed() {
-        this.mesh.traverse(child => {
-            if (child.isMesh) child.material.color.setHex(0xff0000);
-        });
+        this.hitTime = 0.24;
     }
 
-    setSkin(skinData) {
-        this.currentSkin = skinData;
-        this.resetColor();
-    }
-
-    resetColor() {
-        if (this.hasKafiyeh) return; // Don't reset if powerup active
-
-        const skinColor = this.currentSkin ? this.currentSkin.color : 0xd2a679;
-        const suitColor = this.currentSkin ? this.currentSkin.suitColor : 0x1a1a2e;
-
-        this.head.material.color.setHex(skinColor); // Skin
-        this.hair.material.color.setHex(0x000000); // Hair
-        this.body.material.color.setHex(suitColor); // Suit
-        this.tie.material.color.setHex(0xff0000); // Tie
-        this.leftArm.material.color.setHex(suitColor); // Suit
-        this.rightArm.material.color.setHex(suitColor); // Suit
-        this.leftLeg.material.color.setHex(0x111111); // Pants
-        this.rightLeg.material.color.setHex(0x111111); // Pants
-
-        if (this.hasRainbow) {
-            this.rainbowMat = new THREE.MeshStandardMaterial({ map: this.texGen.getTexture('rainbow_flag') });
-            this.body.material = this.rainbowMat;
-            this.leftArm.material = this.rainbowMat;
-            this.rightArm.material = this.rainbowMat;
+    update(dt, input, speed) {
+        this.kafiyehTimer = Math.max(0, this.kafiyehTimer - dt);
+        this.rainbowTimer = Math.max(0, this.rainbowTimer - dt);
+        this.covidMaskTimer = Math.max(0, this.covidMaskTimer - dt);
+        this.hasKafiyeh = this.scarf.visible = this.kafiyehTimer > 0;
+        this.hasRainbow = this.sash.visible = this.rainbowTimer > 0;
+        this.hasCovidMask = this.mask.visible = this.covidMaskTimer > 0;
+        this.confusionTimer = Math.max(0, this.confusionTimer - dt);
+        this.flagAura.visible = this.hasRainbow;
+        this.bottleStars.visible = this.confusionTimer > 0;
+        if (this.flagAura.visible) this.flagAura.rotation.z += dt * 2;
+        if (this.bottleStars.visible) {
+            this.bottleStars.rotation.y += dt * 4.9;
+            this.bottleStars.position.y = 2.17 - this.slideBlend * 0.61;
         }
-    }
-    resetPoseDefaults() {
-        this.mesh.rotation.x = 0;
-        this.mesh.position.z = 0;
-
-        this.head.position.set(0, 1.75, 0);
-        this.head.rotation.x = 0;
-
-        this.body.position.set(0, 1.15, 0);
-        this.body.rotation.x = 0;
-
-        this.tie.position.set(0, 1.15, 0.16);
-        this.tie.rotation.x = 0;
-
-        this.leftArm.position.set(-0.45, 1.15, 0);
-        this.rightArm.position.set(0.45, 1.15, 0);
-
-        this.leftLeg.position.set(-0.18, 0.4, 0);
-        this.rightLeg.position.set(0.18, 0.4, 0);
+        this.hitTime = Math.max(0, this.hitTime - dt);
+        this.rig.material.emissive.setRGB(this.hitTime * 1.5, this.hitTime * 0.1, 0);
+        const reverse = this.confusionTimer > 0;
+        const side = Number(input.isJustPressed('right')) - Number(input.isJustPressed('left'));
+        this.currentLane = THREE.MathUtils.clamp(this.currentLane + side * (reverse ? -1 : 1), 0, 2);
+        const dx = (this.currentLane - 1) * 3 - this.mesh.position.x;
+        this.mesh.position.x += dx * (1 - Math.exp(-16 * dt));
+        const jump = input.isJustPressed(reverse ? 'down' : 'up'),
+            slide = input.isJustPressed(reverse ? 'up' : 'down');
+        this.buffer = jump ? 0.13 : Math.max(0, this.buffer - dt);
+        this.slideTimer = Math.max(0, this.slideTimer - dt);
+        if (slide) {
+            this.slideTimer = 0.8;
+            this.buffer = 0;
+            if (!this.isGrounded) this.ySpeed = -8;
+            this.events.push('slide');
+        }
+        if (this.isGrounded && this.buffer > 0) {
+            this.ySpeed = 8.9;
+            this.buffer = 0;
+            this.isGrounded = false;
+            this.slideTimer = 0;
+            this.events.push('jump');
+        }
+        if (!this.isGrounded) {
+            this.mesh.position.y += this.ySpeed * dt - 12 * dt * dt;
+            this.ySpeed -= 24 * dt;
+            if (this.mesh.position.y <= 0) {
+                this.mesh.position.y = 0;
+                this.ySpeed = 0;
+                this.isGrounded = true;
+                this.events.push('land');
+            }
+        }
+        this.slideBlend += ((this.slideTimer > 0 ? 1 : 0) - this.slideBlend) * (1 - Math.exp(-25 * dt));
+        this.phase += dt * (9.9 + speed * 0.095);
+        this.rig.pose(this.phase, this.slideBlend, Math.min(1, this.mesh.position.y * 2), dx * 0.45);
+        this.mesh.rotation.y = dx * -0.066;
+        this.shadow.position.x = this.mesh.position.x - 0.16;
+        this.shadow.position.z = 0.23;
+        this.shadow.scale.setScalar(1 + this.mesh.position.y * 0.16);
+        this.shadow.material.opacity = 1 - this.mesh.position.y * 0.24;
     }
 }

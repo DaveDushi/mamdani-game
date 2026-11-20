@@ -1,58 +1,27 @@
-# Mamdani Run: Escape Trump!
+# Mamdani Run — Escape Trump!
 
-The year is 2025. Trump has declared himself Emperor, and the world has descended into chaos. You play as **Mamdani**, the last intellectual. Your mission is to run for your life, survive the dystopian streets, and collect food stamps to pay your taxes while avoiding the temptations of alcohol and the wrath of the Emperor.
+A portrait-first 3D endless runner by Dave Dushi. In this fictional New York, Mayor Mamdani has endorsed every march on the calendar. Trump wants the receipts for his five-year plan. The mayor has five minutes to get across town.
 
-## Features
+## Play
 
-- **Endless Runner Gameplay**: Run as far as you can to escape.
-- **Dynamic Obstacles**: Dodge Taxis, Protestors, Scaffolds, and Halal Carts.
-- **Power-ups**: Use Covid Masks, Kafiyehs, and Rainbows to aid your escape.
-- **Shop System**: Unlock new skins (Paid for by Soros!).
-- **Responsive Controls**: optimized for both Desktop and Mobile.
+Swipe left or right to change lanes, up to jump and down to slide. On a keyboard, use the arrow keys or WASD. Space also jumps. Tap the pause button or press P or Escape to pause. In Outfits, drag or use the turn buttons to inspect the four suits. The Posters gallery contains all nine City Hall prints.
 
-## How to Play
+Run beneath the Canal Street lanterns, the Union Square marquee and the City Hall arch. The district changes every 240 metres. A jump over a cab, a slide under cover or a last-second sidestep earns a clean move. Three in a row earn a three-stamp bonus. The City Wire prints a front page about the obstacle that caught you.
 
-### Objective
-- **Run** to escape.
-- **Collect Food Stamps** to increase your score.
-- **Avoid Obstacles** to stay alive.
-- **Survive** the chase if you get hit!
+Distance determines your score. Stamps have their own counter. One collision starts a five-second chase. A second collision during the chase ends the run and the Stamp Office takes half your stamps, rounded down. See [game rules](game-rules.md) for obstacles and power-ups.
 
-### Controls
+## Run locally
 
-#### Desktop
-- **Move Left**: `Arrow Left` or `A`
-- **Move Right**: `Arrow Right` or `D`
-- **Jump**: `Arrow Up`, `W`, or `Space`
-- **Slide**: `Arrow Down` or `S`
+Use Node.js 22 or newer, then run `npm ci` and `npm run dev`. Use `npm run build` to generate the static site in `dist` and `npm run preview` to serve the production build.
 
-#### Mobile
-- **Move Left**: Swipe Left
-- **Move Right**: Swipe Right
-- **Jump**: Swipe Up
-- **Slide**: Swipe Down
+## Build for iPhone
 
-## Game Mechanics
+On a Mac with Xcode 26 and an iOS Simulator runtime, run `npm ci`, `npm run ios:sync`, then `npm run ios:open`. Select the App scheme and an iPhone simulator and press Run. Run `npm run ios:sync` again after changing the game. To install on a physical iPhone, select your development team in Signing & Capabilities.
 
-- **Health**: Hitting an obstacle summons Trump. Hitting another one while he chases you results in Game Over.
-- **Taxes**: 50% of your collected food stamps are deducted as taxes at the end of the run.
-- **Power-ups**:
-    - **Covid Mask**: Clears obstacles.
-    - **Kafiyeh**: Grants invincibility.
-    - **Rainbow**: Magnetizes food stamps.
+The Capacitor app bundles the game, fonts, posters and models for offline play. Leaderboards and feedback use the existing online service. Runs pause when the app loses focus.
 
-## Installation & Running
+## Art and credits
 
-1.  **Install Dependencies**:
-    ```bash
-    npm install
-    ```
+The 2.1 edition adds an original 16-bar jazz score and AI-assisted district facades and newspaper illustration. The 2026 edition includes original AI-assisted cover and icon illustrations, printed posters, painted city surfaces and character textures. Character meshes and motion are adapted from the [Microsoft Rocketbox Avatar Library](https://github.com/microsoft/Microsoft-Rocketbox), using glTF conversions from [Avatar Studio](https://github.com/memoriesrohit/avatar-studio). Both MIT notices ship with the [models](public/models). The locally bundled Barlow fonts ship with their [SIL Open Font License notices](public/fonts). Earlier billboard art is preserved in [artwork/originals](artwork/originals).
 
-2.  **Run Development Server**:
-    ```bash
-    npm run dev
-    ```
-
-## Credits
-
-Developed by Dave Dushi
+The Flatbush bus-lane dispatch riffs on the city's November 2026 transit announcement. The committees, endorsements, headlines and chase are fiction. [NYC Mayor’s Office](https://www.nyc.gov/mayors-office/news/2026/11/mayor-mamdani-delivers-faster-buses-on-flatbush-avenue--laying-g)

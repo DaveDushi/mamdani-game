@@ -1,117 +1,70 @@
-import * as THREE from 'three';
-import { TextureGenerator } from './TextureGenerator.js';
+import { RunnerModel } from './RunnerModel.js';
+import { groundShadow } from './Player.js';
+import { Batch } from './Geometry.js';
+
+const PURSUIT_SECONDS = 5;
 
 export class Trump {
-    constructor(scene) {
-        this.scene = scene;
-        this.texGen = new TextureGenerator();
-
-        // Mesh Group
-        this.mesh = new THREE.Group();
-        this.mesh.position.set(0, 0, 15);
-        this.mesh.castShadow = true;
-        this.scene.add(this.mesh);
-
-        // Materials
-        const skinMat = new THREE.MeshStandardMaterial({ color: 0xffcc99 }); // Orange Skin
-        const suitMat = new THREE.MeshStandardMaterial({ color: 0x000080 }); // Navy Suit
-        const hairMat = new THREE.MeshStandardMaterial({ color: 0xffff00 }); // Yellow Hair
-        const tieMat = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Red Tie
-
-        // Head
-        const headGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
-        this.head = new THREE.Mesh(headGeo, skinMat);
-        this.head.position.y = 1.8;
-        this.mesh.add(this.head);
-
-        // Hair
-        const hairGeo = new THREE.BoxGeometry(0.65, 0.2, 0.65);
-        this.hair = new THREE.Mesh(hairGeo, hairMat);
-        this.hair.position.y = 2.15;
-        this.mesh.add(this.hair);
-
-        // Body
-        const bodyGeo = new THREE.BoxGeometry(0.7, 0.7, 0.4);
-        this.body = new THREE.Mesh(bodyGeo, suitMat);
-        this.body.position.y = 1.15;
-        this.mesh.add(this.body);
-
-        // Tie
-        const tieGeo = new THREE.BoxGeometry(0.2, 0.5, 0.05);
-        this.tie = new THREE.Mesh(tieGeo, tieMat);
-        this.tie.position.set(0, 1.15, 0.21);
-        this.mesh.add(this.tie);
-
-        // Arms
-        const armGeo = new THREE.BoxGeometry(0.25, 0.7, 0.25);
-        this.leftArm = new THREE.Mesh(armGeo, suitMat);
-        this.leftArm.position.set(-0.5, 1.15, 0);
-        this.mesh.add(this.leftArm);
-
-        this.rightArm = new THREE.Mesh(armGeo, suitMat);
-        this.rightArm.position.set(0.5, 1.15, 0);
-        this.mesh.add(this.rightArm);
-
-        // Legs
-        const legGeo = new THREE.BoxGeometry(0.3, 0.8, 0.3);
-        this.leftLeg = new THREE.Mesh(legGeo, suitMat);
-        this.leftLeg.position.set(-0.2, 0.4, 0);
-        this.mesh.add(this.leftLeg);
-
-        this.rightLeg = new THREE.Mesh(legGeo, suitMat);
-        this.rightLeg.position.set(0.2, 0.4, 0);
-        this.mesh.add(this.rightLeg);
-
-        // State
-        this.isChasing = false;
-        this.chaseTimer = 0;
-        this.chaseDuration = 5.0; // Chase for 5 seconds after hit
-        this.runTime = 0;
-
-        // Positions
-        this.hiddenZ = 15; // Behind camera (out of view)
-        this.chaseZ = 2; // Behind player, visible but not blocking
+    constructor(scene, asset) {
+        this.rig = new RunnerModel(asset, true);
+        this.mesh = this.rig.root;
+        this.mesh.scale.setScalar(1.1);
+        // A red document case gives the pursuer a different silhouette from the suited runner.
+        const papers = new Batch();
+        papers.box(0x8b302c, 0, -0.22, 0, 0.38, 0.28, 0.105);
+        papers.box(0xe6c78c, 0, -0.086, 0, 0.35, 0.028, 0.077);
+        papers.box(0xa43d32, 0, -0.165, 0.059, 0.38, 0.14, 0.015);
+        for (const x of [-0.093, 0.093]) {
+            papers.box(0xbf9d56, x, -0.061, 0, 0.018, 0.07, 0.024);
+            papers.box(0xdbbd73, x, -0.197, 0.071, 0.033, 0.047, 0.014);
+        }
+        papers.box(0x72432d, 0, -0.024, 0, 0.2, 0.023, 0.028);
+        const briefcase = papers.mesh();
+        briefcase.castShadow = true;
+        this.rig.sockets.LeftHand.add(briefcase);
+        scene.add(this.mesh);
+        this.shadow = groundShadow(scene, 1.45, 2);
+        this.reset();
     }
 
     reset() {
         this.isChasing = false;
         this.chaseTimer = 0;
-        this.mesh.position.z = this.hiddenZ;
+        this.exitTime = 0;
+        this.phase = 1;
+        this.shoulder = 1;
+        this.mesh.visible = this.shadow.visible = false;
+        this.mesh.position.set(0, 0, 4);
     }
 
-    startChase() {
+    startChase(x) {
         this.isChasing = true;
-        this.chaseTimer = this.chaseDuration;
+        this.chaseTimer = PURSUIT_SECONDS;
+        this.exitTime = 0;
+        this.shoulder = x > 0 ? -1 : 1;
+        this.mesh.position.set(x + this.shoulder * 0.95, 0, 3.5);
+        this.mesh.visible = this.shadow.visible = true;
+        this.shadow.position.set(this.mesh.position.x, 0.019, this.mesh.position.z);
     }
 
-    update(dt, playerLaneX) {
-        // Timer logic
-        if (this.isChasing) {
-            this.chaseTimer -= dt;
-            if (this.chaseTimer <= 0) {
-                this.isChasing = false;
-            }
-        }
-
-        // Target Position
-        const targetZ = this.isChasing ? this.chaseZ : this.hiddenZ;
-
-        // Move Z
-        this.mesh.position.z += (targetZ - this.mesh.position.z) * 3 * dt;
-
-        // Follow Player X (with some lag)
-        this.mesh.position.x += (playerLaneX - this.mesh.position.x) * 2 * dt;
-
-        // Animation
-        if (this.isChasing) {
-            this.runTime += dt * 12; // Run fast
-            this.leftLeg.rotation.x = Math.sin(this.runTime) * 0.6;
-            this.rightLeg.rotation.x = Math.sin(this.runTime + Math.PI) * 0.6;
-            this.leftArm.rotation.x = Math.sin(this.runTime + Math.PI) * 0.6;
-            this.rightArm.rotation.x = Math.sin(this.runTime) * 0.6;
-
-            // Bobbing
-            this.mesh.position.y = Math.abs(Math.sin(this.runTime * 2)) * 0.1;
+    update(dt, x) {
+        if (!this.mesh.visible) return;
+        this.chaseTimer = Math.max(0, this.chaseTimer - dt);
+        this.isChasing = this.chaseTimer > 0;
+        // Track the inside shoulder so both silhouettes stay in frame in either outside lane.
+        if (this.isChasing && Math.abs(x) > 1.3) this.shoulder = x > 0 ? -1 : 1;
+        const targetX = this.isChasing ? x + this.shoulder * 0.9 : this.shoulder * 7;
+        const targetZ = this.isChasing ? 1.85 : 7.5;
+        const dx = targetX - this.mesh.position.x;
+        this.mesh.position.x += dx * (1 - Math.exp(-6.2 * dt));
+        this.mesh.position.z += (targetZ - this.mesh.position.z) * (1 - Math.exp(-2.8 * dt));
+        this.mesh.rotation.y = -Math.max(-0.28, Math.min(0.28, dx * 0.09));
+        this.phase += dt * 12;
+        this.rig.pose(this.phase, 0, 0, dx * 0.22);
+        this.shadow.position.set(this.mesh.position.x - 0.1, 0.019, this.mesh.position.z + 0.16);
+        if (!this.isChasing) {
+            this.exitTime += dt;
+            if (this.exitTime >= 0.85) this.mesh.visible = this.shadow.visible = false;
         }
     }
 }

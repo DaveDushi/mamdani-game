@@ -1,132 +1,52 @@
+const keys = {
+    ArrowLeft: 'left',
+    KeyA: 'left',
+    ArrowRight: 'right',
+    KeyD: 'right',
+    ArrowUp: 'up',
+    KeyW: 'up',
+    Space: 'up',
+    ArrowDown: 'down',
+    KeyS: 'down'
+};
 export class Input {
-    constructor() {
-        this.keys = {
-            left: false,
-            right: false,
-            up: false,
-            down: false
+    constructor(canvas, isActive) {
+        this.pressed = new Set();
+        let start = null;
+        window.addEventListener('keydown', (e) => {
+            if (!isActive() || !keys[e.code] || e.altKey || e.ctrlKey || e.metaKey) return;
+            e.preventDefault();
+            if (!e.repeat) this.pressed.add(keys[e.code]);
+        });
+        canvas.addEventListener('pointerdown', (e) => {
+            if (!isActive() || !e.isPrimary) return;
+            start = [e.clientX, e.clientY];
+            canvas.setPointerCapture(e.pointerId);
+        });
+        const swipe = (e) => {
+            if (!start || !e.isPrimary || !isActive()) return;
+            const dx = e.clientX - start[0],
+                dy = e.clientY - start[1];
+            if (Math.max(Math.abs(dx), Math.abs(dy)) < 21) return;
+            this.pressed.add(
+                Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up'
+            );
+            start = null;
         };
-
-        this.pressed = {
-            left: false,
-            right: false,
-            up: false,
-            down: false
+        canvas.addEventListener('pointermove', swipe);
+        canvas.addEventListener('pointerup', (e) => {
+            swipe(e);
+            start = null;
+        });
+        canvas.addEventListener('pointercancel', () => {
+            start = null;
+        });
+        this.reset = () => {
+            start = null;
+            this.pressed.clear();
         };
-
-        window.addEventListener('keydown', (e) => this.onKeyDown(e));
-        window.addEventListener('keyup', (e) => this.onKeyUp(e));
-
-        // Touch Support
-        this.touchStartX = 0;
-        this.touchStartY = 0;
-
-        // Prevent default scrolling on the game canvas
-        const canvas = document.querySelector('canvas'); // Assuming canvas is the target
-        const target = canvas || window;
-
-        target.addEventListener('touchstart', (e) => {
-            this.touchStartX = e.changedTouches[0].clientX;
-            this.touchStartY = e.changedTouches[0].clientY;
-        }, { passive: false });
-
-        target.addEventListener('touchmove', (e) => {
-            e.preventDefault(); // Prevent scrolling
-        }, { passive: false });
-
-        target.addEventListener('touchend', (e) => this.handleSwipe(e));
     }
-
-    handleSwipe(e) {
-        const touchEndX = e.changedTouches[0].clientX;
-        const touchEndY = e.changedTouches[0].clientY;
-
-        const dx = touchEndX - this.touchStartX;
-        const dy = touchEndY - this.touchStartY;
-
-        if (Math.abs(dx) > Math.abs(dy)) {
-            // Horizontal
-            if (Math.abs(dx) > 30) { // Threshold
-                if (dx > 0) {
-                    this.pressed.right = true;
-                    this.keys.right = true;
-                    setTimeout(() => this.keys.right = false, 100);
-                } else {
-                    this.pressed.left = true;
-                    this.keys.left = true;
-                    setTimeout(() => this.keys.left = false, 100);
-                }
-            }
-        } else {
-            // Vertical
-            if (Math.abs(dy) > 30) {
-                if (dy > 0) { // Down swipe
-                    this.pressed.down = true;
-                    this.keys.down = true;
-                    setTimeout(() => this.keys.down = false, 100);
-                } else { // Up swipe
-                    this.pressed.up = true;
-                    this.keys.up = true;
-                    setTimeout(() => this.keys.up = false, 100);
-                }
-            }
-        }
-    }
-
-    onKeyDown(e) {
-        switch (e.code) {
-            case 'ArrowLeft':
-            case 'KeyA':
-                if (!this.keys.left) this.pressed.left = true;
-                this.keys.left = true;
-                break;
-            case 'ArrowRight':
-            case 'KeyD':
-                if (!this.keys.right) this.pressed.right = true;
-                this.keys.right = true;
-                break;
-            case 'ArrowUp':
-            case 'KeyW':
-            case 'Space':
-                if (!this.keys.up) this.pressed.up = true;
-                this.keys.up = true;
-                break;
-            case 'ArrowDown':
-            case 'KeyS':
-                if (!this.keys.down) this.pressed.down = true;
-                this.keys.down = true;
-                break;
-        }
-    }
-
-    onKeyUp(e) {
-        switch (e.code) {
-            case 'ArrowLeft':
-            case 'KeyA':
-                this.keys.left = false;
-                break;
-            case 'ArrowRight':
-            case 'KeyD':
-                this.keys.right = false;
-                break;
-            case 'ArrowUp':
-            case 'KeyW':
-            case 'Space':
-                this.keys.up = false;
-                break;
-            case 'ArrowDown':
-            case 'KeyS':
-                this.keys.down = false;
-                break;
-        }
-    }
-
-    // Helper to check if a key was pressed this frame (consume the event)
     isJustPressed(key) {
-        if (this.pressed[key]) {
-            this.pressed[key] = false;
-            return true;
-        }
-        return false;
+        return this.pressed.delete(key);
     }
 }
