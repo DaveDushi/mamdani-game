@@ -28,7 +28,7 @@ The Capacitor app bundles the game, fonts, posters and models for offline play. 
 
 ### App Store submission
 
-1. On a Mac with Xcode 26 or later and the iOS 26 SDK or later, run `npm ci`, `npm run ios:sync`, and `npm run ios:open`. Select the distribution team for `cc.mamdanirun.game`. Test the release build on a physical iPhone, then archive and validate it from Xcode Organizer. The project is set to version 2.4.1, build 12.
+1. On a Mac with Xcode 26 or later and the iOS 26 SDK or later, run `npm ci`, `npm run ios:sync`, and `npm run ios:open`. Select the distribution team for `com.mamdanirun.game`. Test the release build on a physical iPhone, then archive and validate it from Xcode Organizer. The project is set to version 2.4.1, build 12.
 2. In App Store Connect, enter [the privacy policy](https://api.mamdanirun.cc/privacy) and [support URL](https://api.mamdanirun.cc/support), complete the age-rating questionnaire and upload gameplay screenshots. For App Privacy, review **User ID** for the pseudonymous game identifier and **Product Interaction** for online scores and race attempts. Both support app functionality, and the scores and race attempts are associated with the identifier. The iOS build uses no Firebase SDK, ads or tracking.
 3. In App Review notes, describe the game as unofficial fictional political satire. Explain that no sign-in is required, five family races can be played offline, and the results board or **City Wire → Online play and data** lets players opt into score posting and remove their server data. Donald's final requires five wins in one run and a distance above the live record. The optional Buy Me a Coffee link appears only on the U.S. storefront and provides no in-game reward.
 
