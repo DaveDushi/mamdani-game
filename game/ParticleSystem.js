@@ -10,6 +10,7 @@ export class ParticleSystem {
             this.limit
         );
         this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        this.mesh.setColorAt(0, new THREE.Color(0xffffff));
         this.mesh.count = 0;
         this.mesh.frustumCulled = false;
         scene.add(this.mesh);

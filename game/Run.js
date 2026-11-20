@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { artLoads } from './Geometry.js';
+import { artLoads, artTexture } from './Geometry.js';
 import { Wardrobe } from './Wardrobe.js';
 import { impact } from './Native.js';
 import { World } from './World.js';
@@ -54,7 +54,7 @@ export class Run {
         this.player = new Player(this.scene, cast.mayor);
         this.trump = new Trump(this.scene, cast.chaser);
         this.wardrobe = new Wardrobe(this.renderer, this.player);
-        this.powerupManager = new PowerupManager(this.scene);
+        this.powerupManager = new PowerupManager(this.scene, artTexture('pickup-markers'));
         this.obstacleManager = new ObstacleManager(this.scene, this.powerupManager, cast);
         this.scoreManager = new ScoreManager();
         this.particles = new ParticleSystem(this.scene);
@@ -85,9 +85,28 @@ export class Run {
         this.frame = this.frame.bind(this);
         this.quality = 1;
         this.frameId = 0;
-        this.ready = Promise.all(artLoads);
+        this.ready = Promise.all(artLoads).then(() => this.prepareStreet());
         this.resize();
         window.addEventListener('resize', () => this.resize());
+    }
+
+    async prepareStreet() {
+        // Stage the first stamp burst, collision and pickup before the run clock starts.
+        const encounters = new THREE.Group();
+        encounters.add(...Object.values(this.obstacleManager.models), ...Object.values(this.powerupManager.models));
+        await this.renderer.compileAsync(this.scene, this.camera);
+        await this.renderer.compileAsync(encounters, this.camera, this.scene);
+        // iOS also uploads the skinned vertices and shadow variants on the first actual draw.
+        this.scene.add(encounters);
+        this.trump.startChase(0);
+        this.player.rig.wear(true, true, true);
+        this.camera.position.set(0, 2.7, 9);
+        this.camera.lookAt(0, 1.6, 0);
+        this.renderer.render(this.scene, this.camera);
+        this.trump.reset();
+        this.player.reset();
+        this.scene.remove(encounters);
+        encounters.clear();
     }
 
     resize() {
@@ -207,11 +226,12 @@ export class Run {
         this.noticeTime = 1.3;
     }
     bulletin(message, source = 'City wire', urgent = false) {
-        if (!urgent && this.wireTime > 0 && (this.hud['wire-source'].textContent !== 'City wire' || this.wireTime > 1.8)) return;
+        if (!urgent && this.wireTime > 0 && (this.hud['wire-source'].textContent !== 'City wire' || this.wireTime > 1.8)) return false;
         this.hud['wire-source'].textContent = source;
         this.hud['wire-copy'].textContent = message;
         this.hud['wire-flash'].hidden = false;
         this.wireTime = source === 'City wire' ? 3.6 : 4.3;
+        return true;
     }
     readStreet() {
         if (this.elapsed < this.nextPrintAt || this.wireTime > 0) return;
@@ -312,7 +332,7 @@ export class Run {
             this.pickupOrder.push(power);
             this.pickupDuration[power] = player[power + 'Timer'];
             this.updateHud();
-            this.sound.play('power');
+            this.sound.play(power);
             impact();
             particles.spawnParticles(player.mesh.position, 14, 0xf0d997, 1.2);
         }
@@ -380,7 +400,10 @@ export class Run {
             this.streak = this.elapsed - this.lastStuntAt < 5 ? this.streak + 1 : 1;
             this.lastStuntAt = this.elapsed;
             const lines = stuntLines[traffic.lastStunt];
-            this.bulletin(lines[(this.cleanMoves - 1) % lines.length]);
+            const printed = this.bulletin(lines[(this.cleanMoves - 1) % lines.length]);
+            if (!printed && this.noticeTime <= 0) {
+                this.notify({ cab: 'Clean jump', slide: 'Clean slide', sidestep: 'Clean dodge' }[traffic.lastStunt], 'clean');
+            }
             this.sound.play('stunt');
             if (this.streak % 3 === 0) {
                 score.addFoodStamps(3);

@@ -80,7 +80,7 @@
                     <h1><span>Mamdani</span><strong>Run!</strong></h1>
                     <div class="subtitle">Escape Trump!</div>
                     <p class="deck">
-                        Dodge cabs. Collect food stamps. <br />Outrun Trump's audit of the five-year plan.
+                        Dodge cabs. Follow the food stamps. <br />Outrun Trump's audit of the five-year plan.
                     </p>
                     <button class="play" id="start-btn">
                         <i class="triangle"></i><span>Start run</span><svg><use href="#i-arrow" /></svg>
@@ -124,26 +124,28 @@
                     <svg><use href="#i-pause" /></svg>
                 </button>
             </div>
-            <div class="hud-foot">
-                <div class="street-tag">
-                    <svg><use href="#i-pin" /></svg><span id="district">Canal Street</span>
+            <div class="hud-lower">
+                <div id="wire-flash" hidden><b id="wire-source">City wire</b><span id="wire-copy"></span></div>
+                <div class="hud-foot">
+                    <div class="street-tag">
+                        <svg><use href="#i-pin" /></svg><span id="district">Canal Street</span>
+                    </div>
+                    <span id="effect"></span>
                 </div>
-                <span id="effect"></span>
             </div>
             <div class="hud-calls">
-              <div id="pickup-card" hidden>
-                <div class="pickup-head"><strong id="pickup-title" role="status"></strong><b id="pickup-seconds"></b></div>
-                <span id="pickup-detail"></span><i aria-hidden="true"><u id="pickup-meter"></u></i>
-              </div>
-              <div id="chase-card" hidden>
-                <i aria-hidden="true"></i
-                ><span
-                    >Trump in pursuit <b id="chase-seconds">5s</b><em><u id="chase-meter"></u></em
-                ></span>
-              </div>
-              <div id="notice" role="status"></div>
+                <div id="pickup-card" hidden>
+                    <div class="pickup-head">
+                        <strong id="pickup-title" role="status"></strong><b id="pickup-seconds"></b>
+                    </div>
+                    <span id="pickup-detail"></span><i aria-hidden="true"><u id="pickup-meter"></u></i>
+                </div>
+                <div id="chase-card" hidden>
+                    <i aria-hidden="true"></i>
+                    <span>Trump in pursuit <b id="chase-seconds">5s</b><em><u id="chase-meter"></u></em></span>
+                </div>
+                <div id="notice" role="status"></div>
             </div>
-            <div id="wire-flash" hidden><b id="wire-source">City wire</b><span id="wire-copy"></span></div>
         </div>
         <section id="pause-screen" class="overlay hidden">
             <div class="paper compact">
@@ -185,7 +187,7 @@
                 <p class="slug">Runner's manual</p>
                 <h2>How to play</h2>
                 <div class="manual">
-                    <p><b>Change lanes</b><span>← → or A / D. Swipe sideways on a phone.</span></p>
+                    <p><b>Change lanes</b><span>← → or A / D. Swipe sideways on a phone. A trail of three stamps marks an open lane.</span></p>
                     <p><b>Jump the cab</b><span>↑, W or Space. Swipe up to jump.</span></p>
                     <p>
                         <b>Slide under cover</b><span>↓ or S. Swipe down for a scaffold or halal cart.</span>

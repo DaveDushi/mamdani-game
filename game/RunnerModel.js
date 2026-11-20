@@ -57,7 +57,6 @@ export class RunnerModel {
                     if (!part.isSkinnedMesh) return;
                     part.bind(outfit.skeleton, outfit.bindMatrix);
                     part.material.emissive = this.material.emissive;
-                    if (part.morphTargetInfluences?.length === 2) this.flagCloth = part;
                 });
                 this.figure.add(piece);
                 piece.visible = false;
@@ -126,8 +125,10 @@ export class RunnerModel {
         this.crouch.time = 0.6 + ((phase * 0.1) % 1.8);
         this.mixer.update(0);
         if (this.flag?.visible) {
-            this.flagCloth.morphTargetInfluences[0] = Math.sin(phase * 0.85) * 0.8;
-            this.flagCloth.morphTargetInfluences[1] = Math.cos(phase * 0.85) * 0.8;
+            const folds = this.flag.morphTargetInfluences;
+            folds[0] = Math.sin(phase * 0.85) * 0.8;
+            folds[1] = Math.cos(phase * 0.85) * 0.8;
+            folds[2] = slide;
         }
     }
 }

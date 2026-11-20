@@ -62,10 +62,26 @@ function mask() {
     return b.mesh(fabricMaterial);
 }
 
+function markedPickup(model, atlas, column) {
+    const map = atlas.clone();
+    map.repeat.x = 1 / 3;
+    map.offset.x = column / 3;
+    const marker = new THREE.Sprite(new THREE.SpriteMaterial({ map, toneMapped: false, depthWrite: false }));
+    marker.position.y = 2.58;
+    marker.scale.setScalar(1.05);
+    const group = new THREE.Group();
+    group.add(model, marker);
+    return group;
+}
+
 export class PowerupManager {
-    constructor(scene) {
+    constructor(scene, markers = new THREE.Texture()) {
         this.scene = scene;
-        this.models = { rainbow: flag(), kafiyeh: scarf(), covidMask: mask() };
+        this.models = {
+            rainbow: markedPickup(flag(), markers, 0),
+            kafiyeh: markedPickup(scarf(), markers, 1),
+            covidMask: markedPickup(mask(), markers, 2)
+        };
         this.types = Object.keys(this.models);
         this.pool = Object.fromEntries(this.types.map((type) => [type, []]));
         this.powerups = [];

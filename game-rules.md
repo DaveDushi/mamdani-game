@@ -1,6 +1,6 @@
 # Mamdani Run game rules
 
-Run through three lanes of New York traffic. Swipe left or right to change lanes, up to jump, or down to slide. The arrow keys and WASD also work. Space jumps. Tap pause, press P or press Escape to pause.
+Run through three lanes of New York traffic. A trail of three stamps marks a gap. Swipe left or right to change lanes, up to jump, or down to slide. The arrow keys and WASD also work. Space jumps. Tap pause, press P or press Escape to pause.
 
 | Encounter | How to play it |
 | --- | --- |

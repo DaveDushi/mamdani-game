@@ -1,19 +1,22 @@
 const EXIT = 'exit';
 const openings = [
     [
-        ['protest', 'taxi', EXIT],
+        ['protest', null, EXIT],
         ['halal', EXIT, 'taxi'],
-        [EXIT, 'scaffold', 'protest']
-    ],
-    [
         [EXIT, 'scaffold', 'protest'],
-        ['taxi', 'protest', EXIT],
-        ['halal', EXIT, 'scaffold']
+        ['taxi', 'protest', EXIT]
     ],
     [
-        ['halal', 'taxi', EXIT],
+        [EXIT, null, 'scaffold'],
+        ['taxi', 'protest', EXIT],
+        ['halal', EXIT, 'scaffold'],
+        [EXIT, 'taxi', 'protest']
+    ],
+    [
+        ['halal', null, EXIT],
         [EXIT, 'protest', 'scaffold'],
-        ['taxi', EXIT, 'protest']
+        ['taxi', EXIT, 'protest'],
+        ['protest', 'taxi', EXIT]
     ]
 ];
 
@@ -80,9 +83,9 @@ function trafficRow(distance, slots, mirror, random) {
 export function* streetCourse(random = Math.random) {
     const opening = choose(openings, null, random);
     const mirrorOpening = random() < 0.5;
-    let distance = 24;
+    let distance = 28;
     for (const [i, slots] of opening.entries()) {
-        if (i > 0) distance += 23;
+        if (i > 0) distance += 32;
         yield trafficRow(distance, slots, mirrorOpening, random);
     }
 

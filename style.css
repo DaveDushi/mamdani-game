@@ -523,7 +523,7 @@ h1 strong {
     color: #fff5de;
 }
 .hud-top,
-.hud-foot {
+.hud-lower {
     position: absolute;
     left: max(18px, env(safe-area-inset-left));
     right: max(18px, env(safe-area-inset-right));
@@ -534,8 +534,14 @@ h1 strong {
 .hud-top {
     top: max(16px, env(safe-area-inset-top));
 }
-.hud-foot {
+.hud-lower {
     bottom: max(16px, env(safe-area-inset-bottom));
+    flex-direction: column;
+    gap: 7px;
+}
+.hud-foot {
+    width: 100%;
+    justify-content: space-between;
     align-items: center;
     gap: 8px;
 }
@@ -616,6 +622,8 @@ h1 strong {
 }
 #pickup-card {
     --stripe: #ffe189;
+    display: grid;
+    grid-template-columns: clamp(43px, 5.8vmin, 58px) minmax(0, 1fr);
     grid-area: 1 / 1;
     justify-self: start;
     width: max-content;
@@ -624,10 +632,20 @@ h1 strong {
     background: #14232b;
     border-left: 5px solid var(--stripe);
     box-shadow: 0 2px 6px #07101650;
-    padding: 6px 10px 4px;
+    padding: 6px 10px 4px 3px;
+    column-gap: 5px;
+}
+#pickup-card::before {
+    content: '';
+    grid-row: 1 / 4;
+    align-self: end;
+    aspect-ratio: 1;
+    background: url('/art/pickup-portraits.webp') left bottom / 300% 100% no-repeat;
 }
 #pickup-card[data-kind='covidMask'] { --stripe: #a1ecf0; }
+#pickup-card[data-kind='covidMask']::before { background-position-x: center; }
 #pickup-card[data-kind='rainbow'] { --stripe: #ffb6e6; }
+#pickup-card[data-kind='rainbow']::before { background-position-x: right; }
 .pickup-head {
     display: flex;
     justify-content: space-between;
@@ -668,6 +686,10 @@ h1 strong {
 #notice[data-tone='warning'] {
     color: #fff5dc;
     background: #972e26;
+}
+#notice[data-tone='clean'] {
+    color: #c7facc;
+    font-size: clamp(20px, 2.3vw, 30px);
 }
 #chase-card {
     grid-area: 1 / 2;
@@ -712,10 +734,7 @@ h1 strong {
     #notice { grid-area: 3 / 1; }
 }
 #wire-flash {
-    position: absolute;
-    bottom: calc(max(17px, env(safe-area-inset-bottom)) + 47px);
-    left: max(17px, env(safe-area-inset-left));
-    max-width: min(440px, calc(100% - 34px));
+    max-width: min(440px, 100%);
     display: flex;
     align-items: stretch;
     color: #18232c;

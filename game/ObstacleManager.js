@@ -1,7 +1,13 @@
 import { streetProps } from './StreetProps.js';
 import { streetCourse } from './Course.js';
+import { labelMaterial } from './Geometry.js';
 
 const LOOKAHEAD = 83;
+const escortStampColors = {
+    kafiyeh: ['#e9f5f7', '#233b45'],
+    covidMask: ['#a1ecf0', '#174952'],
+    rainbow: ['#ffb6e6', '#632755']
+};
 
 const bounds = {
     taxi: [0.83, 1.28, 1.66],
@@ -17,6 +23,10 @@ export class ObstacleManager {
         this.scene = scene;
         this.powerups = powerups;
         this.models = streetProps(cast);
+        this.stampMaterials = { route: this.models.coin.material };
+        for (const [key, [paper, ink]] of Object.entries(escortStampColors)) {
+            this.stampMaterials[key] = labelMaterial(['NYC', 'FOOD STAMP'], paper, ink, 256, 144);
+        }
         for (const [key, g] of Object.entries(this.models)) {
             if (key !== 'coin')
                 g.traverse((part) => {
@@ -26,12 +36,13 @@ export class ObstacleManager {
         this.pool = Object.fromEntries(Object.keys(this.models).map((key) => [key, []]));
         this.obstacles = [];
     }
-    add(key, x, z) {
+    add(key, x, z, stampStyle = 'route') {
         const obj = this.pool[key].pop() || {
             mesh: this.models[key].clone(),
             key,
             type: key.startsWith('protest') ? 'protestor' : key
         };
+        if (key === 'coin') obj.mesh.material = this.stampMaterials[stampStyle];
         obj.mesh.position.set(x, key === 'coin' ? 1.02 : 0, z);
         obj.mesh.rotation.y = 0;
         obj.stunt = null;
@@ -65,9 +76,9 @@ export class ObstacleManager {
                 for (const lead of [12, 8, 4]) this.add('coin', x, z + lead);
             } else {
                 const x = (row.pickupLane - 1) * 3;
-                this.add('coin', x, z + 5);
+                this.add('coin', x, z + 5, row.pickup);
                 this.powerups.spawnPowerup(x, z, row.pickup);
-                this.add('coin', x, z - 5);
+                this.add('coin', x, z - 5, row.pickup);
             }
             this.nextRow = this.course.next().value;
         }
