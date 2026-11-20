@@ -49,7 +49,7 @@ const markup = `
         </div>
         <button class="race-button race-tap" type="button" aria-label="Tap fast to sprint" aria-describedby="race-keys">Tap fast</button>
         <button class="race-button race-continue" type="button" hidden>Continue</button>
-        <span id="race-keys">Press Space or ↑ repeatedly</span>
+        <span id="race-keys">Press Space or Up repeatedly</span>
     </div>
 `;
 
@@ -191,7 +191,7 @@ export class RacePanel {
         if (showSpeed) write(nodes['speed-value'], speed.toFixed(1));
         switch (phase) {
             case 'intro':
-                write(nodes.signal, `Ready · ${countdown}`);
+                write(nodes.signal, `On your marks · ${countdown}`);
                 break;
             case 'racing':
                 write(nodes.signal, 'Go!');

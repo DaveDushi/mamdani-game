@@ -4,6 +4,7 @@ import { clone as cloneRig } from 'three/addons/utils/SkeletonUtils.js';
 import { Batch } from './Geometry.js';
 import { groundShadow } from './Player.js';
 import { WinnerPose } from './RaceFinish.js';
+import { movementClip } from './Locomotion.js';
 import { grandstands } from './RaceCrowd.js';
 
 const COURSE = 50;
@@ -239,15 +240,31 @@ class Athlete {
         });
         this.mixer = new THREE.AnimationMixer(figure);
         this.stand = this.mixer.clipAction(THREE.AnimationClip.findByName(animations, 'Idle')).play();
-        this.run = this.mixer.clipAction(THREE.AnimationClip.findByName(animations, 'Run')).play();
+        this.run = this.mixer.clipAction(movementClip(figure, THREE.AnimationClip.findByName(animations, 'Run'))).play();
+        const leg = figure.getObjectByName('mixamorigLeftLeg').position.length();
+        const shin = figure.getObjectByName('mixamorigLeftFoot').position.length();
+        // The shared countdown idle was captured on the mayor's shorter legs.
+        this.idleHeight = Math.max(0, leg + shin - .796);
         this.finish = new WinnerPose(figure);
+        this.resetStride();
     }
 
-    pose(stride, idle) {
-        this.stand.enabled = idle;
-        this.run.enabled = !idle;
-        this.stand.time = stride % this.stand.getClip().duration;
-        this.run.time = (stride % 1) * this.run.getClip().duration;
+    resetStride() {
+        this.travel = this.stride = this.running = 0;
+    }
+
+    pose(distance, dt, waiting, clock, offset) {
+        const advance = Math.max(0, distance - this.travel);
+        this.travel = distance;
+        this.stride += Math.min(2.25 * dt, advance / (2.40 * this.root.scale.x));
+        this.running += ((waiting ? 0 : 1) - this.running) * (1 - Math.exp(-18 * dt));
+        this.figure.position.y = this.idleHeight * (1 - this.running);
+        this.stand.enabled = this.running < .999;
+        this.run.enabled = this.running > .001;
+        this.stand.setEffectiveWeight(1 - this.running);
+        this.run.setEffectiveWeight(this.running);
+        this.stand.time = clock % this.stand.getClip().duration;
+        this.run.time = ((this.stride + offset) % 1) * this.run.getClip().duration;
         this.mixer.update(0);
     }
 }
@@ -293,6 +310,8 @@ export class RaceStage {
         }).catch(() => {});
         this.ready = Promise.all([attach(this.back, 'race-waterfront'), this.crowd.ready]);
         const figure = cloneRig(player.rig.figure);
+        // Preloading a race can clone the street runner halfway through his glance.
+        player.stumble.restore(figure);
         this.player = new Athlete(figure, cast.mayor.animations, player.mesh.scale.x);
         const originals = [], copies = [];
         player.rig.figure.traverse(p => originals.push(p));
@@ -409,12 +428,17 @@ export class RaceStage {
     start(rival) {
         this.stop();
         this.active = rival;
+        this.player.resetStride();
         for (const [original, copy] of this.wardrobe) copy.visible = original.visible;
         this.rival = this.cache.get(rival.id);
-        if (this.rival) this.scene.add(this.rival.root);
+        if (this.rival) {
+            this.rival.resetStride();
+            this.scene.add(this.rival.root);
+        }
         else this.prepare(rival).then(() => {
             if (this.active === rival && !this.rival) {
                 this.rival = this.cache.get(rival.id);
+                this.rival.resetStride();
                 this.scene.add(this.rival.root);
             }
         });
@@ -480,8 +504,7 @@ export class RaceStage {
             const z = progress * COURSE;
             athlete.root.position.set(lane, 0, z);
             const waiting = intro || (!i && race.speed < .3);
-            const stride = waiting ? this.idle + .7 * i : progress * 34 + (i ? .36 : .09);
-            if (!athlete.finish.active) athlete.pose(stride, waiting);
+            if (!athlete.finish.active) athlete.pose(z, dt, waiting, this.idle + .7 * i, i ? .36 : .09);
             if (i === winnerLane) athlete.finish.lift(this.finishTime, reducedMotion);
             this.shadows[i].position.set(lane - .035, .018, z - .04);
         }

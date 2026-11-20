@@ -19,13 +19,6 @@ function sign(m, x, y, z, w, h, texture, color = white) {
         color
     );
 }
-function direction(m, x, y, z, size, up, color) {
-    const p = (a, b) => [x + a * size, y + b * size * (up ? 1 : -1), z];
-    const stem = [p(-0.14, -0.46), p(0.14, -0.46), p(0.14, 0.07), p(-0.14, 0.07)];
-    const head = [p(-0.45, 0.04), p(0.45, 0.04), p(0, 0.49)];
-    m.face(up ? stem : stem.reverse(), 0, color);
-    m.face(up ? head : head.reverse(), 0, color);
-}
 function withTutorial(m, y, z, w, h, texture) {
     const plate = new StreetMesh();
     sign(plate, 0, y, z, w, h, texture);
@@ -73,8 +66,6 @@ function jumpBarricade(w, top, depth) {
         );
         m.box(s * (w - 0.13), top - 0.063, 0, 0.17, 0.094, 0.253, yellow);
     }
-    m.box(0, 0.793, 0.219, 0.81, 0.462, 0.052, yellow);
-    direction(m, 0, 0.797, 0.247, 0.405, true, 0x322e25);
     return withTutorial(m, 0.8, 0.272, 1.49, 0.438, tile.jump);
 }
 
@@ -98,14 +89,8 @@ function slidePortal(w, top, depth, clearance) {
         top: tile.steel
     });
     m.box(0, clearance + 0.066, 0.428, w * 2 - 0.14, 0.132, 0.055, cyan);
-    for (const side of [-1, 1]) {
-        m.box(side * 0.989, clearance + 0.465, 0.431, 0.713, 0.455, 0.04, cyan);
-        direction(m, side * 0.989, clearance + 0.465, 0.453, 0.395, false, 0x16545d);
-    }
     const y = clearance + 0.49;
-    m.box(0, y, 0.427, 1.18, 0.51, 0.03, 0x25444b);
-    direction(m, 0, y, 0.445, 0.44, false, cyan);
-    return withTutorial(m, y, 0.459, 1.61, 0.56, tile.slide);
+    return withTutorial(m, y, 0.414, 1.61, 0.56, tile.slide);
 }
 
 function closedFence(w, top, depth) {
@@ -155,7 +140,6 @@ function admissionRail(w, top, depth, clearance, innerFoot) {
     m.tube([-w, center, 0], [w, center, 0], beamR, 0xb4c1c0, 12);
     for (const s of [-1, 1]) {
         m.tube([s * 0.43, center, 0], [s * 0.87, center, 0], beamR, s === -1 ? yellow : cyan, 12);
-        direction(m, s * 0.65, center, beamR + 0.002, 0.159, s === -1, 0x253b3b);
         m.box(s * 1.054, center, 0, 0.176, 0.171, 0.181, white, { front: tile.workStripe });
     }
     sign(m, 0, center, beamR + 0.001, 0.66, 0.154, tile.tickets);

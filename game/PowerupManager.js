@@ -3,11 +3,12 @@ import { roadPickup } from './PickupArt.js';
 
 function markedPickup(model, atlas, column) {
     const map = atlas.clone();
-    map.repeat.x = 1 / 3;
-    map.offset.x = column / 3;
+    // Each 96 px cell has its pictogram and colored side bars between rows 12 and 62.
+    map.repeat.set(1 / 3, 50 / 96);
+    map.offset.set(column / 3, 34 / 96);
     const marker = new THREE.Sprite(new THREE.SpriteMaterial({ map, toneMapped: false, depthWrite: false, fog: false }));
-    marker.position.y = 2.58;
-    marker.scale.setScalar(1.05);
+    marker.position.y = 2.32;
+    marker.scale.set(1.05, 1.05 * map.repeat.y, 1);
     const group = new THREE.Group();
     group.add(model, marker);
     return group;

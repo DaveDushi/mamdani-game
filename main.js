@@ -419,7 +419,7 @@ const installed = () =>
     navigator.standalone === true;
 if (!installed()) {
     if (/iPhone|iPad/i.test(navigator.userAgent))
-        $('pwa-prompt').textContent = 'Install on iOS with Share → Add to Home Screen.';
+        $('pwa-prompt').textContent = 'To install on iOS, open Share and choose Add to Home Screen.';
     else if (/Android/i.test(navigator.userAgent))
         $('pwa-prompt').textContent = 'Choose Install app in your browser menu to keep the game.';
 }

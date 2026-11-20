@@ -12,10 +12,11 @@ import { ParticleSystem } from './ParticleSystem.js';
 import { ObstacleManager } from './ObstacleManager.js';
 import { PowerupManager } from './PowerupManager.js';
 import { ScoreManager, stampReceipt } from './ScoreManager.js';
-import { editionLines, raceDispatches, stuntLines } from './CityWire.js';
+import { editionLines, stuntLines } from './CityWire.js';
 import { captions } from './Posters.js';
 import { FamilyRace, RIVALS, takeoverPercent } from './FamilyRace.js';
-import { RaceSchedule, raceDistance } from './RaceSchedule.js';
+import { RaceSchedule } from './RaceSchedule.js';
+import { approachCopy, RaceApproach } from './RaceApproach.js';
 import { RacePanel } from './RacePanel.js';
 import { RaceStage } from './RaceStage.js';
 import { CITY_REVEAL, FINISH_HOLD, frameOpenBlock } from './RaceFinish.js';
@@ -74,6 +75,7 @@ export class Run {
             if (this.mode !== 'playing' || !this.race?.tap()) return;
             this.sound.play('stride');
         }, () => this.leaveRace());
+        this.raceApproach = new RaceApproach(document.getElementById('race-checkpoint'), this.scene);
         this.magnet = new THREE.Vector3();
         this.reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
         this.hud = Object.fromEntries(
@@ -84,7 +86,6 @@ export class Run {
                 'count-digit',
                 'food-stamps',
                 'district',
-                'race-checkpoint',
                 'effect',
                 'notice',
                 'pickup-card',
@@ -156,7 +157,6 @@ export class Run {
         this.familyWins = 0;
         this.preparingRival = null;
         this.raceRetryAt = 0;
-        this.raceAnnounced = null;
         this.world.light.setShift(mode);
         this.world.reset(mode);
         this.player.reset();
@@ -191,6 +191,7 @@ export class Run {
         this.slow = 0;
         this.fast = 0;
         this.mode = 'playing';
+        this.streetCameraX = 0;
         this.camera.position.x = 0;
         this.resize();
         this.updateHud();
@@ -206,20 +207,27 @@ export class Run {
             this.camera.updateProjectionMatrix();
         }
         const halfFov = THREE.MathUtils.degToRad(this.camera.fov * 0.5);
+        const halfWidth = this.camera.aspect * Math.tan(halfFov);
         this.pursuitFrame += ((this.trump.isChasing ? 1 : 0) - this.pursuitFrame) * (1 - Math.exp(-5 * dt));
-        const z = Math.max(5.9, 3.46 / (this.camera.aspect * Math.tan(halfFov))) + this.pursuitFrame * 1.25;
+        const z = Math.max(5.9, 3.46 / halfWidth) + this.pursuitFrame * 1.25;
+        const stumble = this.player.stumble;
+        const frame = stumble.framing;
         const targetX = this.reduce ? 0 : x * (portrait ? 0.43 : 0.23);
-        this.camera.position.x += (targetX - this.camera.position.x) * (1 - Math.exp(-5 * dt));
+        this.streetCameraX += (targetX - this.streetCameraX) * (1 - Math.exp(-5 * dt));
         const impact = this.reduce ? 0 : Math.sin(this.shake * 95) * this.shake * 0.13;
+        const y = (portrait ? 5.65 : 4.55) + this.pursuitFrame * .33 + this.player.mesh.position.y * .115 + impact;
+        // Leave room for the pursuer to catch up horizontally after a swipe.
+        const gap = this.trump.mesh.position.x - x;
+        const extra = Math.max(0, Math.abs(gap) - .95);
+        const pairX = x + Math.sign(gap) * extra * .55;
+        const closeZ = portrait ? 6.2 + extra / (2 * halfWidth) : 5.5;
         this.camera.position.set(
-            this.camera.position.x,
-            (portrait ? 5.65 : 4.55) +
-                this.pursuitFrame * 0.33 +
-                this.player.mesh.position.y * 0.115 +
-                impact,
-            z
+            THREE.MathUtils.lerp(this.streetCameraX, pairX + stumble.shoulder * .25, frame),
+            THREE.MathUtils.lerp(y, 2.85 + this.player.mesh.position.y * .20, frame),
+            THREE.MathUtils.lerp(z, closeZ, frame)
         );
-        this.camera.lookAt(this.camera.position.x * 0.52, portrait ? 1.65 : 1.05, -7.3);
+        this.camera.lookAt(THREE.MathUtils.lerp(this.streetCameraX * .52, pairX, frame),
+            THREE.MathUtils.lerp(portrait ? 1.65 : 1.05, 1.05, frame), THREE.MathUtils.lerp(-7.3, -3, frame));
     }
 
     showOutfit() {
@@ -234,6 +242,7 @@ export class Run {
         this.upcomingRace = null;
         this.raceStage?.stop();
         this.racePanel.hide();
+        this.raceApproach.hide();
         this.sound.music(false, true);
         this.wardrobe.close(this.scene);
         cancelAnimationFrame(this.frameId);
@@ -301,6 +310,8 @@ export class Run {
         this.hud['wire-source'].textContent = source;
         this.hud['wire-copy'].textContent = message;
         this.hud['wire-flash'].hidden = false;
+        this.hud['wire-flash'].toggleAttribute('data-audit', source === 'Stamp audit');
+        this.hud['wire-flash'].toggleAttribute('data-ambient', !urgent && source !== 'Stamp audit');
         this.wireUrgent = urgent;
         this.wireTime = source === 'City wire' ? 3.6 : 4.3;
         return true;
@@ -357,18 +368,10 @@ export class Run {
         const effect = secondary.join('\n');
         const schedule = this.raceSchedule;
         const next = schedule.rivals[this.familyWins];
-        const awaiting = next?.index === RIVALS.length - 1 && !schedule.qualified && this.scoreManager.getDisplayScore() >= next.at;
-        let status = '';
-        if (schedule.initialRecordPending) status = 'Checking season record';
-        else if (awaiting) status = schedule.retryClaim && !schedule.claiming ? ' · Server unavailable, retrying' : ' · Awaiting server confirmation';
-        if (next !== this.hudRival || status !== this.hudRecordStatus) {
-            this.hudRival = next;
-            this.hudRecordStatus = status;
-            const progress = this.familyWins ? takeoverPercent(this.familyWins) + '% takeover' : 'Next race';
-            if (schedule.initialRecordPending) this.hud['race-checkpoint'].textContent = status;
-            else if (next) this.hud['race-checkpoint'].textContent = `${progress} · ${next.name} at ${raceDistance(next.at)} · ${next.metres} m sprint${status}`;
-            else this.hud['race-checkpoint'].textContent = '100% takeover · Overtime';
-        }
+        this.raceApproach.paint(approachCopy(
+            schedule, next, this.scoreManager.getDisplayScore(), this.world.speed,
+            this.trump.isChasing, this.preparedRivals.has(next?.id)
+        ), this.trump.isChasing);
         this.hud['chase-card'].hidden = !this.trump.isChasing;
         if (this.trump.isChasing) {
             this.hud['chase-meter'].style.transform = 'scaleX(' + this.trump.chaseTimer / 5 + ')';
@@ -399,9 +402,11 @@ export class Run {
     }
 
     startRace(rival) {
+        this.player.stumble.reset();
         this.input.reset();
         // Leave about 0.8 seconds of clear road at Overtime speed.
         if (rival.index === RIVALS.length - 1) this.obstacleManager.clearFinishChute(this.world.speed * .9);
+        this.raceApproach.hide();
         this.race = this.upcomingRace?.rival === rival ? this.upcomingRace : new FamilyRace(rival, this.speedLevel);
         this.raceStage.start(this.race.rival);
         this.racePanel.show(this.race);
@@ -493,6 +498,8 @@ export class Run {
             this.racePanel.paint(this.race, ready);
         } else {
             this.follow(dt);
+            const schedule = this.raceSchedule;
+            this.raceApproach.place(schedule.rivals[this.familyWins], this.world.distance, schedule.initialRecordPending, schedule.qualified);
             this.renderer.render(this.scene, this.camera);
         }
     }
@@ -517,7 +524,7 @@ export class Run {
         player.update(dt, this.input, world.speed);
         traffic.update(dt, world.speed, world.distance);
         powers.update(dt, world.speed);
-        trump.update(dt, player.mesh.position.x);
+        trump.update(dt, player.mesh.position.x, player.stumble.shoulder);
         if (wasChasing && !trump.isChasing) {
             this.notify('Audit evaded!');
             this.sound.play('escape');
@@ -596,10 +603,11 @@ export class Run {
                 return;
             }
             trump.startChase(player.mesh.position.x);
+            player.stumble.start(trump.shoulder, this.reduce);
             this.streak = 0;
             player.flashRed();
             this.shake = 0.38;
-            this.notify('Stumble!', 'warning');
+            this.notify('Stumble!', 'stumble');
             this.bulletin('Trump wants the receipts.', 'City wire', true);
             this.sound.play('chase');
             impact(true);
@@ -661,7 +669,6 @@ export class Run {
                     this.upcomingRace = new FamilyRace(next, this.speedLevel);
                     this.racePanel.prepare(this.upcomingRace);
                 }
-                if (this.raceAnnounced !== next && this.bulletin(raceDispatches[next.id], 'Race desk')) this.raceAnnounced = next;
             }
             if (schedule.canEnter(next, metres) && this.preparedRivals.has(next.id) && this.canStartRace()) this.startRace(next);
         }

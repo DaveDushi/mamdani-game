@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RunnerModel } from './RunnerModel.js';
+import { StumbleReaction } from './StumbleReaction.js';
 import { Batch } from './Geometry.js';
 
 let contactMap;
@@ -29,6 +30,7 @@ export function groundShadow(scene, w, d) {
 export class Player {
     constructor(scene, asset) {
         this.rig = new RunnerModel(asset);
+        this.stumble = new StumbleReaction(this.rig);
         this.mesh = this.rig.root;
         this.mesh.scale.setScalar(1.1);
         scene.add(this.mesh);
@@ -82,6 +84,7 @@ export class Player {
     }
 
     reset() {
+        this.stumble.reset();
         this.currentLane = 1;
         this.mesh.position.set(0, 0, 0);
         this.mesh.rotation.set(0, 0, 0);
@@ -90,6 +93,11 @@ export class Player {
         this.slideTimer = 0;
         this.slideBlend = 0;
         this.phase = 0;
+        this.bank = this.bankVelocity = this.jumpWeight = this.pushOff = this.effort = 0;
+        this.jumpLeg = this.slideLeg = this.jumpSample = this.slideSample = 0;
+        this.slideAge = this.slidePose = this.releaseWeight = 0;
+        this.slideExit = 1;
+        this.landAge = 1;
         this.buffer = 0;
         this.confusionTimer = 0;
         this.hitTime = 0;
@@ -139,6 +147,7 @@ export class Player {
     }
 
     update(dt, input, speed) {
+        this.stumble.restore();
         this.kafiyehTimer = Math.max(0, this.kafiyehTimer - dt);
         this.rainbowTimer = Math.max(0, this.rainbowTimer - dt);
         this.covidMaskTimer = Math.max(0, this.covidMaskTimer - dt);
@@ -160,14 +169,21 @@ export class Player {
         const jump = input.isJustPressed(reverse ? 'down' : 'up'),
             slide = input.isJustPressed(reverse ? 'up' : 'down');
         this.buffer = jump ? 0.13 : Math.max(0, this.buffer - dt);
+        const wasGrounded = this.isGrounded;
+        const wasSliding = this.slideTimer > 0;
         this.slideTimer = Math.max(0, this.slideTimer - dt);
         if (slide) {
+            if (!wasSliding && this.slidePose < .15) {
+                this.slideLeg = Math.cos(this.phase) >= 0 ? 0 : 1;
+                this.slideAge = this.slideSample = 0;
+            }
             this.slideTimer = 0.8;
             this.buffer = 0;
             if (!this.isGrounded) this.ySpeed = -8;
             this.events.push('slide');
         }
         if (this.isGrounded && this.buffer > 0) {
+            this.jumpLeg = this.slidePose > .4 ? this.slideLeg : Math.cos(this.phase) >= 0 ? 0 : 1;
             this.ySpeed = 8.9;
             this.buffer = 0;
             this.isGrounded = false;
@@ -185,12 +201,50 @@ export class Player {
             }
         }
         this.slideBlend += ((this.slideTimer > 0 ? 1 : 0) - this.slideBlend) * (1 - Math.exp(-25 * dt));
-        this.phase += dt * (9.9 + speed * 0.095);
-        this.rig.pose(this.phase, this.slideBlend, Math.min(1, this.mesh.position.y * 2), dx * 0.45);
-        this.mesh.rotation.y = dx * -0.066;
+        // The street accelerates far beyond human running speed. Open the cadence
+        // gradually and cap it at just over two full strides per second.
+        this.effort = 1 - Math.exp(-speed / 34);
+        const stride = 1.48 + .64 * this.effort;
+        const transfer = this.slideTimer > 0 ? 1 : 1 - .9 * this.slidePose;
+        this.phase += dt * 2 * Math.PI * stride * transfer;
+        if (!this.isGrounded) {
+            this.jumpSample = .77 * THREE.MathUtils.clamp((8.9 - this.ySpeed) / 17.8, 0, 1);
+            this.jumpWeight += (1 - this.jumpWeight) * (1 - Math.exp(-31 * dt));
+            this.pushOff = -Math.min(.12, this.mesh.position.y) * (1 - THREE.MathUtils.smoothstep(this.jumpSample, 0, .12));
+        } else {
+            if (!wasGrounded) {
+                this.landAge = 0;
+                this.phase = this.jumpLeg * Math.PI;
+            }
+            this.landAge = Math.min(1, this.landAge + dt);
+            this.jumpSample = .77 + .23 * Math.min(1, this.landAge / .19);
+            this.jumpWeight = 1 - THREE.MathUtils.smoothstep(this.landAge, .045, .19);
+            this.pushOff = 0;
+        }
+        if (this.slideTimer > 0) {
+            this.slideAge += dt;
+            // Repeated duck input extends the slide without replaying the drop.
+            const sample = Math.max(Math.min(.6, this.slideAge / .8), 1 - this.slideTimer / .8);
+            this.slideSample += THREE.MathUtils.clamp(sample - this.slideSample, -2 * dt, 2 * dt);
+            this.slidePose += (1 - this.slidePose) * (1 - Math.exp(-25 * dt));
+            this.releaseWeight = this.slidePose;
+            this.slideExit = 0;
+        } else {
+            // The leading heel starts the first running step. Ease the pelvis
+            // and trailing foot back into stride after the collision window.
+            if (wasSliding && this.isGrounded) this.phase = this.slideLeg * Math.PI;
+            this.slideExit = Math.min(.24, this.slideExit + dt);
+            this.slidePose = this.releaseWeight * (1 - THREE.MathUtils.smoothstep(this.slideExit, 0, .24));
+        }
+        const lateral = THREE.MathUtils.clamp(dx / 2.4, -1, 1);
+        this.bankVelocity += ((lateral - this.bank) * 205 - this.bankVelocity * 17) * dt;
+        this.bank += this.bankVelocity * dt;
+        this.rig.pose(this.phase, this.slidePose, this.jumpWeight, this.bank, false, this);
+        this.mesh.rotation.y = -.47 * this.bank;
         this.shadow.position.x = this.mesh.position.x - 0.16;
         this.shadow.position.z = 0.23;
         this.shadow.scale.setScalar(1 + this.mesh.position.y * 0.16);
         this.shadow.material.opacity = 1 - this.mesh.position.y * 0.24;
+        this.stumble.update(dt);
     }
 }

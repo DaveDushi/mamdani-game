@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Box3, Group, Raycaster, Vector3 } from 'three';
 import { halalCart, sidewalkShed, signHolder, yellowCab } from '../game/StreetHazards.js';
-import { railClearance, railInnerFoot, skillGateBounds, skillGateModels, slideClearance } from '../game/SkillGates.js';
+import { courseCueModels, railClearance, railInnerFoot, skillGateBounds, skillGateModels, slideClearance } from '../game/SkillGates.js';
 
 const gates = skillGateModels();
 const street = { taxi: yellowCab(), halal: halalCart(), scaffold: sidewalkShed() };
@@ -13,6 +13,16 @@ function blocks(model, x, y) {
     model.updateMatrixWorld(true);
     return new Raycaster(new Vector3(x, y, 3), alongLane).intersectObject(model).length > 0;
 }
+
+test('the route through every encounter uses a flat, narrow strip of road paint', () => {
+    for (const mark of Object.values(courseCueModels())) {
+        const bounds = new Box3().setFromObject(mark);
+        assert.ok(bounds.min.y > 0 && bounds.max.y < 0.05);
+        assert.ok(bounds.max.x - bounds.min.x < 0.3);
+        assert.ok(bounds.max.z - bounds.min.z > 1);
+        assert.equal(mark.geometry.getAttribute('position').count, 4);
+    }
+});
 
 test('visible gate width, height and foot depth teach the collision dimensions', () => {
     for (const [key, [w, top, d]] of Object.entries(skillGateBounds)) {

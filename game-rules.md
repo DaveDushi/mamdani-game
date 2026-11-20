@@ -1,6 +1,6 @@
 # Mamdani Run game rules
 
-Run through three lanes of New York traffic. Painted chevrons mark a route. The food stamp sits at the gate, above a jump or under a beam. Colored stamps flank a rare power-up. Swipe left or right to change lanes, up to jump, or down to slide. The arrow keys and WASD also work. Space jumps. Tap pause, press P or press Escape to pause. Resume gives you a three-second countdown with the street and all effect timers frozen.
+Run through three lanes of New York traffic. Short white dashes mark the open lanes. The food stamp sits at the gate, above a jump or under a beam. Colored stamps flank a rare power-up. Swipe left or right to change lanes, up to jump, or down to slide. The arrow keys and WASD also work. Space jumps. Tap pause, press P or press Escape to pause. Resume gives you a three-second countdown with the street and all effect timers frozen.
 
 | Encounter | How to play it |
 | --- | --- |

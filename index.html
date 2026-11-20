@@ -61,7 +61,6 @@
                     <path d="M19 9c0 5-7 12-7 12S5 14 5 9a7 7 0 1 1 14 0Z" />
                     <circle cx="12" cy="9" r="2" />
                 </symbol>
-                <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-7 7 7-7 7" /></symbol>
                 <symbol id="i-pause" viewBox="0 0 24 24">
                     <path d="M8 5v14m8-14v14" stroke-width="4" />
                 </symbol>
@@ -106,7 +105,7 @@
                         <p id="menu-wallet" class="menu-wallet" aria-live="polite"></p>
                     </div>
                     <button type="button" class="play" id="start-btn">
-                        <span>Start Day Run</span><svg aria-hidden="true"><use href="#i-arrow" /></svg>
+                        <span>Start Day Run</span>
                     </button>
                     <div class="home-extras">
                         <button type="button" id="shop-btn"><svg aria-hidden="true"><use href="#i-shirt" /></svg>Shop</button>
@@ -117,7 +116,7 @@
                 </div>
             </section>
             <aside class="wire home-wire" aria-label="City Wire">
-                <button id="story-btn" type="button" title="Read the story">City Wire <span aria-hidden="true">↗</span></button>
+                <button id="story-btn" type="button" title="Read the story">City Wire</button>
                 <p>Mayor endorses today’s march. Aide sent ahead to find out what it’s for.</p>
             </aside>
             <footer class="home-footer">
@@ -125,11 +124,11 @@
                     <svg aria-hidden="true"><use href="#i-cup" /></svg><span id="menu-best-label">Day best</span><b id="menu-best">0 m</b>
                 </div>
                 <div class="home-inputs">
-                    <div class="key-guide"><span><kbd>←</kbd><kbd>→</kbd> Move</span><span><kbd>↑</kbd> Jump</span><span><kbd>↓</kbd> Slide</span></div>
+                    <div class="key-guide"><span><kbd>A</kbd><kbd>D</kbd> Move</span><span><kbd>W</kbd> Jump</span><span><kbd>S</kbd> Slide</span></div>
                     <div class="touch-guide">Swipe to move, jump or slide</div>
                 </div>
                 <a class="home-coffee" data-support-link href="https://www.buymeacoffee.com/davedushi" target="_blank" rel="noopener noreferrer">
-                    Buy Dave a coffee <span aria-hidden="true">↗</span>
+                    Buy Dave a coffee
                 </a>
             </footer>
         </main>
@@ -146,7 +145,11 @@
             </div>
             <div class="hud-lower">
                 <div id="wire-flash" hidden><b id="wire-source">City wire</b><span id="wire-copy"></span></div>
-                <span id="race-checkpoint"></span>
+                <div id="race-checkpoint" role="group" aria-label="Race checkpoint" hidden>
+                    <span data-approach-label></span>
+                    <strong data-approach-name></strong>
+                    <span data-approach-detail></span>
+                </div>
                 <div class="hud-foot">
                     <div class="street-tag">
                         <svg><use href="#i-pin" /></svg><span id="district">Canal Street</span>
@@ -196,7 +199,7 @@
                 <div class="result-actions">
                     <div class="result-score"><span>Distance run</span><strong id="final-distance"></strong></div>
                     <div class="action-row">
-                        <button class="solid" id="restart-btn">Run again <span aria-hidden="true">↗</span></button>
+                        <button class="solid" id="restart-btn">Run again</button>
                         <button class="plain" data-home>Menu</button>
                     </div>
                     <p class="load-status" role="status" id="result-load-status" hidden></p>
@@ -218,8 +221,8 @@
                         </dl>
                         <div class="receipt-balance"><strong id="result-banked"></strong><span id="result-wallet"></span></div>
                         <p id="result-progress"></p>
-                        <button id="play-night" class="text-btn" hidden>Play Night Shift →</button>
-                        <button id="result-shop" class="text-btn" type="button">Sprint training →</button>
+                        <button id="play-night" class="text-btn" hidden>Play Night Shift</button>
+                        <button id="result-shop" class="text-btn" type="button">Sprint training</button>
                     </div>
                 </div>
                 <section id="day-board" aria-labelledby="result-standings-heading">
@@ -237,9 +240,9 @@
             <div class="paper">
                 <h2>How to play</h2>
                 <div class="manual">
-                    <p><b>Change lanes</b><span>Swipe across<br />←/→ or A/D</span></p>
-                    <p><b>Jump</b><span>Swipe up<br />↑, W or Space</span></p>
-                    <p><b>Slide</b><span>Swipe down<br />↓ or S</span></p>
+                    <p><b>Change lanes</b><span>Swipe across<br />Left/Right or A/D</span></p>
+                    <p><b>Jump</b><span>Swipe up<br />Up, W or Space</span></p>
+                    <p><b>Slide</b><span>Swipe down<br />Down or S</span></p>
                     <p><b>Pause</b><span>Tap pause<br />P or Esc</span></p>
                 </div>
                 <p>
@@ -290,7 +293,7 @@
                         rel="noopener"
                         id="bmc-wrapper"
                         data-support-link
-                        >Buy Dave a coffee ↗</a
+                        >Buy Dave a coffee</a
                     ><button id="feedback-btn" class="text-btn">Send feedback</button>
                 </div>
                 <p id="pwa-prompt" class="install"></p>
@@ -320,9 +323,9 @@
                 <div class="poster-print" role="img" id="poster-print"></div>
                 <p id="poster-caption"></p>
                 <div class="poster-controls">
-                    <button id="poster-prev" class="small" aria-label="Previous poster">←</button
+                    <button id="poster-prev" class="small" aria-label="Previous poster">Previous</button
                     ><span id="poster-count" aria-live="polite"></span
-                    ><button id="poster-next" class="small" aria-label="Next poster">→</button>
+                    ><button id="poster-next" class="small" aria-label="Next poster">Next</button>
                 </div>
             </div>
         </section>

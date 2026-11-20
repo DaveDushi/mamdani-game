@@ -102,7 +102,10 @@
 #shop-screen #speed-feedback:empty { margin: 0; }
 #shop-screen #shop-record { margin: 10px 0 0; padding-top: 7px; border-top: 1px solid #b8ac95; font-size: 14px; }
 #race-schedule { font-size: 14px; }
-#race-schedule summary { padding: 9px 2px; cursor: pointer; font-weight: 700; }
+#race-schedule summary { display: flex; align-items: center; gap: 0.5em; padding: 9px 2px; cursor: pointer; font-weight: 700; list-style: none; }
+#race-schedule summary::-webkit-details-marker { display: none; }
+#race-schedule summary::after { content: '+'; }
+#race-schedule[open] summary::after { content: '−'; }
 #race-schedule summary:focus-visible { outline: 2px solid #24718a; outline-offset: -2px; }
 #shop-rivals { margin: 0; padding: 0; }
 #shop-rivals li {

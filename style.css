@@ -273,17 +273,6 @@ h1 strong {
     font-size: clamp(24px, 2.65vw, 38px);
     letter-spacing: -0.015em;
 }
-.play svg {
-    margin-left: auto;
-    width: 0.8em;
-}
-.triangle {
-    width: 0;
-    height: 0;
-    border-top: 7px solid transparent;
-    border-bottom: 7px solid transparent;
-    border-left: 11px solid currentColor;
-}
 .play:hover,
 .solid:hover {
     background: #ffdb73;
@@ -549,14 +538,6 @@ h1 strong {
     align-items: center;
     gap: 5px;
 }
-#race-checkpoint {
-    padding: 4px 8px;
-    border-left: 3px solid var(--gold);
-    background: #17252ee8;
-    color: #ffebbd;
-    font: 700 13px/1.1 Condensed, sans-serif;
-    font-variant-numeric: tabular-nums;
-}
 .pace {
     display: grid;
     gap: 2px;
@@ -741,9 +722,20 @@ h1 strong {
 #notice:empty {
     display: none;
 }
-#notice[data-tone='warning'] {
+#notice:is([data-tone='warning'], [data-tone='stumble']) {
     color: #fff5dc;
     background: #972e26;
+}
+@media (orientation: landscape) and (max-height: 430px) {
+    #notice[data-tone='stumble'] {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        transform: none;
+    }
 }
 #notice[data-tone='clean'] {
     color: #c7facc;
@@ -957,7 +949,6 @@ h1 strong {
 }
 .newsprint .solid { color: var(--news-paper); background: var(--news-ink); }
 .result-actions .solid { flex: 1; }
-.result-actions .solid span { padding-left: .25em; }
 .newsprint .solid:hover { background: #49443c; }
 .newsprint .plain:hover { background: #e4dfd3; }
 .newsprint :focus-visible { outline: 2px solid var(--news-red); outline-offset: 2px; }

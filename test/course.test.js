@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { Group, Scene } from 'three';
+import { readFile } from 'node:fs/promises';
+import { Group, MeshStandardMaterial, Scene, Vector3 } from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { courseSpeed, streetCourse } from '../game/Course.js';
 import { ObstacleManager } from '../game/ObstacleManager.js';
 import { Player } from '../game/Player.js';
+import { RunnerModel } from '../game/RunnerModel.js';
 import { PowerupManager } from '../game/PowerupManager.js';
 import { World } from '../game/World.js';
 
@@ -366,11 +369,50 @@ function createPlayer() {
         mesh: new Group(),
         shadow: Object.assign(new Group(), { material: {} }),
         rig: { pose: noOp, wear: noOp, material: { emissive: { setHex: noOp, setRGB: noOp } } },
+        stumble: { reset: noOp, restore: noOp, update: noOp },
         scarf: {}, sash: {}, mask: {}, flagAura: {}, bottleStars: {}
     });
     player.reset();
     return player;
 }
+
+test('the planted foot recovers smoothly when a duck ends during a lane change', async () => {
+    const loader = new GLTFLoader().register(() => ({
+        name: 'untextured-rig',
+        loadMaterial: () => Promise.resolve(new MeshStandardMaterial())
+    }));
+    const load = async name => {
+        const bytes = await readFile(new URL('../public/models/' + name + '.glb', import.meta.url));
+        return loader.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+    };
+    const [mayor, apparel] = await Promise.all([load('mayor'), load('apparel')]);
+    const player = createPlayer();
+    player.rig = new RunnerModel({ ...mayor, apparel: apparel.scene });
+    player.mesh = player.rig.root;
+    player.mesh.scale.setScalar(1.1);
+    player.reset();
+    const feet = ['LeftFoot', 'RightFoot', 'LeftToeBase', 'RightToeBase'].map(name =>
+        player.rig.figure.getObjectByName('mixamorig' + name)
+    );
+    const inputs = new Map([[105, ['left']], [121, ['up', 'right']], [141, ['left']], [168, ['down', 'right']]]);
+    let previous, distance = 0;
+    for (let tick = 0; tick < 232; tick++) {
+        const speed = courseSpeed(distance, 'day');
+        distance += speed * step;
+        player.update(step, { isJustPressed: key => inputs.get(tick)?.includes(key) ?? false }, speed);
+        const feetNow = feet.map(bone => bone.getWorldPosition(new Vector3()).sub(player.mesh.position));
+        if (tick === 215) assert.ok(player.slideTimer > 0);
+        if (tick >= 216) {
+            assert.equal(player.slideTimer, 0);
+            // At 60 Hz the two release frames used to snap a shoe 35 cm, then 16 cm.
+            const limit = tick < 218 ? .035 : .13;
+            for (let i = 0; i < feet.length; i++) {
+                assert.ok(feetNow[i].distanceTo(previous[i]) < limit, feet[i].name + ' at tick ' + tick);
+            }
+        }
+        previous = feetNow;
+    }
+});
 
 test('one ticket rail pays one stamp and move for either clear, and hits a standing runner', () => {
     const traffic = createTraffic();

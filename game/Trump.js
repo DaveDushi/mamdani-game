@@ -47,12 +47,13 @@ export class Trump {
         this.shadow.position.set(this.mesh.position.x, 0.019, this.mesh.position.z);
     }
 
-    update(dt, x) {
+    update(dt, x, glanceShoulder) {
         if (!this.mesh.visible) return;
         this.chaseTimer = Math.max(0, this.chaseTimer - dt);
         this.isChasing = this.chaseTimer > 0;
         // Track the inside shoulder so both silhouettes stay in frame in either outside lane.
-        if (this.isChasing && Math.abs(x) > 1.3) this.shoulder = x > 0 ? -1 : 1;
+        // Finish the over-the-shoulder exchange before crossing behind a lane-changing runner.
+        if (this.isChasing && !glanceShoulder && Math.abs(x) > 1.3) this.shoulder = x > 0 ? -1 : 1;
         const targetX = this.isChasing ? x + this.shoulder * 0.9 : this.shoulder * 7;
         const targetZ = this.isChasing ? 1.85 : 7.5;
         const dx = targetX - this.mesh.position.x;

@@ -4,7 +4,7 @@ A portrait-first 3D endless runner by Dave Dushi. In this fictional New York, Ma
 
 ## Play
 
-Swipe left or right to change lanes, up to jump and down to slide. On a keyboard, use the arrow keys or WASD. Space also jumps. Tap the pause button or press P or Escape to pause and reread the last street sign. In Shop → Free outfits, drag the preview to inspect a costume. With the preview focused, use the left and right arrow keys to turn it. The Posters gallery contains all nine City Hall prints with large-text captions.
+Swipe left or right to change lanes, up to jump and down to slide. On a keyboard, use the arrow keys or WASD. Space also jumps. Tap the pause button or press P or Escape to pause and reread the last street sign. In the shop, choose Free outfits and drag the preview to inspect a costume. With the preview focused, use the left and right arrow keys to turn it. The Posters gallery contains all nine City Hall prints with large-text captions.
 
 Follow the lane markings. The opening stunt gates teach the moves. Jump low hurdles, slide under beams, or clear the waist-high ticket rail either way. The route crosses the Brooklyn and Manhattan bridges and passes through the Queens–Midtown and Brooklyn–Battery tunnels. Watch the sidewalks for the fare strike, bagel bailout and mobile press unit. On a loss, City Wire runs a Stars and Stripes front page with the score and stamp receipt.
 

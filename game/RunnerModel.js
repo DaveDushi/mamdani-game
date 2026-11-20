@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { movementClip, StreetBalance } from './Locomotion.js';
 export { loadCast, loadMayor } from './Cast.js';
 
 export class RunnerModel {
@@ -48,10 +49,14 @@ export class RunnerModel {
         });
         this.mixer = new THREE.AnimationMixer(this.figure);
         const clip = (name) => THREE.AnimationClip.findByName(asset.animations, name);
-        this.run = this.mixer.clipAction(clip('Run')).play();
+        const running = clip('Run');
+        this.run = this.mixer.clipAction(chaser ? running : movementClip(this.figure, running)).play();
         this.stand = this.mixer.clipAction(clip('Idle')).play();
-        this.crouch = this.mixer.clipAction(clip('Crouch')).play();
-        this.jump = this.mixer.clipAction(clip('Run').clone()).play();
+        if (!chaser) {
+            this.leaps = [1, -1].map(lead => this.mixer.clipAction(movementClip(this.figure, running, 'jump', lead)).play());
+            this.slides = [1, -1].map(lead => this.mixer.clipAction(movementClip(this.figure, running, 'slide', lead)).play());
+            this.balance = new StreetBalance(this.figure, outfit.skeleton);
+        }
         this.pose(0, 0, 0, 0, true);
     }
 
@@ -100,22 +105,34 @@ export class RunnerModel {
         this.clothStraps.visible = overCloth;
     }
 
-    pose(phase, slide, air, lean, idle = false) {
-        this.figure.rotation.z = idle ? 0 : THREE.MathUtils.clamp(-lean * 0.12, -0.17, 0.17);
+    pose(phase, slide, air, lean, idle = false, motion = null) {
+        this.balance?.restore();
+        this.figure.rotation.z = idle ? 0 : motion ? .26 * lean : THREE.MathUtils.clamp(-lean * .12, -.17, .17);
+        this.figure.position.y = motion?.pushOff || 0;
         this.stand.enabled = idle;
         this.run.enabled = !idle && slide < 0.999 && air < 0.999;
-        this.crouch.enabled = !idle && slide > 0.001;
-        this.jump.enabled = !idle && air > 0.001 && slide < 0.999;
         const cycle = this.run.getClip().duration;
         this.stand.setEffectiveWeight(idle ? 1 : 0);
         this.stand.time = phase % this.stand.getClip().duration;
         this.run.setEffectiveWeight((1 - slide) * (1 - air));
         this.run.time = ((phase / (2 * Math.PI)) % 1) * cycle;
-        this.jump.setEffectiveWeight(air * (1 - slide));
-        this.jump.time = cycle * 0.32;
-        this.crouch.setEffectiveWeight(slide);
-        this.crouch.time = 0.6 + ((phase * 0.1) % 1.8);
+        if (this.leaps) {
+            for (let leg = 0; leg < 2; leg++) {
+                const leap = this.leaps[leg], crouch = this.slides[leg];
+                leap.enabled = !idle && air > .001 && slide < .999 && leg === (motion?.jumpLeg ?? 0);
+                crouch.enabled = !idle && slide > .001 && leg === (motion?.slideLeg ?? 0);
+                if (leap.enabled) {
+                    leap.setEffectiveWeight(air * (1 - slide));
+                    leap.time = cycle * (motion?.jumpSample ?? .37);
+                }
+                if (crouch.enabled) {
+                    crouch.setEffectiveWeight(slide);
+                    crouch.time = cycle * (motion?.slideSample ?? .5);
+                }
+            }
+        }
         this.mixer.update(0);
+        if (motion) this.balance.apply(lean, motion.effort, phase, (1 - slide) * (1 - air));
         if (this.flag?.visible) {
             const folds = this.flag.morphTargetInfluences;
             folds[0] = Math.sin(phase * 0.85) * 0.8;

@@ -62,10 +62,6 @@ def border(radius=6):
     for x in (9,246):
         bolt(x,64)
 
-def arrow(x,y,s,up,ink):
-    pts=[(-.48,.01),(0,-.52),(.48,.01),(.17,.01),(.17,.48),(-.17,.48),(-.17,.01)]
-    d.polygon([(x+a*s,y+b*s*(1 if up else -1)) for a,b in pts],fill=ink)
-
 face("white"); finish(0,0)
 # Windshield, with a reflected city block and dashboard under the glass.
 face("#314151")
@@ -190,8 +186,8 @@ finish(19)
 face("#e87527");border();letters("STREET",30,15,196,41,navy,True);letters("CLOSED",23,65,210,46,navy,True);finish(20)
 face("#f6ebcd");d.rectangle((0,0,33,128),fill="#d76b34");d.rectangle((224,0,256,128),fill="#d76b34")
 letters("TICKETS",41,22,173,83,navy,True);finish(21)
-for i,up,word,bg in [(22,True,"JUMP","#ffdb5c"),(23,False,"SLIDE","#99edee")]:
-    face(bg);border();arrow(47,65,73,up,navy);letters(word,88,26,143,74,navy,True);finish(i)
+for i,word,bg in [(22,"JUMP","#ffdb5c"),(23,"SLIDE","#99edee")]:
+    face(bg);border();letters(word,27,26,202,74,navy,True);finish(i)
 for i,(bg,ink,heading,first,second) in enumerate([
     ("#f4e9ce","#123e35","LOWER EAST SIDE","FREE PALESTINE","FREE MICS"),
     ("#f6bf48","#332329","BOROUGH ASSEMBLY","PROTEST","THIS PROTEST"),
