@@ -55,9 +55,9 @@ export class ObstacleManager {
         this.scene.remove(obj.mesh);
         this.pool[obj.key].push(obj);
     }
-    reset(random = Math.random) {
+    reset(mode = 'day', random = Math.random) {
         for (let i = this.obstacles.length - 1; i >= 0; i--) this.remove(i);
-        this.course = streetCourse(random);
+        this.course = streetCourse(random, mode);
         this.nextRow = this.course.next().value;
         this.add('coin', 0, -5);
         this.add('coin', 0, -8.5);
@@ -73,7 +73,7 @@ export class ObstacleManager {
                     if (key && lane !== row.exitLane) this.add(key, (lane - 1) * 3, z);
                 });
                 const x = (row.exitLane - 1) * 3;
-                for (const lead of [12, 8, 4]) this.add('coin', x, z + lead);
+                for (const lead of [3, 2, 1]) this.add('coin', x, z + lead * row.stampStep);
             } else {
                 const x = (row.pickupLane - 1) * 3;
                 this.add('coin', x, z + 5, row.pickup);

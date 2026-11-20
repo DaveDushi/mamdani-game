@@ -113,11 +113,38 @@ export class StreetLight {
         return m;
     }
 
+    setShift(mode) {
+        this.afterHours = mode === 'night';
+        this.lastFrom = -1;
+    }
+
+    lampMaterial() {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        const falloff = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+        falloff.addColorStop(0, '#fff');
+        falloff.addColorStop(0.18, 'rgba(255,255,255,.54)');
+        falloff.addColorStop(0.55, 'rgba(255,255,255,.14)');
+        falloff.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = falloff;
+        ctx.fillRect(0, 0, 64, 64);
+        this.lamps = new THREE.MeshBasicMaterial({
+            map: new THREE.CanvasTexture(canvas),
+            blending: THREE.AdditiveBlending,
+            vertexColors: true,
+            transparent: true,
+            depthWrite: false,
+            toneMapped: false
+        });
+        return this.lamps;
+    }
+
     update(distance) {
-        const from = districtAt(distance),
+        const from = this.afterHours ? 1 : districtAt(distance),
             to = (from + 1) % looks.length;
         const edge = distance % DISTRICT_LENGTH;
-        const amount = THREE.MathUtils.smoothstep(edge, DISTRICT_LENGTH - 55, DISTRICT_LENGTH);
+        const amount = this.afterHours ? 0 : THREE.MathUtils.smoothstep(edge, DISTRICT_LENGTH - 55, DISTRICT_LENGTH);
         if (this.lastFrom === from && Math.abs(this.lastMix - amount) < 0.003) return;
         this.lastFrom = from;
         this.lastMix = amount;
@@ -135,5 +162,16 @@ export class StreetLight {
         this.scene.fog.density = blend('haze');
         this.night.value = blend('night');
         this.wet.value = blend('wet');
+        if (this.afterHours) {
+            this.scene.fog.color.setHex(0x7e8298);
+            this.sun.color.setHex(0xffc396);
+            this.fill.color.setHex(0xc4d8ff);
+            this.fill.intensity = 1.0;
+            this.wet.value = 1;
+        } else {
+            this.fill.intensity = 0.74;
+        }
+        this.lamps.visible = this.night.value > 0.14;
+        this.lamps.opacity = this.night.value * 0.66;
     }
 }

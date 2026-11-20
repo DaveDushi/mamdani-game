@@ -550,6 +550,44 @@ h1 strong {
     align-items: center;
     gap: 5px;
 }
+.pace {
+    display: grid;
+    gap: 2px;
+    align-self: center;
+    padding: 4px 7px;
+    background: #17252eec;
+    border-radius: 3px;
+    font: 700 16px/1 Condensed, sans-serif;
+    font-variant-numeric: tabular-nums;
+}
+.pace small { font-size: 10px; text-transform: uppercase; color: #e3d5b3; }
+#resume-count {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #09121c36;
+    pointer-events: none;
+}
+#resume-count span {
+    padding: 5px 12px;
+    color: #fff6de;
+    background: var(--ink);
+    font: 700 15px/1 Condensed, sans-serif;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+#count-digit {
+    margin-top: 5px;
+    padding: 3px 18px 9px 14px;
+    color: var(--ink);
+    background: var(--gold);
+    transform: skew(-4deg);
+    font: italic 900 clamp(70px, 11vmin, 110px)/.94 Condensed, sans-serif;
+    font-variant-numeric: tabular-nums;
+}
 .distance,
 .stamps,
 .tool,
@@ -637,11 +675,24 @@ h1 strong {
 }
 #pickup-card::before {
     content: '';
-    grid-row: 1 / 4;
+    grid-row: 1 / 5;
     align-self: end;
     aspect-ratio: 1;
     background: url('/art/pickup-portraits.webp') left bottom / 300% 100% no-repeat;
 }
+#pickup-card::after {
+    content: 'Picked up';
+    grid-column: 2;
+    grid-row: 1;
+    font: 700 11px/1 Condensed, sans-serif;
+    color: var(--stripe);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    margin-bottom: 2px;
+}
+.pickup-head { grid-column: 2; grid-row: 2; }
+#pickup-detail { grid-column: 2; grid-row: 3; }
+#pickup-card i { grid-column: 2; grid-row: 4; }
 #pickup-card[data-kind='covidMask'] { --stripe: #a1ecf0; }
 #pickup-card[data-kind='covidMask']::before { background-position-x: center; }
 #pickup-card[data-kind='rainbow'] { --stripe: #ffb6e6; }

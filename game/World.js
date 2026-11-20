@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { courseSpeed } from './Course.js';
 import { pedestrian } from './StreetProps.js';
 import { Batch, artTexture } from './Geometry.js';
 import { Landmarks, districts, districtAt } from './Landmarks.js';
@@ -46,13 +47,16 @@ function signAtlas() {
     return new THREE.MeshBasicMaterial({ map: t, toneMapped: false });
 }
 
-function streetLamp(batch, side, z, withSignal) {
+function streetLamp(batch, glows, side, z, withSignal) {
     const x = side * 5.36;
     batch.shape(pole, iron, x, 2.28, z, 0.067, 4.56, 0.067);
     batch.shape(pole, 0x36494a, x, 0.23, z, 0.165, 0.46, 0.165);
     batch.box(iron, x - side * 0.51, 4.53, z, 1.07, 0.093, 0.1, 0, 0, side * 0.09);
     batch.oval(0x63706c, x - side * 1.02, 4.49, z, 0.32, 0.115, 0.17);
     batch.box(0xf5d199, x - side * 1.02, 4.42, z, 0.44, 0.035, 0.24);
+    const bulb = x - side * 1.02;
+    glows.shape(face, 0xffcb75, bulb, 4.41, z + 0.15, 1.35, 1.13, 1);
+    glows.shape(face, 0xe69c51, bulb - side * 0.64, 0.023, z, 4.1, 7.4, 1, -Math.PI / 2);
     if (withSignal) {
         batch.box(0x5e645a, x - side * 1.3, 4.19, z, 2.65, 0.081, 0.09);
         batch.box(0xc38c38, x - side * 2.52, 3.88, z, 0.37, 0.82, 0.32);
@@ -112,7 +116,8 @@ function block(index, mats, cast) {
         districtWalls = new Batch(),
         signs = new Batch(),
         ads = new Batch(),
-        trees = new Batch();
+        trees = new Batch(),
+        glows = new Batch();
     details.box(0x676360, 0, -0.045, -2.48, 61, 0.08, 5.04);
     const road = new THREE.Mesh(new THREE.PlaneGeometry(10, LENGTH), mats.road);
     road.receiveShadow = true;
@@ -210,8 +215,8 @@ function block(index, mats, cast) {
                 ]);
             }
         }
-        streetLamp(details, side, -5.3, index % 2 === sideIndex);
-        streetLamp(details, side, -32, false);
+        streetLamp(details, glows, side, -5.3, index % 2 === sideIndex);
+        streetLamp(details, glows, side, -32, false);
         signs.shape(face, 0xffffff, side * 5.63, 4.13, -5.18, 2.86, 0.52, 1, 0, -side * 0.24, 0, [
             0,
             1 - (index + 1) / 10,
@@ -292,7 +297,7 @@ function block(index, mats, cast) {
     group.add(paving.mesh(mats.paving), furniture, walls.mesh(mats.walls), signs.mesh(mats.signs), greenery);
     const posters = ads.mesh(mats.ads);
     const fronts = districtWalls.mesh(mats.district);
-    group.add(posters, fronts);
+    group.add(posters, fronts, glows.mesh(mats.lamps));
     return {
         group,
         train,
@@ -313,6 +318,7 @@ export class World {
         const road = artTexture('asphalt');
         road.anisotropy = 8;
         const mats = {
+            lamps: light.lampMaterial(),
             walls: new THREE.MeshLambertMaterial({ map: artTexture('facades'), vertexColors: true }),
             district: new THREE.MeshLambertMaterial({ map: artTexture('districts'), vertexColors: true }),
             paving: new THREE.MeshLambertMaterial({ map: paving }),
@@ -346,8 +352,9 @@ export class World {
         return districts[districtAt(this.distance)];
     }
 
-    reset() {
-        this.speed = 17.5;
+    reset(mode = 'day') {
+        this.courseMode = mode;
+        this.speed = courseSpeed(0, mode);
         this.distance = 0;
         this.trainTime = 0;
         this.landmarks.update(0);
@@ -388,7 +395,7 @@ export class World {
     }
 
     update(dt) {
-        this.speed = Math.min(37, this.speed + 0.72 * dt);
+        this.speed = courseSpeed(this.distance + this.speed * dt, this.courseMode);
         const step = this.speed * dt;
         this.distance += step;
         this.landmarks.update(this.distance);

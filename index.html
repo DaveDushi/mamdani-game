@@ -76,14 +76,25 @@
             </header>
             <section class="cover">
                 <div class="cover-copy">
+                    <div class="cover-title">
                     <div class="edition"><i></i> New York City <b>★</b> 2026 edition</div>
                     <h1><span>Mamdani</span><strong>Run!</strong></h1>
                     <div class="subtitle">Escape Trump!</div>
                     <p class="deck">
                         Dodge cabs. Follow the food stamps. <br />Outrun Trump's audit of the five-year plan.
                     </p>
+                    </div>
+                    <div class="run-controls">
+                    <div class="run-selector" role="group" aria-label="Run type" aria-describedby="menu-wallet">
+                        <button id="mode-day" type="button" aria-pressed="true">Day Run</button>
+                        <button id="mode-night" type="button" aria-pressed="false" disabled>
+                            <svg id="night-lock" aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/></svg>
+                            Night Shift
+                        </button>
+                    </div>
+                    <p id="menu-wallet" class="menu-wallet" aria-live="polite"></p>
                     <button class="play" id="start-btn">
-                        <i class="triangle"></i><span>Start run</span><svg><use href="#i-arrow" /></svg>
+                        <i class="triangle"></i><span>Start Day Run</span><svg><use href="#i-arrow" /></svg>
                     </button>
                     <div class="subactions">
                         <button id="shop-btn">
@@ -93,6 +104,7 @@
                         </button>
                     </div>
                     <p class="load-status" role="status" id="load-status" hidden></p>
+                    </div>
                 </div>
                 <div class="location">
                     <svg><use href="#i-pin" /></svg> Manhattan, NY
@@ -110,7 +122,7 @@
                 </div>
                 <div class="touch-guide">Swipe to move, jump or slide</div>
                 <div class="record">
-                    <svg><use href="#i-cup" /></svg> Personal best <b id="menu-best">0 m</b>
+                    <svg><use href="#i-cup" /></svg> <span id="menu-best-label">Day best</span> <b id="menu-best">0 m</b>
                 </div>
             </footer>
         </main>
@@ -119,6 +131,7 @@
                 <div class="run-metrics">
                     <div class="distance"><small>Distance</small><b id="score">0</b><em> m</em></div>
                     <div class="stamps"><i class="ticket-icon">★</i><span id="food-stamps">0</span></div>
+                    <div class="pace"><small>Pace</small><b id="pace">1.0×</b></div>
                 </div>
                 <button id="pause-btn" class="tool" aria-label="Pause run">
                     <svg><use href="#i-pause" /></svg>
@@ -146,6 +159,9 @@
                 </div>
                 <div id="notice" role="status"></div>
             </div>
+            <div id="resume-count" hidden role="status" aria-live="polite">
+                <span>Resuming in</span><strong id="count-digit">3</strong>
+            </div>
         </div>
         <section id="pause-screen" class="overlay hidden">
             <div class="paper compact">
@@ -170,16 +186,23 @@
                     <div><small>Stamp tax</small><strong id="final-tax">0</strong></div>
                     <div><small>Clean moves</small><strong id="final-moves">0</strong></div>
                 </div>
+                <div class="bank-receipt">
+                    <div><strong id="result-banked"></strong><span id="result-wallet"></span></div>
+                    <p id="result-progress"></p>
+                    <button id="play-night" class="text-btn" hidden>Play Night Shift →</button>
+                </div>
                 <p class="best-line">
-                    Personal best <b id="pb-score">0 m</b> <span id="pb-rank-display"></span>
+                    <span id="result-best-label">Day Run best</span> <b id="pb-score">0 m</b> <span id="pb-rank-display"></span>
                 </p>
                 <div class="action-row">
                     <button class="solid" id="restart-btn">Run again</button
                     ><button class="plain" data-home>Menu</button>
                 </div>
+                <div id="day-board">
                 <h3>Top revolutionaries</h3>
                 <div id="leaderboard-list" aria-live="polite"></div>
                 <button id="join-lb-btn" class="text-btn">Join the leaderboard</button>
+                </div>
             </div>
         </section>
         <section id="instructions-modal" class="overlay hidden" tabindex="-1">

@@ -52,6 +52,14 @@ export class Run {
         this.scene.add(fill);
         this.world = new World(this.scene, cast, new StreetLight(this.scene, skyLight, sun, fill));
         this.player = new Player(this.scene, cast.mayor);
+        this.pickupRing = new THREE.Mesh(
+            new THREE.RingGeometry(0.84, 1, 40),
+            new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, toneMapped: false })
+        );
+        this.pickupRing.rotation.x = -Math.PI / 2;
+        this.pickupRing.position.y = 0.085;
+        this.pickupRing.visible = false;
+        this.player.mesh.add(this.pickupRing);
         this.trump = new Trump(this.scene, cast.chaser);
         this.wardrobe = new Wardrobe(this.renderer, this.player);
         this.powerupManager = new PowerupManager(this.scene, artTexture('pickup-markers'));
@@ -64,6 +72,9 @@ export class Run {
         this.hud = Object.fromEntries(
             [
                 'score',
+                'pace',
+                'resume-count',
+                'count-digit',
                 'food-stamps',
                 'district',
                 'effect',
@@ -83,6 +94,7 @@ export class Run {
             ].map((id) => [id, document.getElementById(id)])
         );
         this.frame = this.frame.bind(this);
+        this.countFrame = this.countFrame.bind(this);
         this.quality = 1;
         this.frameId = 0;
         this.ready = Promise.all(artLoads).then(() => this.prepareStreet());
@@ -121,25 +133,30 @@ export class Run {
             this.wardrobe.resize();
             return;
         }
-        this.camera.fov = this.camera.aspect < 0.8 ? 59 : 53;
+        this.baseFov = this.camera.aspect < 0.8 ? 59 : 53;
+        this.camera.fov = this.baseFov;
         this.camera.updateProjectionMatrix();
-        if (this.mode === 'playing' || this.mode === 'paused') {
+        if (this.mode === 'playing' || this.mode === 'paused' || this.mode === 'countdown') {
             this.follow(1);
             this.renderer.render(this.scene, this.camera);
         }
     }
 
-    start() {
+    start(mode = 'day') {
         this.stop();
-        this.world.reset();
+        this.runType = mode;
+        this.world.light.setShift(mode);
+        this.world.reset(mode);
         this.player.reset();
         this.trump.reset();
         this.powerupManager.reset();
-        this.obstacleManager.reset();
+        this.obstacleManager.reset(mode);
         this.particles.reset();
         this.scoreManager.reset();
         this.elapsed = 0;
         this.noticeTime = 0;
+        this.pulseTime = 0;
+        this.pickupRing.visible = false;
         this.pickupOrder = [];
         this.pickupDuration = {};
         this.hud['pickup-card'].hidden = true;
@@ -164,12 +181,17 @@ export class Run {
         this.camera.position.x = 0;
         this.resize();
         this.updateHud();
-        this.resume();
+        this.beginMotion();
     }
 
     follow(dt) {
         const x = this.player.mesh.position.x;
         const portrait = this.camera.aspect < 0.8;
+        const fov = this.baseFov + (this.reduce ? 0 : THREE.MathUtils.clamp((this.world.speed - 17.5) * 0.15, 0, 4.8));
+        if (Math.abs(fov - this.camera.fov) > 0.22) {
+            this.camera.fov = fov;
+            this.camera.updateProjectionMatrix();
+        }
         const halfFov = THREE.MathUtils.degToRad(this.camera.fov * 0.5);
         this.pursuitFrame += ((this.trump.isChasing ? 1 : 0) - this.pursuitFrame) * (1 - Math.exp(-5 * dt));
         const z = Math.max(5.9, 3.46 / (this.camera.aspect * Math.tan(halfFov))) + this.pursuitFrame * 1.25;
@@ -178,13 +200,13 @@ export class Run {
         const impact = this.reduce ? 0 : Math.sin(this.shake * 95) * this.shake * 0.13;
         this.camera.position.set(
             this.camera.position.x,
-            (portrait ? 3.32 : 2.52) +
+            (portrait ? 5.65 : 4.55) +
                 this.pursuitFrame * 0.33 +
                 this.player.mesh.position.y * 0.115 +
                 impact,
             z
         );
-        this.camera.lookAt(this.camera.position.x * 0.52, portrait ? 2.8 : 1.05, -9.8);
+        this.camera.lookAt(this.camera.position.x * 0.52, portrait ? 1.65 : 1.05, -7.3);
     }
 
     showOutfit() {
@@ -200,19 +222,46 @@ export class Run {
         cancelAnimationFrame(this.frameId);
         this.frameId = 0;
         this.mode = 'menu';
+        this.hud['resume-count'].hidden = true;
         this.input.reset();
         for (const o of this.obstacleManager.obstacles) o.mesh.visible = true;
     }
     pause() {
-        if (this.mode === 'playing') {
+        if (this.mode === 'playing' || this.mode === 'countdown') {
             this.sound.music(false);
             this.mode = 'paused';
             cancelAnimationFrame(this.frameId);
             this.frameId = 0;
+            this.hud['resume-count'].hidden = true;
             this.input.reset();
         }
     }
     resume() {
+        if (this.mode !== 'paused') return;
+        this.mode = 'countdown';
+        this.input.reset();
+        this.countValue = 0;
+        this.countEnd = performance.now() + 3000;
+        this.hud['resume-count'].hidden = false;
+        this.countFrame(performance.now());
+    }
+    countFrame(now) {
+        if (this.mode !== 'countdown') return;
+        const value = Math.ceil((this.countEnd - now) / 1000);
+        if (value <= 0) {
+            this.hud['resume-count'].hidden = true;
+            this.sound.play('go');
+            this.beginMotion();
+            return;
+        }
+        if (value !== this.countValue) {
+            this.countValue = value;
+            this.hud['count-digit'].textContent = value;
+            this.sound.play('count');
+        }
+        this.frameId = requestAnimationFrame(this.countFrame);
+    }
+    beginMotion() {
         this.sound.music(true);
         this.mode = 'playing';
         this.input.reset();
@@ -283,6 +332,7 @@ export class Run {
         }
         for (const [key, value] of [
             ['score', this.scoreManager.getDisplayScore()],
+            ['pace', (this.world.speed / 17.5).toFixed(1) + '×'],
             ['food-stamps', this.scoreManager.foodStamps],
             ['district', this.world.district],
             ['effect', effect]
@@ -332,6 +382,15 @@ export class Run {
             this.pickupOrder.push(power);
             this.pickupDuration[power] = player[power + 'Timer'];
             this.updateHud();
+            this.pickupRing.material.color.set({ kafiyeh: 0xffde86, covidMask: 0x87f2f5, rainbow: 0xffa2dc }[power]);
+            this.pulseTime = 0.72;
+            this.pickupRing.visible = true;
+            if (!this.reduce) {
+                this.hud['pickup-card'].animate(
+                    [{ transform: 'translateY(-5px)', outline: '3px solid #fff3c8' }, { transform: 'none', outline: '0px solid transparent' }],
+                    { duration: 520, easing: 'ease-out' }
+                );
+            }
             this.sound.play(power);
             impact();
             particles.spawnParticles(player.mesh.position, 14, 0xf0d997, 1.2);
@@ -411,6 +470,13 @@ export class Run {
             }
         }
         particles.update(dt);
+        if (this.pulseTime > 0) {
+            this.pulseTime = Math.max(0, this.pulseTime - dt);
+            const progress = 1 - this.pulseTime / 0.72;
+            this.pickupRing.scale.setScalar(this.reduce ? 1.13 : 0.62 + progress * 1.65);
+            this.pickupRing.material.opacity = (1 - progress) * 0.85;
+            this.pickupRing.visible = this.pulseTime > 0;
+        }
         if (this.wireTime > 0) {
             this.wireTime -= dt;
             if (this.wireTime <= 0) this.hud['wire-flash'].hidden = true;

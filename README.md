@@ -8,7 +8,7 @@ Swipe left or right to change lanes, up to jump and down to slide. On a keyboard
 
 Run beneath the Canal Street lanterns, the Union Square marquee and the City Hall arch. The district changes every 240 metres. A jump over a cab, a slide under cover or a last-second sidestep earns a clean move. Three in a row earn a three-stamp bonus. The City Wire prints a front page about the obstacle that caught you.
 
-Distance determines your score. Stamps have their own counter. One collision starts a five-second chase. A second collision during the chase ends the run and the Stamp Office takes half your stamps, rounded down. See [game rules](game-rules.md) for obstacles and power-ups.
+Distance determines your score. One collision starts a five-second chase. A second collision during the chase ends the run and the Stamp Office takes half your stamps, rounded down. Bank 30 of the remaining stamps across runs to unlock Night Shift, a faster course with wet streets, rarer pickups and a separate local best. Outfits stay free. See [game rules](game-rules.md) for obstacles and power-ups.
 
 ## Run locally
 

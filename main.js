@@ -4,6 +4,8 @@ import { frontPage } from './game/CityWire.js';
 import { Shop } from './game/Shop.js';
 import { Sound } from './game/Sound.js';
 import { ApiClient } from './game/ApiClient.js';
+import { NIGHT_SHIFT_STAMPS, availableMode, emptyWallet, readWallet, startAttempt } from './game/Progression.js';
+import './progression.css';
 
 const $ = (id) => document.getElementById(id);
 const screenIds = [
@@ -24,7 +26,11 @@ let run,
     loading,
     view,
     resultVersion = 0,
-    finalScore = 0;
+    activeAttempt,
+    lastResult,
+    wallet = emptyWallet,
+    walletReady,
+    walletAvailable = true;
 const shop = new Shop((skin) => {
     if (run) {
         run.player.setSkin(skin);
@@ -32,7 +38,11 @@ const shop = new Shop((skin) => {
     }
 });
 const best = () => Number(localStorage.getItem('mamdani_best_score')) || 0;
+const modeKey = 'mamdani_run_type';
+const modeNames = { day: 'Day Run', night: 'Night Shift' };
+const selectedMode = () => availableMode(localStorage.getItem(modeKey), wallet);
 const metres = (n) => Number(n).toLocaleString() + ' m';
+const stampCount = (n) => n.toLocaleString() + (n === 1 ? ' stamp' : ' stamps');
 const homeOverlay = new Set(['story-modal', 'instructions-modal', 'feedback-modal']);
 function show(id, focus) {
     view = id;
@@ -52,13 +62,51 @@ const dispatches = [
     'City Hall unveils free everything. Budget office requests a transfer.'
 ];
 let dispatchIndex = 0;
+function paintMenu() {
+    const mode = selectedMode();
+    const unlocked = wallet.stamps >= NIGHT_SHIFT_STAMPS;
+    $('mode-night').disabled = !unlocked;
+    $('night-lock').hidden = unlocked;
+    $('mode-day').setAttribute('aria-pressed', String(mode === 'day'));
+    $('mode-night').setAttribute('aria-pressed', String(mode === 'night'));
+    $('menu-wallet').textContent = unlocked
+        ? stampCount(wallet.stamps) + ' banked · Night Shift unlocked'
+        : wallet.stamps + '/' + NIGHT_SHIFT_STAMPS + ' stamps banked to unlock Night Shift';
+    if (!walletAvailable) $('menu-wallet').textContent = 'Stamp wallet unavailable on this device.';
+    $('start-btn').querySelector('span').textContent = 'Start ' + modeNames[mode];
+    $('menu-best-label').textContent = mode === 'night' ? 'Night best' : 'Day best';
+    $('menu-best').textContent = metres(mode === 'night' ? wallet.nightBest : best());
+}
+async function refreshWallet() {
+    try {
+        wallet = await readWallet();
+        walletAvailable = true;
+    } catch {
+        walletAvailable = false;
+    }
+    if (view === 'start-screen') paintMenu();
+}
+function selectMode(mode) {
+    localStorage.setItem(modeKey, availableMode(mode, wallet));
+    paintMenu();
+}
+$('mode-day').onclick = () => selectMode('day');
+$('mode-night').onclick = () => selectMode('night');
+window.addEventListener('focus', () => {
+    if (view === 'start-screen') walletReady = refreshWallet();
+});
+window.addEventListener('storage', (event) => {
+    if (view === 'start-screen' && event.key === modeKey) walletReady = refreshWallet();
+});
 function home() {
     document.querySelector('.wire p').textContent = dispatches[dispatchIndex++ % dispatches.length];
     run?.stop();
+    activeAttempt = null;
     resultVersion++;
     $('load-status').hidden = true;
-    $('menu-best').textContent = metres(best());
     show('start-screen');
+    paintMenu();
+    walletReady = refreshWallet();
 }
 function updateSound() {
     const button = document.querySelector('.sound-toggle');
@@ -99,13 +147,13 @@ if (!Capacitor.isNativePlatform()) {
     document.head.append(analytics);
 }
 const status = $('load-status');
-async function enter(mode) {
+async function enter(mode, requested) {
     if (loading) return;
+    loading = true;
     sound.unlock();
     const btn = mode === 'run' ? $('start-btn') : $('shop-btn');
     try {
         if (!run) {
-            loading = true;
             btn.disabled = true;
             status.hidden = false;
             status.textContent = 'Opening the street…';
@@ -114,16 +162,20 @@ async function enter(mode) {
                 import('./game/RunnerModel.js')
             ]);
             const [cast] = await Promise.all([loadCast(), document.fonts.load('700 16px Condensed')]);
-            run = new Run($('game-canvas'), sound, finish, cast);
+            run = new Run($('game-canvas'), sound, null, cast);
             await run.ready;
         }
+        await walletReady;
         if (view !== 'start-screen' && !(view === 'game-over-screen' && mode === 'run')) return;
         status.hidden = true;
         run.player.setSkin(shop.selected);
         if (mode === 'run') {
+            const attempt = startAttempt(availableMode(requested ?? selectedMode(), wallet));
+            activeAttempt = attempt;
+            run.onEnd = (distance, tax, cause) => finish(attempt, distance, tax, cause);
             resultVersion++;
             show('hud');
-            run.start();
+            run.start(attempt.mode);
             sound.play('start');
             window.gtag?.('event', 'game_start');
         } else {
@@ -141,7 +193,11 @@ async function enter(mode) {
     }
 }
 $('start-btn').onclick = () => enter('run');
-$('restart-btn').onclick = () => enter('run');
+$('restart-btn').onclick = () => enter('run', lastResult.mode);
+$('play-night').onclick = () => {
+    selectMode('night');
+    enter('run', 'night');
+};
 $('shop-btn').onclick = () => enter('outfits');
 $('story-btn').onclick = () => show('story-modal', 'close-story-btn');
 $('instructions-btn').onclick = () => show('instructions-modal', 'instructions-modal');
@@ -208,31 +264,64 @@ if (!installed()) {
     else if (/Android/i.test(navigator.userAgent))
         $('pwa-prompt').textContent = 'Choose Install app in your browser menu to keep the game.';
 }
-function finish(distance, tax, cause) {
-    finalScore = distance;
+async function finish(attempt, distance, tax, cause) {
+    if (activeAttempt !== attempt) return;
+    activeAttempt = null;
+    const version = ++resultVersion;
+    const night = attempt.mode === 'night';
+    const kept = run.scoreManager.foodStamps;
+    const cleanMoves = run.cleanMoves;
+    const seconds = Math.floor(run.elapsed);
+    const result = { mode: attempt.mode, distance };
+    lastResult = result;
+    if (!night) localStorage.setItem('mamdani_best_score', Math.max(best(), distance));
+    let receipt;
+    try {
+        receipt = await attempt.bank(kept, distance);
+        wallet = receipt.wallet;
+        walletAvailable = true;
+    } catch {
+        walletAvailable = false;
+    }
+    if (version !== resultVersion) return;
     const issue = (Number(localStorage.getItem('mamdani_edition')) || 0) + 1;
     localStorage.setItem('mamdani_edition', String(issue));
     const [headline, copy] = frontPage(cause, issue - 1);
-    $('result-edition').textContent = 'Final edition · No. ' + issue;
+    $('result-edition').textContent = modeNames[attempt.mode] + ' · No. ' + issue;
     $('result-headline').textContent = headline;
     $('result-copy').textContent = copy;
-    $('final-moves').textContent = run.cleanMoves;
-    const seconds = Math.floor(run.elapsed);
+    $('final-moves').textContent = cleanMoves;
     $('run-seconds').textContent = seconds + ' second' + (seconds === 1 ? '' : 's');
-    localStorage.setItem('mamdani_best_score', Math.max(best(), distance));
     $('final-distance').textContent = metres(distance);
     $('final-tax').textContent = tax;
-    $('pb-score').textContent = metres(best());
+    $('result-banked').textContent = receipt ? '+' + stampCount(kept) + ' banked' : 'Stamps could not be saved';
+    $('result-wallet').textContent = receipt ? 'Wallet · ' + wallet.stamps.toLocaleString() : '';
+    const remaining = NIGHT_SHIFT_STAMPS - wallet.stamps;
+    $('result-progress').textContent = !receipt ? 'Stamp wallet unavailable on this device.'
+        : receipt.unlocked ? 'Night Shift unlocked!'
+        : remaining > 0 ? stampCount(remaining) + ' to unlock Night Shift.'
+        : 'Night Shift unlocked';
+    $('play-night').hidden = !receipt?.unlocked;
+    $('result-progress').parentElement.classList.toggle('just-unlocked', !!receipt?.unlocked);
+    $('result-best-label').textContent = night ? 'Night Shift best on this device' : 'Day Run best';
+    $('pb-score').textContent = metres(night ? wallet.nightBest : best());
     $('pb-rank-display').textContent = '';
     $('join-lb-btn').hidden = !!localStorage.getItem('mamdani_name');
+    $('day-board').hidden = night;
+    document.querySelector('.results').scrollTop = 0;
     show('game-over-screen', 'restart-btn');
-    loadBoard(++resultVersion, distance);
+    if (!night) loadBoard(version, result);
 }
-async function loadBoard(version, score) {
+async function submitDayScore(score) {
+    if (!localStorage.getItem('mamdani_name')) await api.register(playerId(), '', '', installed());
+    return api.submitScore(playerId(), score);
+}
+async function loadBoard(version, result) {
+    if (result.mode !== 'day') return;
     const list = $('leaderboard-list');
     list.textContent = 'Counting the votes…';
-    if (!localStorage.getItem('mamdani_name')) await api.register(playerId(), '', '', installed());
-    const rank = await api.submitScore(playerId(), score);
+    result.rank ??= submitDayScore(result.distance);
+    const rank = await result.rank;
     const board = await api.getLeaderboard(50);
     if (version !== resultVersion) return;
     const entries = Array.isArray(board) ? board : board?.entries || board?.scores;
@@ -289,7 +378,7 @@ $('register-form').onsubmit = async (e) => {
         if (view === 'registration-modal' && version === resultVersion) {
             show('game-over-screen', 'restart-btn');
             $('join-lb-btn').hidden = true;
-            loadBoard(++resultVersion, finalScore);
+            loadBoard(++resultVersion, lastResult);
         }
     } else $('reg-error').textContent = 'Could not join. Try again.';
 };
