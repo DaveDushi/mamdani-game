@@ -4,6 +4,15 @@ export const editionLines = {
     'City Hall': 'Budget hearing underway. Treasurer passes around a hat.'
 };
 
+export const raceDispatches = {
+    junior: 'Don Jr. inherits lane two. City Hall files an objection.',
+    ivanka: 'Ivanka has trademarked the finish line. Crossing it is still free.',
+    eric: 'Eric brings a golf cart. Officials make him run.',
+    tiffany: 'Tiffany reads the fine print. The mayor has been running for office hours.',
+    barron: 'Barron asks for a longer track. The budget office offers a shorter ruler.',
+    donald: 'Donald promises the biggest finish in history. It is still 100 metres.'
+};
+
 const receipts = {
     jumpGate: [
         ['Red tape stops mayor in his tracks.', 'City Hall spent the ribbon-cutting budget on the ribbon.'],

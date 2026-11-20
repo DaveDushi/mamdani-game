@@ -550,6 +550,14 @@ h1 strong {
     align-items: center;
     gap: 5px;
 }
+#race-checkpoint {
+    padding: 4px 8px;
+    border-left: 3px solid var(--gold);
+    background: #17252ee8;
+    color: #ffebbd;
+    font: 700 13px/1.1 Condensed, sans-serif;
+    font-variant-numeric: tabular-nums;
+}
 .pace {
     display: grid;
     gap: 2px;

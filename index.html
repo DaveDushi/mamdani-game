@@ -21,6 +21,7 @@
         />
         <link rel="stylesheet" href="./style.css" />
         <link rel="stylesheet" href="./progression.css" />
+        <link rel="stylesheet" href="./race-panel.css" />
         <link rel="stylesheet" href="./home.css" />
 
     </head>
@@ -71,7 +72,7 @@
                 <div class="home-headline">
                     <div class="home-edition"><span>New York City</span><span>2026 edition</span></div>
                     <h1 id="game-title"><span>Mamdani</span> <strong>Run!</strong></h1>
-                    <p class="home-deck"><span>Dodge cabs. Grab food stamps.</span><br /> Trump wants the receipts.</p>
+                    <p class="home-deck"><span>Dodge cabs. Race the Trumps.</span><br /> First family sprint at 1,000 m.</p>
                 </div>
                 <figure class="home-art">
                     <picture>
@@ -98,7 +99,7 @@
                         <span>Start Day Run</span><svg aria-hidden="true"><use href="#i-arrow" /></svg>
                     </button>
                     <div class="home-extras">
-                        <button type="button" id="shop-btn"><svg aria-hidden="true"><use href="#i-shirt" /></svg>Outfits</button>
+                        <button type="button" id="shop-btn"><svg aria-hidden="true"><use href="#i-shirt" /></svg>Shop &amp; outfits</button>
                         <button type="button" id="rankings-btn"><svg aria-hidden="true"><use href="#i-cup" /></svg>Rankings</button>
                         <button type="button" id="instructions-btn"><svg aria-hidden="true"><use href="#i-game" /></svg>How to play</button>
                     </div>
@@ -135,6 +136,7 @@
             </div>
             <div class="hud-lower">
                 <div id="wire-flash" hidden><b id="wire-source">City wire</b><span id="wire-copy"></span></div>
+                <span id="race-checkpoint"></span>
                 <div class="hud-foot">
                     <div class="street-tag">
                         <svg><use href="#i-pin" /></svg><span id="district">Canal Street</span>
@@ -188,7 +190,9 @@
                     <div class="bank-receipt">
                         <div><strong id="result-banked"></strong><span id="result-wallet"></span></div>
                         <p id="result-progress"></p>
+                        <p id="result-family"></p>
                         <button id="play-night" class="text-btn" hidden>Play Night Shift →</button>
+                        <button id="result-shop" class="text-btn" type="button">Train sprint speed →</button>
                     </div>
                     <p class="best-line">
                         <span id="result-best-label">Day Run best</span> <b id="pb-score">0 m</b> <span id="pb-rank-display"></span>
@@ -231,6 +235,9 @@
                     The same rate applies to the rest at the finish. Even one stamp adds 0.1 to your wallet.
                     Bank 150 to unlock Night Shift.
                 </p>
+                <p><b>Family races.</b> Reach 1,000 m to race Donald Jr. in a 100 m dash. Tap the sprint pad or press Space repeatedly.
+                    Each win sends you farther down the street toward the next rival. Losing ends the run and banks your stamps.
+                    Spend them on Race speed in Shop &amp; outfits. Beat all five children and Donald to reach Overtime.</p>
                 <button class="solid" data-home>Back to menu</button>
             </div>
         </section>
@@ -293,15 +300,33 @@
         </section>
         <section id="shop-screen" class="fitting hidden">
             <div class="paper wardrobe">
-                <p class="slug">Campaign wardrobe</p>
-                <h2>Outfits</h2>
-                <p>Paid for by Soros.</p>
-                <div id="shop-items"></div>
-                <div class="turn-controls">
-                    <button id="turn-left" aria-label="Turn model left">↶</button><span>Rotate model</span
-                    ><button id="turn-right" aria-label="Turn model right">↷</button>
+                <h2>Campaign shop</h2>
+                <div class="shop-sections" role="group" aria-label="Shop section">
+                    <button id="show-training" type="button" aria-controls="training-panel" aria-pressed="true">Speed training</button>
+                    <button id="show-outfits" type="button" aria-controls="outfits-panel" aria-pressed="false">Free outfits</button>
                 </div>
-                <button class="solid" id="close-shop-btn" data-home>Back to menu</button>
+                <div id="training-panel">
+                    <div class="training-heading"><h3>Sprint speed</h3><b id="speed-level"></b></div>
+                    <p id="speed-effect"></p>
+                    <p id="shop-wallet"></p>
+                    <button id="buy-speed" type="button" class="solid"></button>
+                    <p id="speed-feedback" role="status"></p>
+                    <p id="shop-record"></p>
+                    <details id="race-schedule">
+                        <summary>Race schedule</summary>
+                        <p>Every run starts at the first checkpoint.</p>
+                        <ol id="shop-rivals"></ol>
+                    </details>
+                </div>
+                <div id="outfits-panel" hidden>
+                    <p>Paid for by Soros.</p>
+                    <div id="shop-items"></div>
+                    <div class="turn-controls">
+                        <button type="button" id="turn-left" aria-label="Turn model left">↶</button><span>Rotate model</span
+                        ><button type="button" id="turn-right" aria-label="Turn model right">↷</button>
+                    </div>
+                </div>
+                <button class="plain" id="close-shop-btn" data-home>Back to menu</button>
             </div>
         </section>
         <section id="registration-modal" class="overlay hidden">

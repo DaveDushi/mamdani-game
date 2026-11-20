@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { NIGHT_SHIFT_STAMPS, availableMode, creditRun, emptyWallet, importLegacy, startAttempt, walletBalance } from '../game/Progression.js';
+import { NIGHT_SHIFT_STAMPS, SPEED_PRICES, availableMode, creditRun, emptyWallet, importLegacy, startAttempt, upgradeSpeed, walletBalance, walletLifetime } from '../game/Progression.js';
 import { ScoreManager, stampReceipt } from '../game/ScoreManager.js';
 
 const day = gross => ({ mode: 'day', gross, distance: 500 });
@@ -92,4 +92,36 @@ test('Night best stays separate while both modes bank stamps', () => {
     assert.equal(dayRun.nightBest, 234);
     assert.equal(walletBalance(dayRun), 41.4);
     assert.equal(creditRun(dayRun, { mode: 'night', gross: 0, distance: 120 }).wallet.nightBest, 234);
+});
+
+test('a purchase charges the displayed level once and preserves fractional stamps', () => {
+    const poor = creditRun(emptyWallet, day(29)).wallet;
+    assert.deepEqual(upgradeSpeed(poor, 0), { wallet: poor, status: 'short' });
+    const funded = creditRun(poor, day(2)).wallet;
+    const bought = upgradeSpeed(funded, 0);
+    assert.equal(bought.status, 'bought');
+    assert.equal(walletBalance(bought.wallet), 0.1);
+    assert.equal(walletLifetime(bought.wallet), 3.1);
+    assert.deepEqual(upgradeSpeed(bought.wallet, 0), { wallet: bought.wallet, status: 'changed' });
+    assert.deepEqual(upgradeSpeed(bought.wallet, 1), { wallet: bought.wallet, status: 'short' });
+});
+
+test('buying every level before Night Shift leaves the original unlock threshold intact', () => {
+    let wallet = creditRun(emptyWallet, day(1499)).wallet;
+    for (let level = 0; level < SPEED_PRICES.length; level++) {
+        const purchase = upgradeSpeed(wallet, level);
+        assert.equal(purchase.status, 'bought');
+        assert.equal(purchase.wallet.stamps, wallet.stamps - SPEED_PRICES[level]);
+        assert.equal(purchase.wallet.speedLevel, level + 1);
+        assert.equal(walletLifetime(purchase.wallet), 149.9);
+        assert.equal(purchase.wallet.nightUnlocked, false);
+        wallet = purchase.wallet;
+    }
+    assert.equal(walletBalance(wallet), 49.9);
+    assert.deepEqual(upgradeSpeed(wallet, 5), { wallet, status: 'max' });
+    const bank = creditRun(wallet, day(1));
+    assert.equal(bank.unlocked, true);
+    assert.equal(walletBalance(bank.wallet), 50);
+    assert.equal(walletLifetime(bank.wallet), 150);
+    assert.equal(importLegacy(wallet, { stamps: 1, nightBest: 0 }).nightUnlocked, true);
 });

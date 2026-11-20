@@ -22,4 +22,19 @@ Bank 150 stamps across completed runs to unlock Night Shift, equivalent to 1,500
 
 The runner wears each active pickup until its timer expires. Your best distance and selected outfit stay on the device. All five looks are available from the Outfits screen and have the same gameplay abilities.
 
+## Family races
+
+Each run starts a fresh series. The street pauses at a clear stretch after each checkpoint for a head-to-head 100 m sprint. Wait for the starting signal, then tap the sprint pad or press Space repeatedly. Holding the key counts once. A loss ends the run and settles the stamp receipt. A win saves the rival you beat and returns you to the street after a countdown. Sprint metres do not add to the street leaderboard score.
+
+| Street distance | Rival |
+| --- | --- |
+| 1,000 m | Donald Trump Jr. |
+| 2,750 m | Ivanka Trump |
+| 5,000 m | Eric Trump |
+| 7,500 m | Tiffany Trump |
+| 10,500 m | Barron Trump |
+| 14,000 m | Donald Trump |
+
+Shop & outfits sells five permanent race-speed upgrades using your spendable after-tax stamps. Training helps on the sprint track. Lifetime earnings still count toward Night Shift when you spend them. Beat Donald and continue in Overtime at 110% of the usual street pace.
+
 Passing protest signs and street posters get a large-print caption. Pause to reread the last one, or open Posters from the menu to browse all nine prints.

@@ -282,7 +282,11 @@ function bridge(group, mats, steel) {
     if (!steel) {
         group.add(stone.mesh(mats.stone));
         b.box(iron, -13.75, -0.53, -48, 8.8, 0.92, LENGTH);
-        for (const x of [-18, -9.49]) b.box(iron, x, 0.89, -48, 0.12, 0.14, LENGTH);
+        for (const x of [-18, -9.49]) {
+            b.box(iron, x, 0.89, -48, 0.12, 0.14, LENGTH);
+            for (let d = 0.5; d < LENGTH; d += 4)
+                b.box(iron, x, 0.41, -d, 0.09, 0.98, 0.09);
+        }
     }
     const sign = mats.signs[steel ? 2 : 0];
     plaque(group, sign, 0, steel ? 10 : 13.73, -18.83, 8.2, 0.97);
@@ -293,16 +297,23 @@ function bridge(group, mats, steel) {
         return 5.05 + (height - 5.05) * ((d - 48) / 28) ** 2;
     };
     const lines = steel ? [-6.8, 6.8] : [-20.625, -6.875, 6.875];
+    const left = lines[0], right = lines[lines.length - 1];
+    // Floor beams carry both carriageways out to the cable planes. The hangers land on
+    // continuous edge girders, including between floor beams where the fan stays attach.
+    for (let d = 2; d < LENGTH; d += 4)
+        b.box(iron, (left + right) / 2, -0.39, -d, right - left + 0.3, 0.34, 0.36);
     for (const x of lines) {
+        b.box(iron, x, -0.24, -LENGTH / 2, 0.33, 0.62, LENGTH);
+        for (const z of [-0.28, -LENGTH + 0.28])
+            b.box(iron, x, 0.68, z, 0.51, 1.57, 0.57);
         for (let d = 0; d < LENGTH; d += 4) {
             beam(b, cable, x, cableY(d), -d, x, cableY(d + 4), -d - 4, 0.142);
-            if (d % 4 === 0 && d > 0)
-                beam(b, iron, x, 0.95, -d, x, cableY(d), -d, 0.055);
+            if (d > 0) beam(b, iron, x, 0.03, -d, x, cableY(d), -d, 0.055);
         }
         if (!steel) {
             for (const tower of [20, 76])
                 for (const offset of [-20, -13, -7, 7, 13, 20])
-                    beam(b, cable, x, height - 0.3, -tower, x, 1.12, -(tower + offset), 0.048);
+                    beam(b, cable, x, height - 0.3, -tower, x, 0.03, -(tower + offset), 0.048);
         }
     }
     for (const side of sides) {

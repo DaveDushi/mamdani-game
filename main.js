@@ -1,11 +1,15 @@
 import { Capacitor } from '@capacitor/core';
 import { setupPosters } from './game/Posters.js';
 import { frontPage } from './game/CityWire.js';
-import { Shop } from './game/Shop.js';
+import { RIVALS } from './game/FamilyRace.js';
+import { Shop, familyRecord } from './game/Shop.js';
 import { startAnalytics, track, trackScreen, setupSupportLinks } from './game/Analytics.js';
 import { Sound } from './game/Sound.js';
 import { ApiClient } from './game/ApiClient.js';
-import { NIGHT_SHIFT_STAMPS, availableMode, emptyWallet, readWallet, startAttempt, walletBalance } from './game/Progression.js';
+import {
+    NIGHT_SHIFT_STAMPS, availableMode, emptyWallet, onWalletChange, purchaseSpeedUpgrade,
+    readWallet, recordFamilyWin, startAttempt, walletBalance, walletLifetime
+} from './game/Progression.js';
 
 const $ = (id) => document.getElementById(id);
 startAnalytics();
@@ -32,14 +36,18 @@ let run,
     activeAttempt,
     lastResult,
     wallet = emptyWallet,
-    walletReady,
     walletAvailable = true;
 const shop = new Shop((skin) => {
     if (run) {
         run.player.setSkin(skin);
         run.wardrobe.render();
     }
-});
+}, async expectedLevel => {
+    const result = await purchaseSpeedUpgrade(expectedLevel);
+    wallet = result.wallet;
+    walletAvailable = true;
+    return result;
+}, () => run?.wardrobe.resize());
 const best = () => Number(localStorage.getItem('mamdani_best_score')) || 0;
 const modeKey = 'mamdani_run_type';
 const modeNames = { day: 'Day Run', night: 'Night Shift' };
@@ -76,6 +84,7 @@ function paintMenu() {
     $('mode-night').setAttribute('aria-pressed', String(mode === 'night'));
     $('menu-wallet').textContent = unlocked
         ? stampCount(balance) + ' banked · Night Shift unlocked'
+        : wallet.spent ? 'Wallet · ' + balance.toLocaleString() + ' · Night Shift ' + walletLifetime(wallet).toLocaleString() + '/' + NIGHT_SHIFT_STAMPS
         : balance.toLocaleString() + '/' + NIGHT_SHIFT_STAMPS + ' stamps banked to unlock Night Shift';
     if (!walletAvailable) $('menu-wallet').textContent = 'Stamp wallet unavailable on this device.';
     $('start-btn').querySelector('span').textContent = 'Start ' + modeNames[mode];
@@ -90,6 +99,7 @@ async function refreshWallet() {
         walletAvailable = false;
     }
     if (view === 'start-screen') paintMenu();
+    if (view === 'shop-screen') shop.updateWallet(wallet, walletAvailable);
 }
 function selectMode(mode) {
     localStorage.setItem(modeKey, availableMode(mode, wallet));
@@ -97,11 +107,13 @@ function selectMode(mode) {
 }
 $('mode-day').onclick = () => selectMode('day');
 $('mode-night').onclick = () => selectMode('night');
-window.addEventListener('focus', () => {
-    if (view === 'start-screen') walletReady = refreshWallet();
-});
+function refreshVisibleWallet() {
+    if (view === 'start-screen' || view === 'shop-screen') refreshWallet();
+}
+onWalletChange(refreshVisibleWallet);
+window.addEventListener('focus', refreshVisibleWallet);
 window.addEventListener('storage', (event) => {
-    if (view === 'start-screen' && event.key === modeKey) walletReady = refreshWallet();
+    if (view === 'start-screen' && event.key === modeKey) refreshWallet();
 });
 function home() {
     document.querySelector('.wire p').textContent = dispatches[dispatchIndex++ % dispatches.length];
@@ -111,7 +123,7 @@ function home() {
     $('load-status').hidden = true;
     show('start-screen');
     paintMenu();
-    walletReady = refreshWallet();
+    refreshWallet();
 }
 function updateSound() {
     const button = document.querySelector('.sound-toggle');
@@ -164,21 +176,28 @@ async function enter(mode, requested) {
             run = new Run($('game-canvas'), sound, null, cast);
             await run.ready;
         }
-        await walletReady;
-        if (view !== 'start-screen' && !(view === 'game-over-screen' && mode === 'run')) return;
+        await refreshWallet();
+        if (view !== 'start-screen' && view !== 'game-over-screen') return;
         status.hidden = true;
         run.player.setSkin(shop.selected);
         if (mode === 'run') {
             const attempt = startAttempt(availableMode(requested ?? selectedMode(), wallet));
             activeAttempt = attempt;
             run.onEnd = (distance, gross, cause) => finish(attempt, distance, gross, cause);
+            run.onRaceWin = count => recordFamilyWin(count).catch(() => { walletAvailable = false; });
+            // The photo finish ends the attempt even if the player closes the app before Results.
+            run.onRaceLoss = (gross, distance) => {
+                if (attempt.mode === 'day') localStorage.setItem('mamdani_best_score', Math.max(best(), distance));
+                attempt.bank(gross, distance).catch(() => { walletAvailable = false; });
+            };
             resultVersion++;
             show('hud');
-            run.start(attempt.mode);
+            run.start(attempt.mode, wallet.speedLevel);
             sound.play('start');
             track('game_start', { run_mode: attempt.mode });
         } else {
-            show('shop-screen', 'close-shop-btn');
+            shop.open(wallet, walletAvailable);
+            show('shop-screen', 'show-training');
             run.showOutfit();
         }
     } catch (error) {
@@ -198,6 +217,7 @@ $('play-night').onclick = () => {
     enter('run', 'night');
 };
 $('shop-btn').onclick = () => enter('outfits');
+$('result-shop').onclick = () => enter('outfits');
 $('story-btn').onclick = () => show('story-modal', 'close-story-btn');
 $('instructions-btn').onclick = () => show('instructions-modal', 'instructions-modal');
 $('feedback-btn').onclick = () => show('feedback-modal', 'feedback-msg');
@@ -270,6 +290,7 @@ async function finish(attempt, distance, gross, cause) {
     const version = ++resultVersion;
     const night = attempt.mode === 'night';
     const cleanMoves = run.cleanMoves;
+    const familyWins = run.familyWins;
     const seconds = Math.floor(run.elapsed);
     const result = { mode: attempt.mode, distance };
     lastResult = result;
@@ -287,7 +308,10 @@ async function finish(attempt, distance, gross, cause) {
     if (version !== resultVersion) return;
     const issue = (Number(localStorage.getItem('mamdani_edition')) || 0) + 1;
     localStorage.setItem('mamdani_edition', String(issue));
-    const [headline, copy] = frontPage(cause, issue - 1);
+    const rival = RIVALS.find(racer => cause === 'race:' + racer.id);
+    const [headline, copy] = rival
+        ? [rival.name + ' takes the tape.', 'City Hall demands a recount. The finish-line camera has declined to testify.']
+        : frontPage(cause, issue - 1);
     $('result-edition').textContent = modeNames[attempt.mode] + ' · No. ' + issue;
     $('result-headline').textContent = headline;
     $('result-copy').textContent = copy;
@@ -299,12 +323,16 @@ async function finish(attempt, distance, gross, cause) {
     $('result-banked').textContent = receipt ? '+' + stampCount(receipt.kept) + ' banked' : 'Stamps could not be saved';
     const balance = walletBalance(wallet);
     $('result-wallet').textContent = receipt ? 'Wallet · ' + balance.toLocaleString() : '';
-    const remaining = NIGHT_SHIFT_STAMPS - balance;
+    const remaining = NIGHT_SHIFT_STAMPS - walletLifetime(wallet);
     $('result-progress').textContent = !receipt ? 'Stamp wallet unavailable on this device.'
         : receipt.unlocked ? 'Night Shift unlocked!'
         : !wallet.nightUnlocked ? stampCount(remaining) + ' to unlock Night Shift.'
         : 'Night Shift unlocked';
     $('play-night').hidden = !receipt?.unlocked;
+    const familyLine = 'Family races this run · ' + familyRecord(familyWins);
+    $('result-family').textContent = walletAvailable && wallet.familyBest > familyWins
+        ? familyLine + '. Device best · ' + familyRecord(wallet.familyBest)
+        : familyLine;
     $('result-progress').parentElement.classList.toggle('just-unlocked', !!receipt?.unlocked);
     $('result-best-label').textContent = night ? 'Night Shift best on this device' : 'Day Run best';
     $('pb-score').textContent = metres(night ? wallet.nightBest : best());

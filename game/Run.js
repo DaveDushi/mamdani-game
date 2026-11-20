@@ -11,8 +11,11 @@ import { ParticleSystem } from './ParticleSystem.js';
 import { ObstacleManager } from './ObstacleManager.js';
 import { PowerupManager } from './PowerupManager.js';
 import { ScoreManager, stampReceipt } from './ScoreManager.js';
-import { editionLines, stuntLines } from './CityWire.js';
+import { editionLines, raceDispatches, stuntLines } from './CityWire.js';
 import { captions } from './Posters.js';
+import { FamilyRace, RIVALS } from './FamilyRace.js';
+import { RacePanel } from './RacePanel.js';
+import { RaceStage } from './RaceStage.js';
 
 const STEP = 1 / 60;
 const pickups = {
@@ -23,6 +26,8 @@ const pickups = {
 export class Run {
     constructor(canvas, sound, onEnd, cast) {
         this.sound = sound;
+        this.cast = cast;
+        this.preparedRivals = new Set();
         this.onEnd = onEnd;
         this.mode = 'menu';
         this.renderer = new THREE.WebGLRenderer({
@@ -66,7 +71,11 @@ export class Run {
         this.obstacleManager = new ObstacleManager(this.scene, this.powerupManager, cast);
         this.scoreManager = new ScoreManager();
         this.particles = new ParticleSystem(this.scene);
-        this.input = new Input(canvas, () => this.mode === 'playing');
+        this.input = new Input(canvas, () => this.mode === 'playing' && !this.race);
+        this.racePanel = new RacePanel(document.getElementById('hud'), () => {
+            if (this.mode !== 'playing' || !this.race?.tap()) return;
+            this.sound.play('stride');
+        }, () => this.leaveRace());
         this.magnet = new THREE.Vector3();
         this.reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
         this.hud = Object.fromEntries(
@@ -77,6 +86,7 @@ export class Run {
                 'count-digit',
                 'food-stamps',
                 'district',
+                'race-checkpoint',
                 'effect',
                 'notice',
                 'pickup-card',
@@ -137,14 +147,18 @@ export class Run {
         this.camera.fov = this.baseFov;
         this.camera.updateProjectionMatrix();
         if (this.mode === 'playing' || this.mode === 'paused' || this.mode === 'countdown') {
-            this.follow(1);
-            this.renderer.render(this.scene, this.camera);
+            this.renderCourse(this.race ? 0 : 1);
         }
     }
 
-    start(mode = 'day') {
+    start(mode = 'day', speedLevel = 0) {
         this.stop();
         this.runType = mode;
+        this.speedLevel = speedLevel;
+        this.familyWins = 0;
+        this.preparingRival = null;
+        this.raceRetryAt = 0;
+        this.raceAnnounced = null;
         this.world.light.setShift(mode);
         this.world.reset(mode);
         this.player.reset();
@@ -218,6 +232,9 @@ export class Run {
     }
 
     stop() {
+        this.race = null;
+        this.raceStage?.stop();
+        this.racePanel.hide();
         this.sound.music(false, true);
         this.wardrobe.close(this.scene);
         cancelAnimationFrame(this.frameId);
@@ -231,6 +248,7 @@ export class Run {
         if (this.mode === 'playing' || this.mode === 'countdown') {
             this.sound.music(false);
             this.mode = 'paused';
+            if (this.race) this.racePanel.setPaused(true);
             cancelAnimationFrame(this.frameId);
             this.frameId = 0;
             this.hud['resume-count'].hidden = true;
@@ -265,6 +283,7 @@ export class Run {
     beginMotion() {
         this.sound.music(true);
         this.mode = 'playing';
+        if (this.race) this.racePanel.setPaused(false);
         this.input.reset();
         this.last = performance.now();
         this.acc = 0;
@@ -337,6 +356,9 @@ export class Run {
         const secondary = active.slice(0, -1).map(type => pickups[type].short + ' · ' + Math.ceil(p[type + 'Timer']) + 's');
         if (p.confusionTimer > 0) secondary.push('Haram! Reversed · ' + Math.ceil(p.confusionTimer) + 's');
         const effect = secondary.join('\n');
+        const next = RIVALS[this.familyWins];
+        const checkpoint = next ? 'Next race · ' + next.name + ' · ' + next.at.toLocaleString() + ' m'
+            : 'All six beaten · Overtime';
         this.hud['chase-card'].hidden = !this.trump.isChasing;
         if (this.trump.isChasing) {
             this.hud['chase-meter'].style.transform = 'scaleX(' + this.trump.chaseTimer / 5 + ')';
@@ -347,13 +369,109 @@ export class Run {
             ['pace', (this.world.speed / 17.5).toFixed(1) + '×'],
             ['food-stamps', this.scoreManager.foodStamps],
             ['district', this.world.crossings?.currentName || this.world.currentEventLabel || this.world.district],
+            ['race-checkpoint', checkpoint],
             ['effect', effect]
         ]) {
             if (this.hud[key].textContent !== String(value)) this.hud[key].textContent = value;
         }
     }
 
+    // Start in a clear stretch so the return countdown shows a route the player has time to read.
+    canStartRace() {
+        if (this.trump.isChasing || !this.player.isGrounded || this.player.slideTimer > 0) return false;
+        const ahead = this.world.speed * 0.42;
+        return !this.obstacleManager.obstacles.some(({ type, mesh }) =>
+            type !== 'coin' && type !== 'cue' && mesh.position.z > -ahead && mesh.position.z < 2
+        );
+    }
+
+    startRace() {
+        this.input.reset();
+        this.race = new FamilyRace(this.familyWins, this.speedLevel);
+        this.raceStage.start(this.race.rival);
+        this.racePanel.show(this.race.rival, this.speedLevel);
+        this.racePanel.paint(this.race);
+        this.sound.play('count');
+        // Give the introductory artwork a full first frame on phones that compile a new shader here.
+        this.acc = 0;
+        this.last = performance.now();
+    }
+
+    prepareRace(rival) {
+        if (this.preparingRival === rival.id || this.preparedRivals.has(rival.id) || this.elapsed < this.raceRetryAt) return;
+        this.preparingRival = rival.id;
+        this.raceStage ??= new RaceStage(this.cast, this.player);
+        this.raceStage.prepare(rival).then(() => {
+            this.preparedRivals.add(rival.id);
+        }).catch(() => {
+            if (this.preparingRival !== rival.id) return;
+            this.preparingRival = null;
+            this.raceRetryAt = this.elapsed + 5;
+        });
+    }
+
+    raceStep(dt) {
+        const race = this.race;
+        const phase = race.phase;
+        if (phase === 'won' || phase === 'lost') return;
+        const count = race.countdown;
+        this.elapsed += dt;
+        race.update(dt);
+        if (phase !== race.phase) {
+            if (race.phase === 'won') {
+                this.familyWins++;
+                this.onRaceWin?.(this.familyWins);
+                this.sound.play('victory');
+                impact(true);
+            } else if (race.phase === 'lost') {
+                this.onRaceLoss?.(this.scoreManager.grossStamps, this.scoreManager.getDisplayScore());
+                this.sound.play('end');
+            } else {
+                this.sound.play('go');
+            }
+        } else if (race.countdown !== count) this.sound.play('count');
+    }
+
+    leaveRace() {
+        const race = this.race;
+        if (this.mode !== 'playing' || !race || (race.phase !== 'won' && race.phase !== 'lost')) return;
+        this.race = null;
+        this.racePanel.hide();
+        this.raceStage.stop();
+        if (race.phase === 'lost') {
+            this.endRun('race:' + race.rival.id);
+            return;
+        }
+        this.world.overtime = this.familyWins === RIVALS.length;
+        const message = this.world.overtime ? 'Donald beaten. Overtime runs 10% faster.' : race.rival.name + ' beaten. Back to the street.';
+        this.bulletin(message, 'Race desk', true);
+        this.updateHud();
+        this.pause();
+        this.renderCourse(1);
+        this.resume();
+    }
+
+    endRun(cause) {
+        this.mode = 'ended';
+        this.sound.music(false, true);
+        this.onEnd(this.scoreManager.getDisplayScore(), this.scoreManager.grossStamps, cause);
+    }
+
+    renderCourse(dt) {
+        if (this.race) {
+            this.raceStage.render(this.renderer, this.race, dt, this.reduce);
+            this.racePanel.paint(this.race);
+        } else {
+            this.follow(dt);
+            this.renderer.render(this.scene, this.camera);
+        }
+    }
+
     step(dt) {
+        if (this.race) {
+            this.raceStep(dt);
+            return;
+        }
         const {
             world,
             player,
@@ -442,11 +560,9 @@ export class Run {
             }
         } else if (hit && !player.invincible) {
             if (trump.isChasing) {
-                this.mode = 'ended';
-                this.sound.music(false, true);
                 this.sound.play('end');
                 impact(true);
-                this.onEnd(score.getDisplayScore(), score.grossStamps, hit);
+                this.endRun(hit);
                 return;
             }
             trump.startChase(player.mesh.position.x);
@@ -504,6 +620,14 @@ export class Run {
             this.updateHud();
             this.hudTimer = 0.08;
         }
+        const next = RIVALS[this.familyWins];
+        if (next && world.distance >= next.at - 550) {
+            this.prepareRace(next);
+            if (this.raceAnnounced !== next.id && world.distance >= next.at - world.speed * 4.5) {
+                if (this.bulletin(raceDispatches[next.id], 'Race desk')) this.raceAnnounced = next.id;
+            }
+            if (world.distance >= next.at && this.preparedRivals.has(next.id) && this.canStartRace()) this.startRace();
+        }
     }
     collect() {
         this.scoreManager.addFoodStamps(1);
@@ -519,11 +643,10 @@ export class Run {
         this.last = time;
         this.acc += Math.min(elapsed, 0.1);
         while (this.acc >= STEP && this.mode === 'playing') {
-            this.step(STEP);
             this.acc -= STEP;
+            this.step(STEP);
         }
-        this.follow(Math.min(elapsed, 0.1));
-        this.renderer.render(this.scene, this.camera);
+        this.renderCourse(Math.min(elapsed, 0.1));
         this.slow = elapsed > 0.024 ? this.slow + 1 : Math.max(0, this.slow - 1);
         this.fast = elapsed < 0.018 ? this.fast + 1 : 0;
         if (this.slow > 45 && this.quality > 0.76) {

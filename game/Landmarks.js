@@ -15,8 +15,29 @@ const jade = 0x21695d;
 const stone = 0xc8bda8;
 const trim = 0xe1d7bc;
 
+// A phone's chase camera trails several metres behind the runner. Fade only overhead
+// geometry that has passed him, leaving the lanterns and the next lane decision in view.
+function clearPassedOverhangs(material) {
+    material.onBeforeCompile = shader => {
+        shader.vertexShader = 'varying vec2 overheadYZ;\n' + shader.vertexShader.replace(
+            '#include <begin_vertex>',
+            '#include <begin_vertex>\noverheadYZ = (modelMatrix * vec4(transformed, 1.0)).yz;'
+        );
+        shader.fragmentShader = 'varying vec2 overheadYZ;\n' + shader.fragmentShader.replace(
+            '#include <clipping_planes_fragment>',
+            `#include <clipping_planes_fragment>
+            if (overheadYZ.x > 3.2 && overheadYZ.y > 0.0) {
+                float threshold = fract(dot(floor(gl_FragCoord.xy), vec2(0.7549, 0.5698)));
+                if (overheadYZ.y >= 2.0 * threshold) discard;
+            }`
+        );
+    };
+    return material;
+}
+
 function sign(group, text, bg, ink, x, y, z, w, h, angle = 0) {
-    const plate = new THREE.Mesh(face, labelMaterial(text, bg, ink, 768, Math.round(768 * h / w)));
+    const material = labelMaterial(text, bg, ink, 768, Math.round(768 * h / w));
+    const plate = new THREE.Mesh(face, clearPassedOverhangs(material));
     plate.scale.set(w, h, 1);
     plate.position.set(x, y, z);
     plate.rotation.y = angle;
@@ -187,11 +208,12 @@ function cityHall(b, group) {
 
 export class Landmarks {
     constructor(scene, material) {
+        const structureMaterial = clearPassedOverhangs(material.clone());
         this.groups = [canal, theatre, cityHall].map((build) => {
             const group = new THREE.Group(),
                 batch = new Batch();
             build(batch, group);
-            const structure = batch.mesh(material);
+            const structure = batch.mesh(structureMaterial);
             structure.receiveShadow = true;
             group.add(structure);
             scene.add(group);

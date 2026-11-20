@@ -339,7 +339,16 @@ export class World {
         this.landmarks = new Landmarks(scene, mats.details);
         this.crossings = new Crossings(scene);
         this.events = new CityEvents(scene, mats.lamps, streetClear);
-        const skyline = new THREE.Mesh(new THREE.PlaneGeometry(350, 154), light.skyMaterial());
+        // Keep the central photograph at its original scale. Mirrored wings meet it at
+        // matching edge pixels when the open river exposes the full horizontal field of view.
+        const skyPanels = 5;
+        const skylineGeometry = new THREE.PlaneGeometry(350 * skyPanels, 154, skyPanels);
+        const skyUV = skylineGeometry.attributes.uv;
+        for (let i = 0; i < skyUV.count; i++) {
+            const column = i % (skyPanels + 1);
+            skyUV.setX(i, column % 2);
+        }
+        const skyline = new THREE.Mesh(skylineGeometry, light.skyMaterial());
         skyline.position.set(-8, 56, -225);
         scene.add(skyline);
         const ground = new THREE.Mesh(
@@ -363,6 +372,7 @@ export class World {
 
     reset(mode = 'day') {
         this.courseMode = mode;
+        this.overtime = false;
         this.speed = courseSpeed(0, mode);
         this.distance = 0;
         this.trainTime = 0;
@@ -412,7 +422,7 @@ export class World {
     }
 
     update(dt) {
-        this.speed = courseSpeed(this.distance + this.speed * dt, this.courseMode);
+        this.speed = courseSpeed(this.distance + this.speed * dt, this.courseMode) * (this.overtime ? 1.1 : 1);
         const step = this.speed * dt;
         this.distance += step;
         this.landmarks.update(this.distance);

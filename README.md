@@ -10,6 +10,8 @@ Follow the painted arrows through the three lanes. Jump the low striped barriers
 
 Distance determines your score. One collision starts a five-second chase. A second collision during the chase ends the run. The Stamp Office takes 90 out of every 100 food stamps. Bank 150 after tax across completed runs to unlock Night Shift, a faster course with wet streets, rarer pickups and a separate local best. Outfits stay free. See [game rules](game-rules.md) for obstacles and power-ups.
 
+At 1,000 m, Donald Jr. challenges Mamdani to a 100 m sprint. Tap the sprint pad or press Space repeatedly to build speed. The next five races are farther apart. Beating Donald in the sixth race opens Overtime, where street traffic moves 10% faster. Shop & outfits sells permanent race-speed upgrades for after-tax stamps and shows your furthest win. Night Shift counts lifetime earnings, including stamps you have spent.
+
 ## Run locally
 
 Use Node.js 22 or newer, then run `npm ci` and `npm run dev`. Use `npm run build` to generate the static site in `dist` and `npm run preview` to serve the production build.
@@ -29,6 +31,8 @@ The iPhone app forwards the same gameplay events and screen changes to Firebase 
 The creator support button opens Dave’s Buy Me a Coffee page. It is available on the web and in the native app when StoreKit identifies the United States storefront. Support does not affect the wallet, outfits or gameplay.
 
 ## Art and credits
+
+The five family challengers have separate animated models with custom faces and race outfits. Their source meshes and license notices are listed in the [race model credits](public/models/race/LICENSE.txt).
 
 The 2.1 edition adds an original 16-bar jazz score and AI-assisted district facades and newspaper illustration. The 2026 edition includes original AI-assisted cover and icon illustrations, printed posters, painted city surfaces and character textures. Character meshes and motion are adapted from the [Microsoft Rocketbox Avatar Library](https://github.com/microsoft/Microsoft-Rocketbox), using glTF conversions from [Avatar Studio](https://github.com/memoriesrohit/avatar-studio). Both MIT notices ship with the [models](public/models). The locally bundled Barlow fonts ship with their [SIL Open Font License notices](public/fonts). Earlier billboard art is preserved in [artwork/originals](artwork/originals).
 
