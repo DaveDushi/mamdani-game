@@ -1086,6 +1086,15 @@ h1 strong {
     .rankings-paper .standings-scope { margin-bottom: 11px; }
     #day-board { margin-top: 12px; }
 }
+@media (max-width: 680px) and (orientation: portrait) {
+    .frontpage-mast { container-type: inline-size; }
+    .wire-nameplate {
+        font-size: clamp(40px, calc((100vw - env(safe-area-inset-left) - env(safe-area-inset-right)) * .147), 64px);
+    }
+    @container (width < 90vw) {
+        .wire-nameplate { font-size: clamp(40px, 15.6cqi, 64px); }
+    }
+}
 @media (orientation: landscape) and (max-height: 500px) {
     #game-over-screen, #rankings-screen {
         padding: max(4px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
