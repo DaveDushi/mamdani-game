@@ -44,6 +44,9 @@
 }
 .run-controls .play {
     width: 100%;
+    gap: 8px;
+    padding-inline: 14px;
+    white-space: nowrap;
 }
 .bank-receipt {
     margin-top: 10px;
@@ -84,9 +87,17 @@
     gap: clamp(8px, 3vw, 24px);
 }
 @media (max-width: 359px) {
-    #start-screen .rail { gap: 6px; padding-inline: 10px; }
-    #start-screen .key-guide { gap: 5px; }
+    #start-screen { grid-template-columns: minmax(0, 1fr); }
+    #start-screen .home-brand { min-width: 0; white-space: normal; }
+    #start-screen .mast { padding-inline: 10px; }
+    #start-screen .brand { min-width: 0; font-size: 21px; }
+    #start-screen .mast-actions { flex-shrink: 0; }
+    .run-controls .play { font-size: clamp(20px, 8vw, 27px); }
+    #start-screen .rail { gap: 4px; padding-inline: 6px; }
+    #start-screen .key-guide { gap: 4px; font-size: 10px; }
     #start-screen .key-guide span { gap: 2px; }
+    #start-screen .record { white-space: normal; line-height: 1.05; }
+    #start-screen .record b { white-space: nowrap; }
     #start-screen .touch-guide { max-width: 48%; }
     #game-over-screen { padding-inline: 10px; }
     .results.paper { padding-inline: 12px; }
@@ -102,6 +113,89 @@
     #start-screen .edition { display: none; }
     .cover-copy .deck { font-size: 14px; }
     .cover-copy { padding-bottom: 10px; }
+}
+@media (max-aspect-ratio: 4/5) and (max-height: 535px) {
+    #start-screen .home-headline { padding-block: 6px; }
+    #start-screen .home-edition, #start-screen .home-deck { display: none; }
+    #start-screen .home-spread { grid-template-rows: auto minmax(76px, 1fr) auto; }
+    #start-screen .deck { display: none; }
+    #start-screen h1 { font-size: min(18vw, 11svh); }
+    .cover-title { margin-bottom: 10px; }
+}
+@media (max-aspect-ratio: 4/5) and (max-height: 650px),
+       (min-aspect-ratio: 1/1) and (max-height: 430px) {
+    #shop-screen .wardrobe {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-areas: 'heading sponsor' 'outfits outfits' 'close rotate';
+        align-items: center;
+        gap: 5px;
+        padding: 7px 10px;
+    }
+    #shop-screen .slug { display: none; }
+    #shop-screen h2 { grid-area: heading; margin: 0; font-size: 26px; }
+    #shop-screen .wardrobe > p:not(.slug) {
+        grid-area: sponsor;
+        margin: 0;
+        font-size: 13px;
+    }
+    #shop-screen #shop-items {
+        grid-area: outfits;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin: 0;
+    }
+    #shop-screen .outfit {
+        gap: 5px;
+        padding: 4px;
+        min-height: 34px;
+        font-size: 13px;
+        line-height: 1.08;
+    }
+    #shop-screen .outfit span { width: 12px; height: 12px; }
+    #shop-screen .outfit b:empty { display: none; }
+    #shop-screen .turn-controls { grid-area: rotate; justify-self: end; gap: 4px; margin: 0; }
+    #shop-screen .turn-controls button { min-width: 34px; min-height: 34px; }
+    #shop-screen .turn-controls span { font-size: 11px; }
+    #close-shop-btn.solid {
+        grid-area: close;
+        margin: 0;
+        min-height: 34px;
+        padding: 5px 8px;
+        font-size: 16px;
+    }
+}
+@media (min-aspect-ratio: 1/1) and (max-height: 430px) {
+    #shop-screen { padding: 6px max(10px, env(safe-area-inset-left)); }
+    #shop-screen .wardrobe { width: min(48vw, 320px); }
+    #game-over-screen {
+        padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+            max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    }
+    .results.paper {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+        align-content: start;
+        gap: 8px 14px;
+        width: min(100%, 760px);
+        padding: 8px 12px;
+    }
+    .results .frontpage-mast { flex-wrap: wrap; gap: 0 5px; }
+    .results .frontpage-mast b { font-size: 21px; }
+    .results .frontpage-mast span, .results .audit-line { font-size: 10px; }
+    .results .press-sketch { height: 36px; margin-block: 4px; }
+    .results #result-headline { font-size: 23px; margin: 4px 0; }
+    .results #result-copy { margin-block: 4px; font-size: 13px; }
+    .results .stats { gap: 5px; padding-block: 5px; }
+    .results .stats small { font-size: 11px; letter-spacing: .02em; }
+    .results .stats strong { font-size: 24px; margin-top: 4px; }
+    .results .bank-receipt { margin-top: 6px; padding: 5px 7px; }
+    .results .bank-receipt p, .results #result-wallet { font-size: 13px; }
+    .results .just-unlocked #result-progress { font-size: 20px; margin-top: 4px; }
+    .results .best-line { margin-block: 6px; }
+    .results .action-row button { min-height: 34px; padding: 5px 11px; }
+    .results #day-board { grid-column: 1 / -1; }
+    .results #day-board h3 { margin-top: 0; }
 }
 @media (max-height: 530px) and (min-aspect-ratio: 1/1) {
     #start-screen .cover-copy {
@@ -119,4 +213,22 @@
     .run-controls .subactions { gap: 5px; }
     .run-controls .subactions button { padding-inline: 7px; }
     .menu-wallet { margin-block: 4px 8px; font-size: 12px; }
+}
+@media (max-height: 330px) and (min-aspect-ratio: 1/1) {
+    #start-screen .deck { display: none; }
+    #poster-room {
+        grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+        padding-block: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-bottom));
+    }
+    #poster-room .poster-wall {
+        width: min(100%, 610px);
+        height: 100%;
+        grid-template: auto minmax(0, 1fr) auto / minmax(0, .8fr) minmax(0, 1fr);
+        gap: 6px 14px;
+        align-items: center;
+    }
+    #poster-room .poster-print { grid-area: 1 / 1 / 4 / 2; width: auto; max-width: 100%; height: 100%; }
+    #poster-room .poster-heading { grid-area: 1 / 2; }
+    #poster-room #poster-caption { grid-area: 2 / 2; }
+    #poster-room .poster-controls { grid-area: 3 / 2; width: 100%; }
 }

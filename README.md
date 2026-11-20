@@ -20,6 +20,14 @@ On a Mac with Xcode 26 and an iOS Simulator runtime, run `npm ci`, `npm run ios:
 
 The Capacitor app bundles the game, fonts, posters and models for offline play. Leaderboards and feedback use the existing online service. Runs pause when the app loses focus.
 
+## Analytics and creator support
+
+The published site uses GA4 web stream `G-M4V8F77Y5F`. It measures page visits, run starts and finishes, the Night Shift unlock and clicks on Dave’s coffee link. Run events carry the mode and gameplay totals. The leaderboard name, registration details and feedback text stay out of these events. Local web builds skip the production tag.
+
+The iPhone app forwards the same gameplay events and screen changes to Firebase Analytics through Capacitor. Collection stays inactive until the Firebase client configuration is available. To activate it, register `cc.mamdanirun.game` in the Firebase project linked to the intended Analytics property, add its `GoogleService-Info.plist` to the Xcode **App** target as a bundled resource and rebuild. The SDK uses the Analytics Core product without advertising-ID support. To verify a configured build, launch it with `-FIRDebugEnabled` and watch the iOS stream in DebugView. [Firebase Apple setup](https://firebase.google.com/docs/ios/setup) · [DebugView](https://firebase.google.com/docs/analytics/debugview)
+
+The creator support button opens Dave’s Buy Me a Coffee page. It is available on the web and in the native app when StoreKit identifies the United States storefront. Support does not affect the wallet, outfits or gameplay.
+
 ## Art and credits
 
 The 2.1 edition adds an original 16-bar jazz score and AI-assisted district facades and newspaper illustration. The 2026 edition includes original AI-assisted cover and icon illustrations, printed posters, painted city surfaces and character textures. Character meshes and motion are adapted from the [Microsoft Rocketbox Avatar Library](https://github.com/microsoft/Microsoft-Rocketbox), using glTF conversions from [Avatar Studio](https://github.com/memoriesrohit/avatar-studio). Both MIT notices ship with the [models](public/models). The locally bundled Barlow fonts ship with their [SIL Open Font License notices](public/fonts). Earlier billboard art is preserved in [artwork/originals](artwork/originals).

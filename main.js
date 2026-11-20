@@ -2,12 +2,14 @@ import { Capacitor } from '@capacitor/core';
 import { setupPosters } from './game/Posters.js';
 import { frontPage } from './game/CityWire.js';
 import { Shop } from './game/Shop.js';
+import { startAnalytics, track, trackScreen, setupSupportLinks } from './game/Analytics.js';
 import { Sound } from './game/Sound.js';
 import { ApiClient } from './game/ApiClient.js';
 import { NIGHT_SHIFT_STAMPS, availableMode, emptyWallet, readWallet, startAttempt } from './game/Progression.js';
-import './progression.css';
 
 const $ = (id) => document.getElementById(id);
+startAnalytics();
+setupSupportLinks();
 const screenIds = [
     'start-screen',
     'hud',
@@ -17,6 +19,7 @@ const screenIds = [
     'instructions-modal',
     'shop-screen',
     'poster-room',
+    'rankings-screen',
     'registration-modal',
     'feedback-modal'
 ];
@@ -45,6 +48,7 @@ const metres = (n) => Number(n).toLocaleString() + ' m';
 const stampCount = (n) => n.toLocaleString() + (n === 1 ? ' stamp' : ' stamps');
 const homeOverlay = new Set(['story-modal', 'instructions-modal', 'feedback-modal']);
 function show(id, focus) {
+    if (view !== id) trackScreen(id);
     view = id;
     for (const key of screenIds) {
         const visible = key === id || (key === 'start-screen' && homeOverlay.has(id));
@@ -66,7 +70,7 @@ function paintMenu() {
     const mode = selectedMode();
     const unlocked = wallet.stamps >= NIGHT_SHIFT_STAMPS;
     $('mode-night').disabled = !unlocked;
-    $('night-lock').hidden = unlocked;
+    $('night-lock').toggleAttribute('hidden', unlocked);
     $('mode-day').setAttribute('aria-pressed', String(mode === 'day'));
     $('mode-night').setAttribute('aria-pressed', String(mode === 'night'));
     $('menu-wallet').textContent = unlocked
@@ -140,12 +144,6 @@ for (const type of ['pointerup', 'pointercancel'])
         lastDrag = null;
     });
 setupPosters(() => show('poster-room', 'poster-next'));
-if (!Capacitor.isNativePlatform()) {
-    const analytics = document.createElement('script');
-    analytics.async = true;
-    analytics.src = 'https://www.googletagmanager.com/gtag/js?id=G-M4V8F77Y5F';
-    document.head.append(analytics);
-}
 const status = $('load-status');
 async function enter(mode, requested) {
     if (loading) return;
@@ -177,7 +175,7 @@ async function enter(mode, requested) {
             show('hud');
             run.start(attempt.mode);
             sound.play('start');
-            window.gtag?.('event', 'game_start');
+            track('game_start', { run_mode: attempt.mode });
         } else {
             show('shop-screen', 'close-shop-btn');
             run.showOutfit();
@@ -231,6 +229,7 @@ window.addEventListener('keydown', (e) => {
     if (e.code === 'Escape') {
         if (view === 'hud') pause();
         else if (view === 'pause-screen') resume();
+        else if (view === 'rankings-screen') $('close-rankings').click();
         else if (view === 'registration-modal') show('game-over-screen', 'join-lb-btn');
         else if (view !== 'start-screen') home();
     } else if (e.code === 'KeyP' && (view === 'hud' || view === 'pause-screen')) {
@@ -272,12 +271,14 @@ async function finish(attempt, distance, tax, cause) {
     const kept = run.scoreManager.foodStamps;
     const cleanMoves = run.cleanMoves;
     const seconds = Math.floor(run.elapsed);
+    track('game_end', { run_mode: attempt.mode, distance_m: distance, stamps_kept: kept, clean_moves: cleanMoves });
     const result = { mode: attempt.mode, distance };
     lastResult = result;
     if (!night) localStorage.setItem('mamdani_best_score', Math.max(best(), distance));
     let receipt;
     try {
         receipt = await attempt.bank(kept, distance);
+        if (receipt.unlocked) track('unlock_achievement', { achievement_id: 'night_shift' });
         wallet = receipt.wallet;
         walletAvailable = true;
     } catch {
@@ -313,51 +314,98 @@ async function finish(attempt, distance, tax, cause) {
     if (!night) loadBoard(version, result);
 }
 async function submitDayScore(score) {
-    if (!localStorage.getItem('mamdani_name')) await api.register(playerId(), '', '', installed());
-    return api.submitScore(playerId(), score);
+    const id = playerId();
+    const rank = await api.submitScore(id, score);
+    if (rank.ok) return rank;
+    const registration = await api.register(id, localStorage.getItem('mamdani_name') || '', localStorage.getItem('mamdani_social') || '', installed());
+    if (!registration.ok && !registration.updated) return rank;
+    return api.submitScore(id, score);
 }
+
+function showStandings(list, entries) {
+    list.replaceChildren();
+    if (!entries?.length) {
+        list.textContent = entries ? 'No scores yet.' : 'The standings could not be loaded.';
+        return;
+    }
+    const rows = document.createDocumentFragment();
+    entries.forEach((entry, index) => {
+        const row = document.createElement('div');
+        row.className = 'leaderboard-item';
+        const place = document.createElement('b');
+        const name = document.createElement('span');
+        const value = document.createElement('b');
+        place.textContent = index + 1;
+        name.textContent = entry.name || 'Anonymous';
+        value.textContent = metres(entry.score);
+        if (entry.social) {
+            const link = document.createElement('a');
+            const handle = String(entry.social).replace(/^@/, '');
+            link.textContent = '@' + handle;
+            link.href = 'https://truthsocial.com/@' + encodeURIComponent(handle);
+            link.target = '_blank';
+            link.rel = 'noopener';
+            name.append(link);
+        }
+        row.append(place, name, value);
+        rows.append(row);
+    });
+    list.append(rows);
+}
+
+async function standings(list, retry, current) {
+    list.textContent = 'Loading standings…';
+    retry.hidden = true;
+    const entries = await api.getLeaderboard(50);
+    if (current()) {
+        showStandings(list, entries);
+        retry.hidden = entries !== null;
+    }
+    return entries;
+}
+
+let standingsRequest = 0;
+function openRankings() {
+    const request = ++standingsRequest;
+    show('rankings-screen', 'close-rankings');
+    return standings($('rankings-list'), $('rankings-retry'), () => view === 'rankings-screen' && request === standingsRequest);
+}
+$('rankings-btn').onclick = openRankings;
+$('rankings-retry').onclick = openRankings;
+$('close-rankings').onclick = () => {
+    home();
+    $('rankings-btn').focus({ preventScroll: true });
+};
+
 async function loadBoard(version, result) {
     if (result.mode !== 'day') return;
+    const current = () => version === resultVersion && result === lastResult;
     const list = $('leaderboard-list');
-    list.textContent = 'Counting the votes…';
+    const retry = $('result-board-retry');
+    const board = standings(list, retry, current);
     result.rank ??= submitDayScore(result.distance);
     const rank = await result.rank;
-    const board = await api.getLeaderboard(50);
-    if (version !== resultVersion) return;
-    const entries = Array.isArray(board) ? board : board?.entries || board?.scores;
-    list.replaceChildren();
-    if (!rank?.ok && !entries?.length)
-        list.textContent = 'Leaderboard offline. Your best is saved on this device.';
-    else if (!entries?.length) list.textContent = 'No scores yet.';
-    else
-        entries.forEach((entry, index) => {
-            const row = document.createElement('div');
-            row.className = 'leaderboard-item';
-            const place = document.createElement('b'),
-                name = document.createElement('span'),
-                value = document.createElement('b');
-            place.textContent = index + 1;
-            name.textContent = entry.name || 'Anonymous';
-            value.textContent = metres(entry.score);
-            if (entry.social) {
-                const link = document.createElement('a'),
-                    handle = String(entry.social).replace(/^@/, '');
-                link.textContent = '@' + handle;
-                link.href = 'https://truthsocial.com/@' + encodeURIComponent(handle);
-                link.target = '_blank';
-                link.rel = 'noopener';
-                name.append(link);
-            }
-            row.append(place, name, value);
-            list.append(row);
-        });
-    if (rank?.ok) {
+    if (!current()) return;
+    if (rank.ok) {
         localStorage.setItem('mamdani_best_score', Math.max(best(), Number(rank.bestScore) || 0));
         $('pb-score').textContent = metres(best());
-        if (rank.rank > 0 && localStorage.getItem('mamdani_name'))
+        if (rank.rank > 0 && localStorage.getItem('mamdani_name')) {
             $('pb-rank-display').textContent = ' · Rank #' + rank.rank;
+        }
+    } else {
+        result.rank = null;
+        $('pb-rank-display').textContent = ' · Saved locally. Tap Retry to post.';
+    }
+    const entries = await board;
+    if (!current()) return;
+    if (!rank.ok) retry.hidden = false;
+    else if (entries?.length && localStorage.getItem('mamdani_name') && rank.rank > 0 && rank.rank <= 50 &&
+        !entries.some(entry => entry.player_id === playerId() && Number(entry.score) >= result.distance)) {
+        const updated = await api.getLeaderboard(50);
+        if (updated && current()) showStandings(list, updated);
     }
 }
+$('result-board-retry').onclick = () => loadBoard(++resultVersion, lastResult);
 $('join-lb-btn').onclick = () => show('registration-modal', 'reg-name');
 $('cancel-reg').onclick = () => show('game-over-screen', 'join-lb-btn');
 $('register-form').onsubmit = async (e) => {
@@ -394,4 +442,3 @@ $('feedback-form').onsubmit = async (e) => {
         : 'Could not send. Try again.';
     if (response.ok) $('feedback-msg').value = '';
 };
-$('bmc-wrapper').onclick = () => window.gtag?.('event', 'bmc_click');

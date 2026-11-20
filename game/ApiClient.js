@@ -1,67 +1,59 @@
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
+
+const live = 'https://api.mamdanirun.cc';
+const localHosts = ['localhost', '127.0.0.1', '[::1]'];
+
 export class ApiClient {
-    constructor(baseUrl = 'https://api.mamdanirun.cc') {
-        this.baseUrl = baseUrl;
+    constructor(baseUrl) {
+        this.native = Capacitor.isNativePlatform();
+        const preview = !this.native && (import.meta.env.DEV || localHosts.includes(location.hostname));
+        this.baseUrl = baseUrl ?? (preview ? '/game-api' : live);
+    }
+
+    async request(path, data) {
+        const method = data === undefined ? 'GET' : 'POST';
+        const headers = data === undefined ? {} : { 'Content-Type': 'application/json' };
+        const url = this.baseUrl + path;
+        let timeout;
+        try {
+            if (this.native) {
+                const result = await CapacitorHttp.request({
+                    url, method, headers, data, responseType: 'json', connectTimeout: 7000, readTimeout: 8000
+                });
+                return result.status >= 200 && result.status < 300 ? result.data : null;
+            }
+            const controller = new AbortController();
+            timeout = setTimeout(() => controller.abort(), 8000);
+            const response = await fetch(url, {
+                method, headers, body: data === undefined ? undefined : JSON.stringify(data), signal: controller.signal
+            });
+            return response.ok ? await response.json() : null;
+        } catch {
+            return null;
+        } finally {
+            clearTimeout(timeout);
+        }
     }
 
     async register(playerId, name, social, isPwa = false) {
-        try {
-            const response = await fetch(`${this.baseUrl}/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ playerId, name, social, isPwa })
-            });
-            return await response.json();
-        } catch (error) {
-            console.error('API Error (register):', error);
-            return { ok: false };
-        }
+        return await this.request('/register', { playerId, name, social, isPwa }) ?? { ok: false };
     }
 
     async submitScore(playerId, score) {
-        try {
-            const response = await fetch(`${this.baseUrl}/score`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ playerId, score })
-            });
-            return await response.json();
-        } catch (error) {
-            console.error('API Error (submitScore):', error);
-            return { ok: false };
-        }
+        return await this.request('/score', { playerId, score }) ?? { ok: false };
     }
 
     async sendFeedback(playerId, message) {
-        try {
-            const response = await fetch(`${this.baseUrl}/feedback`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ playerId, message })
-            });
-            return await response.json();
-        } catch (error) {
-            console.error('API Error (sendFeedback):', error);
-            return { ok: false };
-        }
+        return await this.request('/feedback', { playerId, message }) ?? { ok: false };
     }
 
     async getLeaderboard(limit = 50) {
-        try {
-            const response = await fetch(`${this.baseUrl}/leaderboard?limit=${limit}`);
-            return await response.json();
-        } catch (error) {
-            console.error('API Error (getLeaderboard):', error);
-            return [];
-        }
+        const result = await this.request('/leaderboard?limit=' + limit);
+        const entries = Array.isArray(result) ? result : (result?.entries ?? result?.scores);
+        return Array.isArray(entries) ? entries : null;
     }
 
     async healthCheck() {
-        try {
-            const response = await fetch(`${this.baseUrl}/health`);
-            return await response.json();
-        } catch (error) {
-            console.error('API Error (healthCheck):', error);
-            return { ok: false };
-        }
+        return await this.request('/health') ?? { ok: false };
     }
 }

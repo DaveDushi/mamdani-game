@@ -903,6 +903,13 @@ h1 strong {
     max-height: 18svh;
     overflow: auto;
 }
+.rankings-paper { width: min(100%, 520px); min-width: 0; }
+.rankings-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.rankings-heading .slug { margin: 0 0 5px; }
+.rankings-heading h2 { margin: 0; }
+#rankings-list { margin-top: 12px; max-height: min(58svh, 510px); overflow: auto; }
+.rankings-paper .leaderboard-item { min-height: 36px; border-bottom: 1px solid #14212c26; }
+.leaderboard-item span { min-width: 0; overflow-wrap: anywhere; }
 .leaderboard-item {
     display: grid;
     grid-template-columns: 31px 1fr auto;

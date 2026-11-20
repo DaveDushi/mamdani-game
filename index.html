@@ -12,7 +12,6 @@
         <link rel="icon" href="./favicon.png" />
         <link rel="apple-touch-icon" href="./favicon.png" />
         <link rel="manifest" href="./manifest.webmanifest" />
-        <link rel="preload" as="image" href="./art/borough-run.webp" />
         <link
             rel="preload"
             as="font"
@@ -21,15 +20,9 @@
             crossorigin
         />
         <link rel="stylesheet" href="./style.css" />
+        <link rel="stylesheet" href="./progression.css" />
+        <link rel="stylesheet" href="./home.css" />
 
-        <script>
-            window.dataLayer = window.dataLayer || [];
-            function gtag() {
-                dataLayer.push(arguments);
-            }
-            gtag('js', new Date());
-            gtag('config', 'G-M4V8F77Y5F');
-        </script>
     </head>
     <body>
         <svg class="symbols" xmlns="http://www.w3.org/2000/svg">
@@ -65,65 +58,68 @@
         </svg>
         <canvas id="game-canvas" aria-label="Three-lane New York street"></canvas>
         <main id="start-screen" class="cabinet">
-            <header class="mast">
-                <div class="brand"><i class="speedmark" aria-hidden="true"></i>Borough Arcade</div>
-                <nav class="mast-actions">
-                    <button class="small" id="posters-btn">Posters</button
-                    ><button class="sound-toggle small" aria-pressed="true">
-                        <svg><use href="#i-sound" /></svg><span>Sound on</span>
+            <header class="home-mast">
+                <div class="home-brand"><i class="speedmark" aria-hidden="true"></i>Borough Arcade</div>
+                <nav class="home-tools" aria-label="Arcade">
+                    <button type="button" id="posters-btn">Posters</button>
+                    <button type="button" class="sound-toggle" aria-label="Game sound" aria-pressed="true">
+                        <svg aria-hidden="true"><use href="#i-sound" /></svg><span>Sound on</span>
                     </button>
                 </nav>
             </header>
-            <section class="cover">
-                <div class="cover-copy">
-                    <div class="cover-title">
-                    <div class="edition"><i></i> New York City <b>★</b> 2026 edition</div>
-                    <h1><span>Mamdani</span><strong>Run!</strong></h1>
-                    <div class="subtitle">Escape Trump!</div>
-                    <p class="deck">
-                        Dodge cabs. Follow the food stamps. <br />Outrun Trump's audit of the five-year plan.
-                    </p>
+            <section class="home-spread" aria-labelledby="game-title">
+                <div class="home-headline">
+                    <div class="home-edition"><span>New York City</span><span>2026 edition</span></div>
+                    <h1 id="game-title"><span>Mamdani</span> <strong>Run!</strong></h1>
+                    <p class="home-deck"><span>Dodge cabs. Grab food stamps.</span><br /> Trump wants the receipts.</p>
+                </div>
+                <figure class="home-art">
+                    <picture>
+                        <source media="(min-aspect-ratio: 1/1) and (max-height: 540px)" srcset="./art/chase-closeup.webp" />
+                        <img src="./art/borough-run.webp" width="1600" height="900"
+                            alt="Mamdani running through Manhattan with Trump in pursuit." fetchpriority="high" />
+                    </picture>
+                    <figcaption>Escape Trump!</figcaption>
+                </figure>
+                <div class="home-console run-controls">
+                    <div class="home-modes">
+                        <div class="run-selector" role="group" aria-label="Run type" aria-describedby="menu-wallet">
+                            <button id="mode-day" type="button" aria-pressed="true">Day Run</button>
+                            <button id="mode-night" type="button" aria-pressed="false" disabled>
+                                <svg id="night-lock" aria-hidden="true" viewBox="0 0 24 24">
+                                    <rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 1 1 8 0v3" />
+                                </svg>
+                                Night Shift
+                            </button>
+                        </div>
+                        <p id="menu-wallet" class="menu-wallet" aria-live="polite"></p>
                     </div>
-                    <div class="run-controls">
-                    <div class="run-selector" role="group" aria-label="Run type" aria-describedby="menu-wallet">
-                        <button id="mode-day" type="button" aria-pressed="true">Day Run</button>
-                        <button id="mode-night" type="button" aria-pressed="false" disabled>
-                            <svg id="night-lock" aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/></svg>
-                            Night Shift
-                        </button>
-                    </div>
-                    <p id="menu-wallet" class="menu-wallet" aria-live="polite"></p>
-                    <button class="play" id="start-btn">
-                        <i class="triangle"></i><span>Start Day Run</span><svg><use href="#i-arrow" /></svg>
+                    <button type="button" class="play" id="start-btn">
+                        <span>Start Day Run</span><svg aria-hidden="true"><use href="#i-arrow" /></svg>
                     </button>
-                    <div class="subactions">
-                        <button id="shop-btn">
-                            <svg><use href="#i-shirt" /></svg>Outfits</button
-                        ><button id="instructions-btn">
-                            <svg><use href="#i-game" /></svg>How to play
-                        </button>
+                    <div class="home-extras">
+                        <button type="button" id="shop-btn"><svg aria-hidden="true"><use href="#i-shirt" /></svg>Outfits</button>
+                        <button type="button" id="rankings-btn"><svg aria-hidden="true"><use href="#i-cup" /></svg>Rankings</button>
+                        <button type="button" id="instructions-btn"><svg aria-hidden="true"><use href="#i-game" /></svg>How to play</button>
                     </div>
                     <p class="load-status" role="status" id="load-status" hidden></p>
-                    </div>
-                </div>
-                <div class="location">
-                    <svg><use href="#i-pin" /></svg> Manhattan, NY
                 </div>
             </section>
-            <aside class="wire">
-                <button id="story-btn" title="Read the story"><i></i>City wire</button>
+            <aside class="wire home-wire" aria-label="City Wire">
+                <button id="story-btn" type="button" title="Read the story">City Wire <span aria-hidden="true">↗</span></button>
                 <p>Mayor endorses today’s march. Aide sent ahead to find out what it’s for.</p>
-                <span class="wire-star" aria-hidden="true">✦</span>
             </aside>
-            <footer class="rail">
-                <div class="key-guide">
-                    <span><kbd>←</kbd><kbd>→</kbd> Move</span><span><kbd>↑</kbd> Jump</span
-                    ><span><kbd>↓</kbd> Slide</span>
+            <footer class="home-footer">
+                <div class="home-record">
+                    <svg aria-hidden="true"><use href="#i-cup" /></svg><span id="menu-best-label">Day best</span><b id="menu-best">0 m</b>
                 </div>
-                <div class="touch-guide">Swipe to move, jump or slide</div>
-                <div class="record">
-                    <svg><use href="#i-cup" /></svg> <span id="menu-best-label">Day best</span> <b id="menu-best">0 m</b>
+                <div class="home-inputs">
+                    <div class="key-guide"><span><kbd>←</kbd><kbd>→</kbd> Move</span><span><kbd>↑</kbd> Jump</span><span><kbd>↓</kbd> Slide</span></div>
+                    <div class="touch-guide">Swipe to move, jump or slide</div>
                 </div>
+                <a class="home-coffee" data-support-link href="https://www.buymeacoffee.com/davedushi" target="_blank" rel="noopener noreferrer">
+                    Buy Dave a coffee <span aria-hidden="true">↗</span>
+                </a>
             </footer>
         </main>
         <div id="hud" class="hidden">
@@ -174,34 +170,39 @@
         </section>
         <section id="game-over-screen" class="overlay hidden">
             <div class="paper results">
-                <div class="frontpage-mast">
-                    <b>The City Wire</b><span id="result-edition">Final edition</span>
+                <div class="result-story">
+                    <div class="frontpage-mast">
+                        <b>The City Wire</b><span id="result-edition">Final edition</span>
+                    </div>
+                    <div class="press-sketch" aria-hidden="true"></div>
+                    <h2 id="result-headline">Mayor caught.</h2>
+                    <p id="result-copy"></p>
+                    <p class="audit-line">The five-year plan lasted <b id="run-seconds">0 seconds</b>.</p>
                 </div>
-                <div class="press-sketch" aria-hidden="true"></div>
-                <h2 id="result-headline">Mayor caught.</h2>
-                <p id="result-copy"></p>
-                <p class="audit-line">The five-year plan lasted <b id="run-seconds">0 seconds</b>.</p>
-                <div class="stats">
-                    <div><small>Distance run</small><strong id="final-distance">0 m</strong></div>
-                    <div><small>Stamp tax</small><strong id="final-tax">0</strong></div>
-                    <div><small>Clean moves</small><strong id="final-moves">0</strong></div>
-                </div>
-                <div class="bank-receipt">
-                    <div><strong id="result-banked"></strong><span id="result-wallet"></span></div>
-                    <p id="result-progress"></p>
-                    <button id="play-night" class="text-btn" hidden>Play Night Shift →</button>
-                </div>
-                <p class="best-line">
-                    <span id="result-best-label">Day Run best</span> <b id="pb-score">0 m</b> <span id="pb-rank-display"></span>
-                </p>
-                <div class="action-row">
-                    <button class="solid" id="restart-btn">Run again</button
-                    ><button class="plain" data-home>Menu</button>
+                <div class="result-totals">
+                    <div class="stats">
+                        <div><small>Distance run</small><strong id="final-distance">0 m</strong></div>
+                        <div><small>Stamp tax</small><strong id="final-tax">0</strong></div>
+                        <div><small>Clean moves</small><strong id="final-moves">0</strong></div>
+                    </div>
+                    <div class="bank-receipt">
+                        <div><strong id="result-banked"></strong><span id="result-wallet"></span></div>
+                        <p id="result-progress"></p>
+                        <button id="play-night" class="text-btn" hidden>Play Night Shift →</button>
+                    </div>
+                    <p class="best-line">
+                        <span id="result-best-label">Day Run best</span> <b id="pb-score">0 m</b> <span id="pb-rank-display"></span>
+                    </p>
+                    <div class="action-row">
+                        <button class="solid" id="restart-btn">Run again</button
+                        ><button class="plain" data-home>Menu</button>
+                    </div>
                 </div>
                 <div id="day-board">
-                <h3>Top revolutionaries</h3>
-                <div id="leaderboard-list" aria-live="polite"></div>
-                <button id="join-lb-btn" class="text-btn">Join the leaderboard</button>
+                    <h3>Top revolutionaries</h3>
+                    <div id="leaderboard-list" aria-live="polite"></div>
+                    <button id="result-board-retry" class="text-btn" hidden>Retry</button>
+                    <button id="join-lb-btn" class="text-btn">Join the leaderboard</button>
                 </div>
             </div>
         </section>
@@ -254,11 +255,22 @@
                         target="_blank"
                         rel="noopener"
                         id="bmc-wrapper"
+                        data-support-link
                         >Buy Dave a coffee ↗</a
                     ><button id="feedback-btn" class="text-btn">Send feedback</button>
                 </div>
                 <p id="pwa-prompt" class="install"></p>
             </article>
+        </section>
+        <section id="rankings-screen" class="overlay hidden" aria-label="Day Run rankings">
+            <div class="paper rankings-paper">
+                <div class="rankings-heading">
+                    <div><p class="slug">Day Run · Top 50</p><h2>Rankings</h2></div>
+                    <button id="close-rankings" class="plain">Close</button>
+                </div>
+                <div id="rankings-list" aria-live="polite"></div>
+                <button id="rankings-retry" class="text-btn" hidden>Try again</button>
+            </div>
         </section>
         <section id="poster-room" class="overlay hidden" aria-label="Street posters">
             <div class="poster-wall">
