@@ -1,5 +1,6 @@
 import { Group } from 'three';
 import { StreetMesh, tile } from './StreetHazardMesh.js';
+import { closedPanel } from './StreetWall.js';
 
 const white = 0xffffff,
     orange = 0xf88b3a,
@@ -103,17 +104,16 @@ function closedFence(w, top, depth) {
         m.box(x, top - 0.159, 0, 0.233, 0.082, 0.204, dark);
         m.tube([x, top - 0.118, 0], [x, top, 0], 0.08, 0xffbc43, 10, 0.065);
     }
-    m.box(0, 1.332, 0, 2 * w - 0.05, 2.357, 0.137, white, {
-        front: tile.plywood,
-        side: tile.plywood,
-        back: tile.plywood,
-        top: tile.plywood
-    });
+    m.box(
+        0, (closedPanel.top + closedPanel.bottom) / 2, 0,
+        2 * (w - closedPanel.sideInset), closedPanel.top - closedPanel.bottom, -2 * closedPanel.back,
+        white, { front: tile.plywood, side: tile.plywood, back: tile.plywood, top: tile.plywood }
+    );
     for (const s of [-1, 1]) {
         m.tube([s * (w - 0.13), 0.43, 0.1], [-s * (w - 0.13), 2.36, 0.1], 0.045, 0x96a18c, 4);
     }
     for (const y of [0.402, 2.332]) {
-        m.box(0, y, 0.14, 2 * w, 0.214, 0.079, white, {
+        m.box(0, y, closedPanel.front - 0.079 / 2, 2 * w, 0.214, 0.079, white, {
             front: tile.workStripe,
             back: tile.workStripe,
             top: tile.steel,

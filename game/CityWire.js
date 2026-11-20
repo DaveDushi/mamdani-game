@@ -14,6 +14,27 @@ export const raceDispatches = {
 };
 
 const receipts = {
+    horseCarriage: [
+        ['Central Park carriage keeps its right of way.', 'The mayor yields the lane.']
+    ],
+    policeTape: [
+        ['Mayor caught at the police line.', 'The march continues down the block.']
+    ],
+    fallenPlacard: [
+        ['Fair fares placard trips up City Hall.', 'The marchers ask for a standing meeting.']
+    ],
+    wall: [
+        ['Mayor runs head-on into a STREET CLOSED wall.', 'The marked lane stayed open.']
+    ],
+    parkBarrier: [
+        ['Mayor clips a barrier on the Central Park bike path.', 'The bike share clock keeps running.']
+    ],
+    deliveryDolly: [
+        ['Delivery dolly cuts across the mayor’s route.', 'At least the boxes arrived on time.']
+    ],
+    signalBoom: [
+        ['Signal boom stops the mayor.', 'The crew clocks out on time.']
+    ],
     jumpGate: [
         ['Red tape stops mayor in his tracks.', 'City Hall budgeted for the finish line in year five.'],
         ['Mayor fails to clear a low bar.', 'The appointments committee has already voted to lower it.']
@@ -23,8 +44,7 @@ const receipts = {
         ['City raises rent. Forgets to raise beam.', 'Aides described the clearance as affordable.']
     ],
     gateBlock: [
-        ['City opens lane for future use.', 'The concrete is temporary. The committee that approved it is permanent.'],
-        ['Mayor runs into his own road closure.', 'His office has asked the barricade to join the transition team.']
+        ['Mayor clips the edge of a STREET CLOSED wall.', 'Trump catches him at the barricade.']
     ],
     railGate: [
         ['Mayor trips at the ticket rail.', 'City Hall claims the landing as a completed infrastructure project.'],

@@ -9,17 +9,27 @@ Run through three lanes of New York traffic. Short white dashes mark the open la
 | Scaffold or halal cart | Slide underneath or change lanes. |
 | Low striped barrier / overhead striped beam | Jump the hurdle or slide under the beam. The first three stunt gates show the moves. |
 | Ticket rail | Jump over it or slide underneath in the same lane. Either move can earn the stamp. |
+| STREET CLOSED wall | Change lanes. An unprotected head-on hit ends the run. Clipping its outer edge costs one hit. |
+| Delivery dolly | Watch the load roll across the street. Change into the lane it leaves open. |
+| Horse-drawn carriage | Listen for the bell or look for the road marking. Move out of the carriage lane. |
+| Protest tape and placard | Duck under the police tape, then jump over the fallen sign. The first pair shares a lane. Later the sign may land in the next lane. |
+| Signal boom | Jump the low bar or slide under the raised bar. The other marked lane can have its own hurdle or overhead beam at later forks. |
+| Freeze the Rent ice | Jump the blue patch or switch to a dry lane. Grounded contact locks steering for half a second. You can still jump or slide. |
+| Central Park bike dock | From the left lane, move left again at the open dock. Steer through the park barriers for one gross stamp per opening cleared. You can hop a low barrier. The path rejoins Fifth Avenue. |
 | Bottle | Avoid it. “Haram!” reverses left/right and jump/slide for five seconds. |
 | Food stamp | Collect the ticket in the marked lane. The wallet receives your after-tax share when you finish. |
 | Mask | Clears traffic for three seconds. |
 | Keffiyeh | Protects you from traffic collisions for five seconds. |
 | Rainbow | Grants seven seconds of invincibility, blocks bottle confusion, and attracts nearby stamps. |
+| Fast & Free bus | Steer for ten seconds. Each vehicle or worksite obstacle you smash earns one gross stamp, up to three per ride. Pass pedestrians and horses safely. |
 
 Jump over a cab or striped barrier, slide under cover, or narrowly dodge traffic to earn a clean move. Chain three with less than five seconds between moves for one extra stamp.
 
-The opening gates teach one move at a time. Farther along, the course chains hurdles, beams and rails across lanes. Later sets give you less time between moves. Night Shift reaches those combinations sooner.
+After the opening streets, a 78° Heatwave gives you 16 seconds to earn two stamps for each three-move streak. Its clock pauses for rides and family sprints. The Stamp Office includes the bonus in your taxable earnings.
 
-A first unprotected collision brings Trump into pursuit. Stay clear for five seconds to shake him. A second hit during the chase ends the run. Each 100 stamps collected triggers a 90-stamp audit. At the finish, City Hall settles the remainder at the same rate. Partial progress toward the next banked stamp carries across completed runs.
+The opening gates teach one move at a time. Moving obstacles appear after the opening streets. Later, a dolly or boom can lead straight into another lane change, jump or slide. The gaps vary, and Night Shift reaches those combinations sooner.
+
+A head-on wall hit ends an unprotected run immediately. Other traffic hits bring Trump into pursuit. Stay clear for five seconds to shake him. A second hit during the chase ends the run. Each 100 stamps collected triggers a 90-stamp audit. At the finish, City Hall settles the remainder at the same rate. Partial progress toward the next banked stamp carries across completed runs.
 
 Bank 150 stamps across completed runs to unlock Night Shift, equivalent to 1,500 pickups and stunt bonuses in a new wallet. Day Run opens with lane changes, introduces compulsory jumps and slides and accelerates over several kilometres. Night Shift starts faster on wet streets and offers fewer power-ups. Each mode keeps its own best distance on the device. Both post street distances to the same Season 2.3.1 rankings and earn stamps for the same wallet.
 

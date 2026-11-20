@@ -100,15 +100,17 @@ function bake(figure, source, mode, lead, scale) {
             finger: figure.getObjectByName('mixamorig' + side + 'HandMiddle1').position };
     });
     const times = [], positions = [];
-    const frames = mode === 'run' ? Array.from({ length: 33 }, (_, n) => [n / 32]) : mode === 'jump' ? leap : slide;
+    const cycling = mode === 'cycle';
+    const frames = mode === 'run' || cycling ? Array.from({ length: 33 }, (_, n) => [n / 32]) : mode === 'jump' ? leap : slide;
     for (const [t, height, front, back, frontArm, backArm, pitch] of frames) {
         const running = mode === 'run', low = mode === 'slide';
         const beat = Math.cos((t + .06) * TAU);
         const yaw = running ? -.134 * beat : lead * (low ? -.22 : -.11);
         const roll = running ? -.033 * Math.cos((t - .075) * TAU) : lead * (low ? -.105 : -.032);
-        const torso = running ? .135 - .027 * Math.cos((t - .09) * TAU * 2) : pitch;
+        const torso = cycling ? .42 : running ? .135 - .027 * Math.cos((t - .09) * TAU * 2) : pitch;
         const x = running ? .028 * Math.cos((t - .075) * TAU) : lead * (low ? -.067 : -.02);
         hips.point.set(x, running ? .885 - .040 * Math.cos((t - .075) * TAU * 2) : height, low ? -.041 : 0).multiplyScalar(scale);
+        if (cycling) hips.point.set(0, 1.015, -.17).multiplyScalar(scale);
         positions.push(hips.point.x, hips.point.y, hips.point.z);
         times.push(t * source.duration);
         hips.bend(.025, yaw, roll);
@@ -120,11 +122,12 @@ function bake(figure, source, mode, lead, scale) {
 
         for (const { sign, thigh, shin, ankle, toe, shoulder, arm, forearm, hand, finger } of limbs) {
             const p = (t + (sign < 0 ? .5 : 0)) % 1;
-            const [z, lift, footPitch] = running ? footAt(p) : sign === lead ? front : back;
+            const [z, lift, footPitch] = cycling ? [.025 + .16 * Math.sin(p * TAU), .31 + .16 * Math.cos(p * TAU), .09]
+                : running ? footAt(p) : sign === lead ? front : back;
             // The boots extend beyond the toe joint. Roll around the outsole,
             // keeping either its front edge or heel on the track.
             const ankleHeight = .100 * Math.cos(footPitch) + Math.max(.205 * Math.sin(footPitch), -.09 * Math.sin(footPitch));
-            const width = low ? (sign === lead ? .19 : .23) : .095 + (mode === 'jump' ? lift * .16 : 0);
+            const width = cycling ? .17 : low ? (sign === lead ? .19 : .23) : .095 + (mode === 'jump' ? lift * .16 : 0);
             const foot = vec(sign * width, Math.max(0, lift) + ankleHeight + .010, z).multiplyScalar(scale);
             thigh.place();
             const aim = foot.clone().sub(thigh.point), a = shin.offset.length(), b = ankle.offset.length();
@@ -141,8 +144,8 @@ function bake(figure, source, mode, lead, scale) {
             shoulder.place();
             shoulder.bend(torso * .63, -.9 * yaw, -.55 * roll);
             const swing = -Math.cos((p + .06) * TAU);
-            const upper = running ? -.14 + .70 * swing : (sign === lead ? frontArm : backArm)[0];
-            const lower = running ? upper + 1.45 + .20 * swing : (sign === lead ? frontArm : backArm)[1];
+            const upper = cycling ? .50 : running ? -.14 + .70 * swing : (sign === lead ? frontArm : backArm)[0];
+            const lower = cycling ? 1.11 : running ? upper + 1.45 + .20 * swing : (sign === lead ? frontArm : backArm)[1];
             arm.place(); arm.aim(forearm, vec(sign * (low ? .32 : .14), -Math.cos(upper), Math.sin(upper)));
             forearm.place(); forearm.aim(hand, vec(-sign * .12, -Math.cos(lower), Math.sin(lower)));
             hand.place(); hand.aim({ offset: finger }, vec(-sign * .12, -Math.cos(lower - .10), Math.sin(lower - .10)));

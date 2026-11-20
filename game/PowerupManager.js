@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { roadPickup } from './PickupArt.js';
+import { busPickup, cityBusModel } from './CityBusArt.js';
 
 function markedPickup(model, atlas, column) {
     const map = atlas.clone();
@@ -35,7 +36,9 @@ function crossedPickup(pickup, fromX, fromY, to) {
 export class PowerupManager {
     constructor(scene, markers = new THREE.Texture()) {
         this.scene = scene;
+        this.busModel = cityBusModel();
         this.models = {
+            fastFreeBus: busPickup(this.busModel),
             rainbow: markedPickup(roadPickup('rainbow'), markers, 0),
             kafiyeh: markedPickup(roadPickup('kafiyeh'), markers, 1),
             covidMask: markedPickup(roadPickup('covidMask'), markers, 2)

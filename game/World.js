@@ -6,6 +6,7 @@ import { Landmarks, districts, districtAt } from './Landmarks.js';
 import { CityEvents } from './CityEvents.js';
 import { Crossings, streetClear } from './Crossings.js';
 import { TakeoverBlock } from './Takeover.js';
+import { touchesPark } from './ParkRoute.js';
 
 const LENGTH = 48,
     BLOCKS = 5;
@@ -355,7 +356,7 @@ export class World {
         this.blocks.forEach((b) => scene.add(b.group));
         this.landmarks = new Landmarks(scene, mats.details);
         this.crossings = new Crossings(scene);
-        this.events = new CityEvents(scene, mats.lamps, streetClear);
+        this.events = new CityEvents(scene, mats.lamps, (from, to) => streetClear(from, to) && !touchesPark(from, to));
         // Keep the central photograph at its original scale. Mirrored wings meet it at
         // matching edge pixels when the open river exposes the full horizontal field of view.
         const skyPanels = 5;
@@ -424,7 +425,8 @@ export class World {
 
     blockVisible(block) {
         const z = block.group.position.z;
-        return z > -165 && !this.crossings.coversBlock(this.distance - z + LENGTH / 2);
+        const middle = this.distance - z + LENGTH / 2;
+        return z > -165 && !this.crossings.coversBlock(middle) && !touchesPark(middle, middle);
     }
 
     setPosters(b, era) {
@@ -460,6 +462,10 @@ export class World {
         const step = this.speed * dt;
         this.distance += step;
         this.landmarks.update(this.distance);
+        for (const site of this.landmarks.groups) {
+            const at = this.distance - site.position.z;
+            if (site.visible && touchesPark(at - 8, at + 8)) site.visible = false;
+        }
         this.light.update(this.distance);
         this.crossings?.update(this.distance, this.light.night.value);
         this.events?.update(dt, this.distance, this.speed);

@@ -685,6 +685,21 @@ h1 strong {
 #pickup-card[data-kind='covidMask']::before { background-position-x: center; }
 #pickup-card[data-kind='rainbow'] { --stripe: #ffb6e6; }
 #pickup-card[data-kind='rainbow']::before { background-position-x: right; }
+#pickup-card[data-kind='fastFreeBus'] { --stripe: #8dd6ff; }
+#pickup-card[data-kind='fastFreeBus']::before {
+    content: 'M15';
+    align-self: center;
+    justify-self: center;
+    display: grid;
+    place-items: center;
+    width: 82%;
+    aspect-ratio: 1.18;
+    color: #fff9e9;
+    background: #185a8e;
+    border-top: 4px solid #d5eafa;
+    border-bottom: 3px solid #d5eafa;
+    font: 800 20px/1 Condensed, sans-serif;
+}
 .pickup-head {
     display: flex;
     justify-content: space-between;

@@ -100,6 +100,7 @@ export class Player {
         this.landAge = 1;
         this.buffer = 0;
         this.confusionTimer = 0;
+        this.iceTimer = 0;
         this.hitTime = 0;
         this.kafiyehTimer = this.rainbowTimer = this.covidMaskTimer = 0;
         this.updateWearables();
@@ -146,7 +147,7 @@ export class Player {
         this.hitTime = 0.24;
     }
 
-    update(dt, input, speed) {
+    update(dt, input, speed, parkRide, reduced = false) {
         this.stumble.restore();
         this.kafiyehTimer = Math.max(0, this.kafiyehTimer - dt);
         this.rainbowTimer = Math.max(0, this.rainbowTimer - dt);
@@ -163,8 +164,12 @@ export class Player {
         this.rig.material.emissive.setRGB(this.hitTime * 1.5, this.hitTime * 0.1, 0);
         const reverse = this.confusionTimer > 0;
         const side = Number(input.isJustPressed('right')) - Number(input.isJustPressed('left'));
-        this.currentLane = THREE.MathUtils.clamp(this.currentLane + side * (reverse ? -1 : 1), 0, 2);
-        const dx = (this.currentLane - 1) * 3 - this.mesh.position.x;
+        if (this.iceTimer <= 0) {
+            this.currentLane = THREE.MathUtils.clamp(this.currentLane + side * (reverse ? -1 : 1), 0, 2);
+        }
+        this.iceTimer = Math.max(0, this.iceTimer - dt);
+        const targetX = parkRide?.active ? parkRide.laneX(this.currentLane) : (this.currentLane - 1) * 3;
+        const dx = targetX - this.mesh.position.x;
         this.mesh.position.x += dx * (1 - Math.exp(-16 * dt));
         const jump = input.isJustPressed(reverse ? 'down' : 'up'),
             slide = input.isJustPressed(reverse ? 'up' : 'down');
@@ -239,11 +244,14 @@ export class Player {
         const lateral = THREE.MathUtils.clamp(dx / 2.4, -1, 1);
         this.bankVelocity += ((lateral - this.bank) * 205 - this.bankVelocity * 17) * dt;
         this.bank += this.bankVelocity * dt;
-        this.rig.pose(this.phase, this.slidePose, this.jumpWeight, this.bank, false, this);
-        this.mesh.rotation.y = -.47 * this.bank;
+        if (parkRide?.active) parkRide.pose(this, reduced);
+        else this.rig.pose(this.phase, this.slidePose, this.jumpWeight, this.bank, false, this);
+        this.mesh.rotation.y = (parkRide?.active ? parkRide.heading : 0) - .47 * this.bank;
         this.shadow.position.x = this.mesh.position.x - 0.16;
+        this.shadow.position.y = parkRide?.active ? .057 : .018;
         this.shadow.position.z = 0.23;
         this.shadow.scale.setScalar(1 + this.mesh.position.y * 0.16);
+        if (parkRide?.active) this.shadow.scale.y *= 1.32;
         this.shadow.material.opacity = 1 - this.mesh.position.y * 0.24;
         this.stumble.update(dt);
     }

@@ -52,12 +52,17 @@ const takeoverFog = new THREE.Color(0x657782);
 const takeoverSun = new THREE.Color(0xd8dfe1);
 const takeoverHemi = new THREE.Color(0xd3e0e9);
 const takeoverGround = new THREE.Color(0x919caa);
+const summerSun = new THREE.Color(0xffac65);
+const summerHaze = new THREE.Color(0xe6a47d);
+const summerFill = new THREE.Color(0xffcf9a);
 const skyGrade = `
 uniform float takeover;
+uniform float heatwave;
 vec3 gradeSky(vec3 sky) {
     float luminance = dot(sky, vec3(.2126, .7152, .0722));
     vec3 overcast = vec3(.012, .021, .030) + luminance * vec3(.13, .17, .20);
-    return mix(sky, overcast, takeover);
+    sky = mix(sky, overcast, takeover);
+    return mix(sky, sky * vec3(1.13, .88, .72) + vec3(.015, .006, 0.), heatwave);
 }`;
 
 export class StreetLight {
@@ -69,6 +74,7 @@ export class StreetLight {
         this.night = { value: 0 };
         this.wet = { value: 0 };
         this.takeover = { value: 0 };
+        this.heatwave = { value: 0 };
         this.daySky = artTexture('skyline');
         this.lateSky = artTexture('blue-hour');
         this.lastFrom = -1;
@@ -81,6 +87,7 @@ export class StreetLight {
             shader.uniforms.lateSky = { value: this.lateSky };
             shader.uniforms.nightMix = this.night;
             shader.uniforms.takeover = this.takeover;
+            shader.uniforms.heatwave = this.heatwave;
             shader.fragmentShader =
                 'uniform sampler2D lateSky;\nuniform float nightMix;\n' + skyGrade + '\n' +
                 shader.fragmentShader.replace(
@@ -100,6 +107,7 @@ export class StreetLight {
                 lateSky: { value: this.lateSky },
                 nightMix: this.night,
                 takeover: this.takeover,
+                heatwave: this.heatwave,
                 wet: this.wet
             });
             shader.vertexShader =
@@ -131,7 +139,15 @@ export class StreetLight {
 
     setShift(mode) {
         this.afterHours = mode === 'night';
+        this.heatwave.value = 0;
         this.lastFrom = -1;
+    }
+
+    setHeatwave(active, distance) {
+        if (this.heatwave.value === Number(active)) return;
+        this.heatwave.value = Number(active);
+        this.lastFrom = -1;
+        this.update(distance);
     }
 
     setTakeover(amount) {
@@ -203,6 +219,13 @@ export class StreetLight {
             this.sun.intensity *= 1 - t * 0.29;
             this.hemi.intensity *= 1 - t * 0.10;
             this.night.value = Math.max(this.night.value, t * 0.27);
+        }
+        if (this.heatwave.value) {
+            const warmth = 1 - t * 0.55;
+            this.scene.background.lerp(summerHaze, 0.36 * warmth);
+            this.scene.fog.color.lerp(summerHaze, 0.40 * warmth);
+            this.sun.color.lerp(summerSun, 0.68 * warmth);
+            this.hemi.color.lerp(summerFill, 0.38 * warmth);
         }
         this.lamps.visible = this.night.value > 0.14;
         this.lamps.opacity = this.night.value * 0.66;

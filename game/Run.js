@@ -3,6 +3,7 @@ import { artLoads, artTexture } from './Geometry.js';
 import { Wardrobe, createRenderer, sizeRenderer } from './Wardrobe.js';
 import { impact } from './Native.js';
 import { World } from './World.js';
+import { CentralPark } from './CentralPark.js';
 import { streetClear } from './Crossings.js';
 import { StreetLight } from './StreetLight.js';
 import { Player } from './Player.js';
@@ -11,7 +12,10 @@ import { Input } from './Input.js';
 import { ParticleSystem } from './ParticleSystem.js';
 import { ObstacleManager } from './ObstacleManager.js';
 import { PowerupManager } from './PowerupManager.js';
+import { BusRide } from './BusRide.js';
 import { ScoreManager, stampReceipt } from './ScoreManager.js';
+import { Heatwave } from './Heatwave.js';
+import { ICE_STEERING_SECONDS } from './RentIce.js';
 import { editionLines, stuntLines } from './CityWire.js';
 import { captions } from './Posters.js';
 import { FamilyRace, RIVALS, takeoverPercent } from './FamilyRace.js';
@@ -23,6 +27,7 @@ import { CITY_REVEAL, FINISH_HOLD, frameOpenBlock } from './RaceFinish.js';
 
 const STEP = 1 / 60;
 const pickups = {
+    fastFreeBus: { title: 'Fast & Free', detail: 'Steer into barriers for up to 3 stamps', short: 'Bus ride' },
     kafiyeh: { title: 'Allah Akbar', detail: 'Keffiyeh · Collision shield', short: 'Keffiyeh shield' },
     rainbow: { title: 'Full spectrum immunity', detail: 'Rainbow · Invincible + magnet', short: 'Invincible + magnet' },
     covidMask: { title: 'listen to Fauci', detail: 'COVID mask · Traffic cleared', short: 'Clear street' }
@@ -67,7 +72,9 @@ export class Run {
         this.trump = new Trump(this.scene, cast.chaser);
         this.wardrobe = fittingRoom ?? new Wardrobe(this.renderer, this.player);
         this.powerupManager = new PowerupManager(this.scene, artTexture('pickup-markers'));
+        this.busRide = new BusRide(this.scene, this.powerupManager.busModel);
         this.obstacleManager = new ObstacleManager(this.scene, this.powerupManager, cast);
+        this.parkRide = new CentralPark(this);
         this.scoreManager = new ScoreManager();
         this.particles = new ParticleSystem(this.scene);
         this.input = new Input(canvas, () => this.mode === 'playing' && !this.race);
@@ -153,6 +160,7 @@ export class Run {
         this.stop();
         this.runType = mode;
         this.speedLevel = speedLevel;
+        this.heatwave = new Heatwave();
         this.raceSchedule = new RaceSchedule(recordProvider);
         this.familyWins = 0;
         this.preparingRival = null;
@@ -211,8 +219,11 @@ export class Run {
         this.pursuitFrame += ((this.trump.isChasing ? 1 : 0) - this.pursuitFrame) * (1 - Math.exp(-5 * dt));
         const z = Math.max(5.9, 3.46 / halfWidth) + this.pursuitFrame * 1.25;
         const stumble = this.player.stumble;
-        const frame = stumble.framing;
-        const targetX = this.reduce ? 0 : x * (portrait ? 0.43 : 0.23);
+        this.busRide.cameraBlend += ((this.busRide.active ? 1 : 0) - this.busRide.cameraBlend) * (1 - Math.exp(-6*dt));
+        const busFrame = this.busRide.cameraBlend;
+        const frame = stumble.framing * (1-busFrame);
+        const parkX = this.parkRide.cameraOffset;
+        const targetX = this.reduce ? 0 : (x - parkX) * (portrait ? 0.43 : 0.23);
         this.streetCameraX += (targetX - this.streetCameraX) * (1 - Math.exp(-5 * dt));
         const impact = this.reduce ? 0 : Math.sin(this.shake * 95) * this.shake * 0.13;
         const y = (portrait ? 5.65 : 4.55) + this.pursuitFrame * .33 + this.player.mesh.position.y * .115 + impact;
@@ -222,11 +233,11 @@ export class Run {
         const pairX = x + Math.sign(gap) * extra * .55;
         const closeZ = portrait ? 6.2 + extra / (2 * halfWidth) : 5.5;
         this.camera.position.set(
-            THREE.MathUtils.lerp(this.streetCameraX, pairX + stumble.shoulder * .25, frame),
-            THREE.MathUtils.lerp(y, 2.85 + this.player.mesh.position.y * .20, frame),
-            THREE.MathUtils.lerp(z, closeZ, frame)
+            THREE.MathUtils.lerp(parkX + this.streetCameraX + 1.45 * this.parkRide.width, pairX + stumble.shoulder * .25, frame),
+            THREE.MathUtils.lerp(y, 2.85 + this.player.mesh.position.y * .20, frame) + .74*busFrame,
+            THREE.MathUtils.lerp(z, closeZ, frame) + 2.4*busFrame
         );
-        this.camera.lookAt(THREE.MathUtils.lerp(this.streetCameraX * .52, pairX, frame),
+        this.camera.lookAt(THREE.MathUtils.lerp(parkX + this.streetCameraX * .52, pairX, frame),
             THREE.MathUtils.lerp(portrait ? 1.65 : 1.05, 1.05, frame), THREE.MathUtils.lerp(-7.3, -3, frame));
     }
 
@@ -238,6 +249,8 @@ export class Run {
     }
 
     stop() {
+        this.parkRide.reset();
+        this.busRide.reset(this.player);
         this.race = null;
         this.upcomingRace = null;
         this.raceStage?.stop();
@@ -365,6 +378,9 @@ export class Run {
         }
         const secondary = active.slice(0, -1).map(type => pickups[type].short + ' · ' + Math.ceil(p[type + 'Timer']) + 's');
         if (p.confusionTimer > 0) secondary.push('Haram! Reversed · ' + Math.ceil(p.confusionTimer) + 's');
+        if (this.heatwave.active) {
+            secondary.push('78° Heatwave · ' + Math.ceil(this.heatwave.remaining) + 's', '2× streak bonus');
+        }
         const effect = secondary.join('\n');
         const schedule = this.raceSchedule;
         const next = schedule.rivals[this.familyWins];
@@ -381,7 +397,7 @@ export class Run {
             ['score', this.scoreManager.getDisplayScore()],
             ['pace', (this.world.speed / 17.5).toFixed(1) + '×'],
             ['food-stamps', this.scoreManager.foodStamps],
-            ['district', this.world.crossings?.currentName || this.world.currentEventLabel || this.world.district],
+            ['district', this.parkRide.label || this.world.crossings?.currentName || this.world.currentEventLabel || this.world.district],
             ['effect', effect]
         ]) {
             if (this.hud[key].textContent !== String(value)) this.hud[key].textContent = value;
@@ -390,6 +406,7 @@ export class Run {
 
     canStartRace() {
         const { player, world } = this;
+        if (this.busRide?.active || this.parkRide?.active) return false;
         const laneX = (player.currentLane - 1) * 3;
         if (this.trump.isChasing || !player.isGrounded || player.slideTimer > 0 ||
             player.confusionTimer > 0 || Math.abs(player.mesh.position.x - laneX) > .35) return false;
@@ -402,7 +419,9 @@ export class Run {
     }
 
     startRace(rival) {
+        this.updateHeatwave(0, false);
         this.player.stumble.reset();
+        this.player.iceTimer = 0;
         this.input.reset();
         // Leave about 0.8 seconds of clear road at Overtime speed.
         if (rival.index === RIVALS.length - 1) this.obstacleManager.clearFinishChute(this.world.speed * .9);
@@ -520,9 +539,16 @@ export class Run {
         } = this;
         this.elapsed += dt;
         const wasChasing = trump.isChasing;
+        const wasCycling = this.parkRide.active;
         world.update(dt);
-        player.update(dt, this.input, world.speed);
+        this.parkRide.update(this);
+        if (this.busRide.active) {
+            this.input.isJustPressed('up');
+            this.input.isJustPressed('down');
+        }
+        player.update(dt, this.input, world.speed, this.parkRide, this.reduce);
         traffic.update(dt, world.speed, world.distance);
+        if (traffic.carriageBell) this.sound.play('carriageBell');
         powers.update(dt, world.speed);
         trump.update(dt, player.mesh.position.x, player.stumble.shoulder);
         if (wasChasing && !trump.isChasing) {
@@ -543,13 +569,14 @@ export class Run {
         }
         player.events.length = 0;
         const power = powers.checkCollisions(player);
-        if (power) {
-            player.activatePowerup(power);
+        if (power && (power !== 'fastFreeBus' || (!this.busRide.active && !this.parkRide?.active))) {
+            if (power === 'fastFreeBus') this.busRide.board(player);
+            else player.activatePowerup(power);
             this.pickupOrder = this.pickupOrder.filter(type => type !== power);
             this.pickupOrder.push(power);
             this.pickupDuration[power] = player[power + 'Timer'];
             this.updateHud();
-            this.pickupRing.material.color.set({ kafiyeh: 0xffde86, covidMask: 0x87f2f5, rainbow: 0xffa2dc }[power]);
+            this.pickupRing.material.color.set({ kafiyeh: 0xffde86, covidMask: 0x87f2f5, rainbow: 0xffa2dc, fastFreeBus: 0x86d6ff }[power]);
             this.pulseTime = 0.72;
             this.pickupRing.visible = true;
             if (!this.reduce) {
@@ -558,7 +585,7 @@ export class Run {
                     { duration: 520, easing: 'ease-out' }
                 );
             }
-            this.sound.play(power);
+            this.sound.play(power === 'fastFreeBus' ? 'go' : power);
             impact();
             particles.spawnParticles(player.mesh.position, 14, 0xf0d997, 1.2);
         }
@@ -585,7 +612,25 @@ export class Run {
                 }
             }
         }
-        const hit = traffic.checkCollisions(player);
+        const ridingBus = this.busRide.active;
+        if (ridingBus) {
+            const fare = this.busRide.drive(dt, traffic, player, world.speed, this.reduce);
+            if (fare) {
+                score.addFoodStamps(fare);
+                this.sound.play('hit');
+                this.notify('Bus smash +' + fare + (fare === 1 ? ' stamp' : ' stamps'), 'clean');
+            }
+            player.fastFreeBusTimer = Math.max(0,player.fastFreeBusTimer-dt);
+            if (player.fastFreeBusTimer < 1e-7) this.busRide.leave(traffic,player,world.speed);
+        }
+        const streetHit = traffic.checkCollisions(player,ridingBus);
+        const hit = this.parkRide.contact(this) ?? streetHit;
+        if (traffic.slippedOnIce && !player.invincible && !player.covidMaskTimer &&
+            !ridingBus && !wasCycling && !this.parkRide.active) {
+            player.iceTimer = ICE_STEERING_SECONDS;
+            if (!trump.isChasing) this.notify('Ice skid!', 'warning');
+            if (!this.reduce) particles.spawnParticles(player.mesh.position, 7, 0xd8ecf2, .62);
+        }
         if (hit === 'coin') this.collect();
         else if (hit === 'alcohol') {
             if (player.rainbowTimer <= 0) {
@@ -596,7 +641,7 @@ export class Run {
                 particles.spawnParticles(player.mesh.position, 12, 0xa95fbc, 1.2);
             }
         } else if (hit && !player.invincible) {
-            if (trump.isChasing) {
+            if (hit === 'wall' || trump.isChasing) {
                 this.sound.play('end');
                 impact(true);
                 this.endRun(hit);
@@ -620,7 +665,9 @@ export class Run {
                 1.4
             );
         }
-        if (traffic.lastStunt) {
+        const onFoot = !this.parkRide?.active && !ridingBus;
+        this.updateHeatwave(dt, onFoot);
+        if (onFoot && traffic.lastStunt) {
             this.cleanMoves++;
             this.streak = this.elapsed - this.lastStuntAt < 5 ? this.streak + 1 : 1;
             this.lastStuntAt = this.elapsed;
@@ -631,8 +678,9 @@ export class Run {
             }
             this.sound.play('stunt');
             if (this.streak % 3 === 0) {
-                score.addFoodStamps(1);
-                this.notify('Clean streak +1 stamp');
+                const reward = this.heatwave.streakReward;
+                score.addFoodStamps(reward);
+                this.notify(reward === 2 ? 'Heatwave streak +2 stamps' : 'Clean streak +1 stamp');
             }
         }
         particles.update(dt);
@@ -673,6 +721,18 @@ export class Run {
             if (schedule.canEnter(next, metres) && this.preparedRivals.has(next.id) && this.canStartRace()) this.startRace(next);
         }
     }
+    updateHeatwave(dt, onFoot) {
+        const wasActive = this.heatwave.active;
+        const event = this.heatwave.update(dt, this.world.distance, onFoot);
+        this.world.light.setHeatwave(this.heatwave.active, this.world.distance);
+        if (this.heatwave.active !== wasActive) this.hudTimer = 0;
+        if (!onFoot && this.hud.notice.dataset.tone === 'weather' && this.noticeTime > 0) {
+            this.hud.notice.textContent = '';
+            this.noticeTime = 0;
+        }
+        if (event && this.noticeTime <= 0) this.notify(event === 'start' ? '78° Heatwave' : 'Heatwave over', 'weather');
+    }
+
     collect() {
         this.scoreManager.addFoodStamps(1);
         this.sound.play('stamp');
