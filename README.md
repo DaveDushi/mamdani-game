@@ -10,11 +10,11 @@ Follow the lane markings. The opening stunt gates teach the moves. Jump low hurd
 
 Distance determines your score. One collision starts a five-second chase. A second collision during the chase ends the run. The Stamp Office takes 90 out of every 100 food stamps. Bank 150 after tax across completed runs to unlock Night Shift, a faster course with wet streets, rarer pickups and a separate local best. Outfits stay free. See [game rules](game-rules.md) for obstacles and power-ups.
 
-Race Donald Jr., Ivanka, Eric, Tiffany and Barron in order. Tap the sprint pad or press Space repeatedly. The five kids race offline too. Their opening sprints range from 32 to 48 m and grow harder and longer, up to 100 m, as the season record rises. The Shop shows each street checkpoint and sprint length. Spend after-tax stamps there for permanent sprint training. Spent stamps still count toward Night Shift.
+Race Donald Jr., Ivanka, Eric, Tiffany and Barron in order. On the opening course, Junior waits at 650 m, about 25 seconds into Day Run or 20 seconds into Night Shift. Each child waits farther down the street and takes a faster tapping rhythm to beat. All five race offline. Open Race schedule in the Shop for their checkpoints and sprint lengths. Spend after-tax stamps there on permanent sprint training. Spent stamps still count toward Night Shift.
 
-After five wins in one run, pass both 420 m and the live season record while online to qualify for Donald's 100 m final. On an empty board, Donald can appear from 421 m. The opening campaign aims for about a minute of street running and sprints before the final. Each win changes one sixth of the city. Beat Donald to complete the takeover and continue in endless Overtime at 10% higher speed.
+After five wins in one run, go beyond both 9 km and the live season record. The game confirms your place online before Donald’s 100 m final. A clean opening campaign takes about four minutes. A season record above 9 km moves the checkpoints farther out. Each win changes one sixth of the city. Beat Donald to complete the takeover and continue in endless Overtime at 10% higher speed.
 
-Day Run and Night Shift share the new Season 2.3.1 distance rankings. Earlier scores stay on the historical board.
+In version 2.3.2, Day Run and Night Shift continue to share the Season 2.3.1 distance rankings. Earlier scores stay on the historical board.
 
 ## Run locally
 
@@ -35,6 +35,8 @@ The iPhone app forwards the same gameplay events and screen changes to Firebase 
 The creator support button opens Dave’s Buy Me a Coffee page. It is available on the web and in the native app when StoreKit identifies the United States storefront. Support does not affect the wallet, outfits or gameplay.
 
 ## Art and credits
+
+Version 2.3.2 adds original artwork for the track crowds and the Overtime front page. Zahra wears a restyled suit and long hair in the fitting room and on the track.
 
 The five family challengers have separate animated models with custom faces and race outfits. Their source meshes and license notices are listed in the [race model credits](public/models/race/LICENSE.txt).
 

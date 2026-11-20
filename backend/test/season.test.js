@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { seasonRequest, PREFIX } from '../src/season.js';
 import { OPENING_RECORD_METRES } from '../src/season-rules.js';
+import { RaceSchedule } from '../../game/RaceSchedule.js';
 
 function fixture() {
     const sqlite = new DatabaseSync(':memory:');
@@ -90,4 +91,37 @@ test('completed PBs retain the best distance and publicly registered names from 
     assert.equal((await call('score?playerId=older')).rank, 3);
     assert.equal((await call('score', { playerId: 'older', score: -1 })).status, 400);
     assert.equal((await call('record/claim', { playerId: 'older', attemptId: 'x', score: 10000, mode: 'other' })).status, 400);
+});
+
+test('2.3.1 and 2.3.2 runners share records while each version keeps its own final approach', async () => {
+    const { call, claim } = fixture();
+    assert.equal((await claim('older', 'short-course', 421)).qualified, true);
+    const distances = [];
+    const schedule = new RaceSchedule({
+        getRecord: async () => ({ score: (await call('record')).record }),
+        claim: async score => {
+            distances.push(score);
+            const response = await claim('newer', 'long-course', score, 'night');
+            return { ...response, record: { score: response.record } };
+        }
+    });
+    await schedule.update(0, 0, 0);
+    const openingFinish = schedule.rivals.at(-1).at;
+    assert.ok(openingFinish > 421);
+    await schedule.update(422, 5, 1);
+    await schedule.update(openingFinish - 1, 5, 2);
+    await schedule.update(openingFinish, 4, 3);
+    assert.deepEqual(distances, []);
+
+    const newRecord = openingFinish + 100;
+    await call('score', { playerId: 'older', score: newRecord, mode: 'day' });
+    await schedule.update(openingFinish, 5, 4);
+    for (let frame = 0; frame < 60; frame++) await schedule.update(newRecord, 5, 5 + frame / 60);
+    assert.deepEqual(distances, [openingFinish]);
+    assert.equal(schedule.canEnter(schedule.rivals.at(-1), newRecord), false);
+    await schedule.update(newRecord + 1, 5, 6);
+    assert.deepEqual(distances, [openingFinish, newRecord + 1]);
+    assert.equal(schedule.canEnter(schedule.rivals.at(-1), newRecord + 1), true);
+    assert.equal((await claim('newer', 'long-course', newRecord + 1, 'night')).previousRecord, newRecord);
+    assert.equal((await call('leaderboard')).entries[0].score, newRecord + 1);
 });

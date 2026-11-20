@@ -1,27 +1,31 @@
 import { RIVALS } from './FamilyRace.js';
-import { OPENING_RECORD_METRES } from '../backend/src/season-rules.js';
 
-// Keep the final approach longest as the season record moves farther out.
-const checkpointShares = [0.08, 0.19, 0.33, 0.51, 0.73];
-const openingHeats = [32, 36, 40, 44, 48];
+export const CAMPAIGN_FLOOR_METRES = 9000;
+export const PRESSURE_CAP_METRES = 30000;
+
+const openingCheckpoints = [650, 1670, 2975, 4650, 6650];
+const SPRINT_METRES = 100;
+const LAUNCH_SECONDS = .65;
 const RETRY_SECONDS = 8;
 const REFRESH_SECONDS = 15;
-const STREET_RETURN_SECONDS = 2;
+const STREET_RETURN_SECONDS = 18;
 const distanceFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 3 });
 
 export function familySchedule(score) {
-    const target = Math.max(OPENING_RECORD_METRES, score ?? 0);
-    const growth = Math.min(1, (target - OPENING_RECORD_METRES) / (3000 - OPENING_RECORD_METRES));
+    const target = Math.max(CAMPAIGN_FLOOR_METRES, score ?? 0);
+    const scaling = target / CAMPAIGN_FLOOR_METRES;
+    const growth = Math.min(1, (target - CAMPAIGN_FLOOR_METRES) / (PRESSURE_CAP_METRES - CAMPAIGN_FLOOR_METRES));
+    const pressure = 1 + .012 * growth;
     return RIVALS.map((rival, index) => {
         const final = index === RIVALS.length - 1;
-        const metres = final ? 100 : Math.round(openingHeats[index] + (100 - openingHeats[index]) * growth);
+        const metres = Math.round(rival.metres + (SPRINT_METRES - rival.metres) * growth);
         return {
             ...rival,
-            at: final ? target + 1 : Math.round(target * checkpointShares[index]),
+            at: final ? target + 1 : Math.round(openingCheckpoints[index] * scaling),
             metres,
-            countdown: metres < 100 ? 2 : 3,
-            // Keep the standing start allowance even in the shortest heat.
-            finish: 0.65 + (rival.finish - 0.65) * metres / 100
+            countdown: metres < SPRINT_METRES ? 2 : 3,
+            finish: LAUNCH_SECONDS + (rival.finish - LAUNCH_SECONDS) * metres / rival.metres / pressure,
+            surge: rival.surge * (1 + .2 * growth)
         };
     });
 }
@@ -34,7 +38,7 @@ export class RaceSchedule {
     constructor(provider) {
         this.provider = provider;
         this.rivals = familySchedule(null);
-        this.target = OPENING_RECORD_METRES;
+        this.target = CAMPAIGN_FLOOR_METRES;
         this.qualified = false;
         this.initialRecordPending = !!provider;
         this.reading = false;
@@ -66,7 +70,7 @@ export class RaceSchedule {
     }
 
     setTarget(score) {
-        const target = Math.max(OPENING_RECORD_METRES, score ?? 0);
+        const target = Math.max(CAMPAIGN_FLOOR_METRES, score ?? 0);
         if (target === this.target) return;
         this.target = target;
         this.rivals = familySchedule(target);

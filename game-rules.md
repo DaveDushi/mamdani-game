@@ -17,6 +17,8 @@ Run through three lanes of New York traffic. Painted chevrons mark a route. The 
 
 Jump over a cab or striped barrier, slide under cover, or narrowly dodge traffic to earn a clean move. Chain three with less than five seconds between moves for one extra stamp.
 
+The opening gates teach one move at a time. Farther along, the course chains hurdles, beams and rails across lanes. Later sets give you less time between moves. Night Shift reaches those combinations sooner.
+
 A first unprotected collision brings Trump into pursuit. Stay clear for five seconds to shake him. A second hit during the chase ends the run. Each 100 stamps collected triggers a 90-stamp audit. At the finish, City Hall settles the remainder at the same rate. Partial progress toward the next banked stamp carries across completed runs.
 
 Bank 150 stamps across completed runs to unlock Night Shift, equivalent to 1,500 pickups and stunt bonuses in a new wallet. Day Run opens with lane changes, introduces compulsory jumps and slides and accelerates over several kilometres. Night Shift starts faster on wet streets and offers fewer power-ups. Each mode keeps its own best distance on the device. Both post street distances to the same Season 2.3.1 rankings and earn stamps for the same wallet.
@@ -25,12 +27,14 @@ The runner wears each active pickup until its timer expires. Your best distance 
 
 ## Family races
 
-Each run starts with Donald Trump Jr., then Ivanka, Eric, Tiffany and Barron. All five race offline. On an empty board their sprints are 32, 36, 40, 44 and 48 m. A higher season record moves their checkpoints farther apart and makes their races harder. Their sprints can grow to 100 m. Open Race schedule in the Shop for the current street marks and sprint lengths.
+Each run starts with Donald Trump Jr., then Ivanka, Eric, Tiffany and Barron. All five race offline. Their opening street marks are 650, 1,670, 2,975, 4,650 and 6,650 m. Their heats are 64, 72, 80, 88 and 98 m respectively. A season record above 9 km moves those marks farther out and lengthens the heats, up to 100 m. Open Race schedule in the Shop for the live distances.
 
 The street pauses for each sprint when the course is clear. On the starting signal, tap the sprint pad or press Space repeatedly. Holding the key counts once. A loss ends the run and settles the stamp receipt. A win saves the rival you beat and returns you to the street after a countdown. Only street metres count toward your ranking.
 
-To qualify for Donald, beat all five kids in the same run, then exceed the current season record and the 420 m minimum. The game checks the live record online. An empty board has no record and the first eligible street mark is 421 m. Donald always races 100 m.
+To qualify for Donald, beat all five kids in the same run, then go beyond both 9,000 m and the live season record. The earliest final starts at 9,001 street metres. If another runner raises the record first, keep running until you pass it. The check requires a connection. Donald always races 100 m.
 
-The shop sells five permanent race-speed upgrades using your spendable after-tax stamps. Training helps on the sprint track. Lifetime earnings still count toward Night Shift when you spend them. Each victory gives City Hall another sixth of the city. Buildings grow more uniform and the sky darkens. Beat Donald for the 100% takeover win, then choose Run Overtime for endless play at 110% of the usual pace. A fresh run restores the original city. Your best family result stays saved.
+The shop sells five permanent sprint upgrades using after-tax stamps. Each level adds 11% to the speed gained per tap. All five training levels share a top speed, and you slow between taps. Keep tapping through the finish. Lifetime earnings still count toward Night Shift when you spend them.
+
+Each victory gives City Hall another sixth of the city. Buildings grow more uniform and the sky darkens. Beat Donald for the 100% takeover win, then choose Run Overtime for endless play at 110% of the usual pace. A fresh run restores the original city. Your best family result stays saved.
 
 Passing protest signs and street posters get a large-print caption. Pause to reread the last one, or open Posters from the menu to browse all nine prints.

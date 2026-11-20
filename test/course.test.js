@@ -42,18 +42,21 @@ function worldWithoutScenery(mode = 'day') {
     return world;
 }
 
-test('day keeps gaining speed past three kilometres and Night Shift starts faster', () => {
+test('both shifts gain speed through sixty kilometres and stay bounded in Overtime', () => {
     for (const mode of ['day', 'night']) {
         const world = worldWithoutScenery(mode);
         assert.equal(world.speed, mode === 'day' ? 17.5 : 29);
         let priorSpeed = world.speed;
-        for (const checkpoint of [1000, 2000, 3000]) {
+        for (const checkpoint of [500, 2000, 5000, 10000, 30000, 60000]) {
             while (world.distance < checkpoint) world.update(step);
-            assert.ok(world.speed > priorSpeed + 6);
+            assert.ok(world.speed > priorSpeed + 3);
             priorSpeed = world.speed;
         }
-        while (world.distance < 6000) world.update(step);
-        assert.equal(world.speed, mode === 'day' ? 58 : 62);
+        const cap = mode === 'day' ? 82 : 85;
+        assert.equal(courseSpeed(1000000, mode), cap);
+        world.overtime = true;
+        world.update(step);
+        assert.equal(world.speed, cap * 1.1);
         world.reset();
         assert.equal(world.speed, 17.5);
     }
@@ -93,7 +96,7 @@ test('stunt cards get denser, pair different actions, and still give each row ti
     };
     for (const mode of ['day', 'night']) {
         for (let seed = 1; seed <= 64; seed++) {
-            const rows = layout(seed, 700, mode).filter(row => row.lanes);
+            const rows = layout(seed, 1400, mode).filter(row => row.lanes);
             if (mode === 'night') {
                 assert.equal(rows[0].distance, 42);
                 assert.equal(rows[0].lanes.filter((key, lane) => key && lane !== rows[0].exitLane).length, 2);
@@ -104,9 +107,13 @@ test('stunt cards get denser, pair different actions, and still give each row ti
             assert.ok(late.filter(row => row.gate).length / late.length > 0.78);
             const combined = late.filter((row, i) => row.gate && late[i + 1]?.gate && late[i + 1].gate !== row.gate);
             assert.ok(combined.length / late.length > 0.45);
+            const routes = row => row.gate ? lanes.filter(lane => row.lanes[lane] !== 'gateBlock') : [row.exitLane];
             for (let i = 1; i < rows.length; i++) {
-                const { distance } = rows[i];
-                assert.ok((distance - rows[i - 1].distance) / courseSpeed(distance, mode) >= 0.96);
+                const row = rows[i], last = rows[i - 1];
+                const seconds = (row.distance - last.distance) / (courseSpeed(row.distance, mode) * 1.1);
+                const canJump = r => ['jump', 'rail', 'choice'].includes(r.gate);
+                assert.ok(seconds >= (canJump(last) && canJump(row) ? 0.89 : 0.53));
+                for (const a of routes(last)) for (const b of routes(row)) assert.ok(Math.abs(a - b) <= 1);
             }
             const stunts = rows.filter(row => row.gate);
             assert.deepEqual(stunts.slice(0, 4).map(row => [row.gate, row.tutorial]), [
@@ -114,11 +121,66 @@ test('stunt cards get denser, pair different actions, and still give each row ti
             ]);
             assert.ok(stunts.slice(3).every(row => row.tutorial === false));
             const railRate = late.filter(row => row.gate === 'rail').length / late.length;
-            assert.ok(railRate > 0.1 && railRate < 0.2);
+            assert.ok(railRate > 0.1 && railRate < 0.24);
             for (const row of stunts) {
                 assert.deepEqual([...row.lanes].sort(), expected[row.gate]);
             }
         }
+    }
+});
+
+test('compulsory actions per second keep rising past the old cap on both shifts', () => {
+    const bands = [[0, 300], [500, 1200], [2000, 3000], [5000, 6000],
+        [10000, 11000], [30000, 32000], [60000, 62000]];
+    for (const mode of ['day', 'night']) {
+        const totals = bands.map(() => ({ gates: 0, seconds: 0 }));
+        for (let seed = 1; seed <= 48; seed++) {
+            let previous = 0;
+            for (const row of streetCourse(seededRandom(seed), mode)) {
+                if (row.distance >= 62000) break;
+                if (!row.lanes) continue;
+                const index = bands.findIndex(([from, to]) => row.distance >= from && row.distance < to);
+                if (index >= 0) {
+                    totals[index].gates += Number(!!row.gate);
+                    totals[index].seconds += (row.distance - previous) / courseSpeed(row.distance, mode);
+                }
+                previous = row.distance;
+            }
+        }
+        const rates = totals.map(t => t.gates / t.seconds);
+        for (let i = 1; i < rates.length; i++) assert.ok(rates[i] > rates[i - 1] + 0.02, mode + ' ' + rates);
+        assert.ok(rates.at(-1) > 1.1);
+    }
+});
+
+test('winning the final lengthens the next stunt set on the live course', () => {
+    for (const mode of ['day', 'night']) {
+        let overtime = false;
+        const normal = streetCourse(seededRandom(9), mode);
+        const live = streetCourse(seededRandom(9), mode, () => overtime);
+        let row;
+        do {
+            row = normal.next().value;
+            assert.deepEqual(live.next().value, row);
+        } while (row.distance < 4000);
+        overtime = true;
+        function lengths(course) {
+            const sets = [];
+            let length = 0;
+            for (const row of course) {
+                if (!row.lanes) continue;
+                if (row.gate) length++;
+                else {
+                    sets.push(length);
+                    length = 0;
+                    if (sets.length === 5) return sets.slice(1);
+                }
+            }
+        }
+        const regular = lengths(normal), extra = lengths(live);
+        assert.ok(Math.max(...regular) <= 6, mode + ' ' + regular);
+        assert.ok(Math.min(...extra) >= 6, mode + ' ' + extra);
+        assert.ok(extra.some(length => length > 6), mode + ' ' + extra);
     }
 });
 
@@ -140,7 +202,7 @@ test('even collecting every scheduled protection leaves most of the run exposed'
                     Player.prototype.activatePowerup.call(effect, pickup.pickup);
                     duration = effect[pickup.pickup + 'Timer'];
                     // Count the visible stretch the mask clears after its timer expires.
-                    if (pickup.pickup === 'covidMask') duration += 83 / world.speed;
+                    if (pickup.pickup === 'covidMask') duration += Math.max(83 / world.speed, 1.65);
                     pickupIndex++;
                 }
                 if (duration > 0) {
@@ -206,8 +268,8 @@ test('all generated pieces are pooled and painted lane cues lead to one collecti
                 const marks = new Map();
                 if (!row.gate) marks.set(row.exitLane, ['laneCue', 1.02, 0]);
                 for (const [lane, key] of row.lanes.entries()) {
-                    if (key === 'jumpGate') marks.set(lane, [row.tutorial ? 'jumpCue' : 'laneCue', 2.42, 0]);
-                    if (key === 'slideGate') marks.set(lane, [row.tutorial ? 'slideCue' : 'laneCue', 0.55, 0]);
+                    if (key === 'jumpGate') marks.set(lane, ['jumpCue', 2.42, 0]);
+                    if (key === 'slideGate') marks.set(lane, ['slideCue', 0.55, 0]);
                     if (key === 'railGate') marks.set(lane, ['laneCue', 1.31, 0.35]);
                 }
                 const at = (obj, x, distance) => obj.mesh.position.x === x &&
@@ -241,6 +303,26 @@ test('all generated pieces are pooled and painted lane cues lead to one collecti
         }
     }
     assert.deepEqual([...keys].sort(), Object.keys(traffic.models).sort());
+});
+
+test('even the fastest Overtime gates enter the scene at least 1.55 seconds ahead', () => {
+    const speed = courseSpeed(60000, 'night') * 1.1;
+    for (const hz of [20, 30, 60, 120]) {
+        const traffic = createTraffic();
+        traffic.course = streetCourse(seededRandom(9), 'night');
+        do { traffic.nextRow = traffic.course.next().value; } while (traffic.nextRow.distance < 60000);
+        const seen = new Set();
+        const start = traffic.nextRow.distance - speed * 2;
+        for (let distance = start; distance < start + 1800; distance += speed / hz) {
+            traffic.update(1 / hz, speed, distance);
+            for (const item of traffic.obstacles) {
+                if (!item.gate || item.key === 'coin' || seen.has(item.gate)) continue;
+                assert.ok(-item.mesh.position.z / speed >= 1.55 - 1e-8);
+                seen.add(item.gate);
+            }
+        }
+        assert.ok(seen.size >= 16);
+    }
 });
 
 test('both pickup escorts collect as stamps and pooled escorts return to the route style', () => {
@@ -331,18 +413,24 @@ test('one ticket rail pays one stamp and move for either clear, and hits a stand
     }
 });
 
-function courseTrial(seed, mode, strategy, dt, pace = 1, jumpLead = 0.35) {
+function courseTrial(seed, mode, { at = 0, size = 36, strategy = 'jumpChoice', dt = step,
+    overtime = false, jumpLead = 0.35, actionInterval = 0 } = {}) {
+    const source = streetCourse(seededRandom(seed), mode, () => overtime);
+    let first;
+    do { first = source.next().value; } while (!first.lanes || first.distance < at);
+    const events = [first];
+    while (events.length < size + 8) events.push(source.next().value);
+    const rows = events.filter(row => row.lanes).slice(0, size - 4);
     const world = worldWithoutScenery(mode);
+    world.overtime = overtime;
+    world.distance = Math.max(0, first.distance - 1.3 * courseSpeed(first.distance, mode));
+    world.speed = courseSpeed(world.distance, mode) * (overtime ? 1.1 : 1);
     const traffic = createTraffic();
-    traffic.reset(mode, seededRandom(seed));
+    traffic.course = events.values();
+    traffic.nextRow = traffic.course.next().value;
     const player = createPlayer();
-    const rows = layout(seed, 270, mode).filter(row => row.lanes);
-    const maxSpeed = courseSpeed(10000, mode) * pace;
-    const stuntsAtCap = new Set();
-    const cleared = new Set();
-    let time = 0;
-    let nextLaneInput = 0;
-    let stamps = 0;
+    const cleared = new Set(), strikes = [];
+    let time = 0, lastAction = -Infinity, stamps = 0;
     for (const row of rows) {
         const { distance, exitLane } = row;
         const jumpLane = row.lanes.indexOf('jumpGate');
@@ -356,54 +444,96 @@ function courseTrial(seed, mode, strategy, dt, pace = 1, jumpLead = 0.35) {
         while (world.distance < distance + 2.1) {
             const untilRow = (distance - world.distance) / world.speed;
             const pressed = new Set();
-            if (untilRow <= 0.57 && time >= nextLaneInput && player.currentLane !== target) {
+            if (untilRow <= 0.56 && player.currentLane !== target)
                 pressed.add(player.currentLane < target ? 'right' : 'left');
-                nextLaneInput = time + 0.13;
-            }
-            if (action && !acted && untilRow <= (action === 'up' ? jumpLead : 0.26)) {
+            if (action && !acted && time >= lastAction + actionInterval && untilRow <= (action === 'up' ? jumpLead : 0.26)) {
                 pressed.add(action);
+                lastAction = time;
                 acted = true;
             }
             world.update(dt);
-            world.distance += world.speed * (pace - 1) * dt;
-            world.speed *= pace;
             player.update(dt, { isJustPressed: key => pressed.delete(key) }, world.speed);
             player.events.length = 0;
             traffic.update(dt, world.speed, world.distance);
             const hit = traffic.checkCollisions(player);
-            if (hit && hit !== 'coin') {
-                if (strategy === 'laneOnly') return { distance, hit };
-                assert.fail(`${mode}, seed ${seed}, ${dt}s ×${pace}, row ${distance}m, lane ${target}, collision ${hit}`);
-            }
+            if (hit && hit !== 'coin') strikes.push({ distance, time, hit });
             if (hit === 'coin' && traffic.pool.coin.at(-1).mesh.material === traffic.stampMaterials.route) stamps++;
-            if (traffic.lastStunt && row.gate) {
-                cleared.add(row.gate + ':' + traffic.lastStunt);
-                if (world.speed === maxSpeed) stuntsAtCap.add(traffic.lastStunt);
-            }
+            if (traffic.lastStunt && row.gate) cleared.add(row.gate + ':' + traffic.lastStunt);
             time += dt;
         }
     }
-    return { stamps, rows: rows.length, stuntsAtCap, cleared };
+    return { stamps, rows: rows.length, cleared, strikes };
 }
 
-test('lane changes alone hit the first gate and timed stunts clear both choice routes', () => {
+test('unchanged player physics clear both routes through every tier and the Overtime cap', () => {
     for (const mode of ['day', 'night']) {
-        for (const seed of [1, 9, 23, 52]) {
-            const first = layout(seed, 15, mode).find(row => row.gate);
-            for (const dt of [1 / 120, 1 / 60, 1 / 30, 1 / 20]) {
-                const pace = dt >= 1 / 30 ? 1.1 : 1;
-                assert.deepEqual(courseTrial(seed, mode, 'laneOnly', dt, pace), { distance: first.distance, hit: 'jumpGate' });
+        for (const dt of [1 / 120, 1 / 60, 1 / 30, 1 / 20]) {
+            for (const [at, overtime] of [[0], [500], [2000], [5000], [5000, true],
+                [10000], [30000], [60000], [90000, true]]) {
                 for (const strategy of ['jumpChoice', 'slideChoice']) {
-                    for (const jumpLead of [0.3, 0.4]) {
-                        const { stamps, rows, stuntsAtCap, cleared } = courseTrial(seed, mode, strategy, dt, pace, jumpLead);
-                        assert.ok(stamps >= rows * 0.95 && stamps <= rows, `${mode}, seed ${seed}, ${dt}s, ${stamps}/${rows} stamps`);
-                        assert.ok(stuntsAtCap.has('jump') && stuntsAtCap.has('slide'), `${mode}, seed ${seed}`);
-                        assert.ok(cleared.has('jump:jump') && cleared.has('slide:slide'));
-                        assert.ok(cleared.has(strategy === 'jumpChoice' ? 'choice:jump' : 'choice:slide'));
-                        assert.ok(cleared.has(strategy === 'jumpChoice' ? 'rail:jump' : 'rail:slide'));
+                    const result = courseTrial(9, mode, { at, strategy, dt, overtime,
+                        jumpLead: strategy === 'jumpChoice' ? 0.30 : 0.40 });
+                    assert.deepEqual(result.strikes, [], `${mode} at ${at}m, ${dt}s, ${strategy}`);
+                    assert.equal(result.stamps, result.rows);
+                    if (at === 0 || at === 90000) {
+                        assert.ok(result.cleared.has(strategy === 'jumpChoice' ? 'rail:jump' : 'rail:slide'));
+                        assert.ok(result.cleared.has(strategy === 'jumpChoice' ? 'choice:jump' : 'choice:slide'));
                     }
                 }
             }
         }
     }
+});
+
+test('a runner who needs 1.2s between vertical inputs survives onboarding and loses the late chase', () => {
+    for (const mode of ['day', 'night']) {
+        for (const seed of [1, 9, 23, 52]) {
+            const laneOnly = courseTrial(seed, mode, { strategy: 'laneOnly', size: 18 });
+            assert.equal(laneOnly.strikes[0].hit, 'jumpGate');
+            const early = courseTrial(seed, mode, { actionInterval: 1.2, size: 15 });
+            assert.deepEqual(early.strikes, []);
+            for (const at of [10000, 30000, 60000]) {
+                const late = courseTrial(seed, mode, { at, actionInterval: 1.2 });
+                assert.ok(late.strikes.some((hit, i) => i && hit.time - late.strikes[i - 1].time < 5),
+                    `${mode} at ${at}m, seed ${seed}: ${JSON.stringify(late.strikes)}`);
+            }
+        }
+    }
+});
+
+test('a full-speed wearable sweep samples the runner alongside the item and resets pooled history', () => {
+    const powers = new PowerupManager(new Scene());
+    const player = { mesh: new Group() };
+    const speed = courseSpeed(60000, 'night') * 1.1;
+    for (const hz of [20, 30, 60, 120]) {
+        const step = speed / hz;
+        for (const type of powers.types) {
+            powers.reset();
+            player.mesh.position.set(3, 0, 0);
+            powers.checkCollisions(player);
+            powers.spawnPowerup(3, -step / 2, type);
+            powers.update(1 / hz, speed);
+            assert.equal(powers.checkCollisions(player), type);
+            assert.equal(powers.pool[type].length, 1);
+            assert.equal(powers.checkCollisions(player), null);
+        }
+    }
+    function cross(fromX, fromY, toX, toY) {
+        powers.reset();
+        player.mesh.position.set(fromX, fromY, 0);
+        powers.checkCollisions(player);
+        const step = speed / 20;
+        powers.spawnPowerup(0, -step * 0.15, 'rainbow');
+        powers.update(1 / 20, speed);
+        player.mesh.position.set(toX, toY, 0);
+        return powers.checkCollisions(player);
+    }
+    assert.equal(cross(0, 0, 3, 0), 'rainbow');
+    assert.equal(cross(3, 0, 0, 0), null);
+    assert.equal(cross(0, 2.3, 0, 0), null);
+    assert.equal(cross(0, 0, 0, 2.1), 'rainbow');
+    assert.equal(cross(3, 0, 3, 0), null);
+    for (let i = 0; i < 5; i++) powers.update(1 / 20, speed);
+    assert.equal(powers.powerups.length, 0);
+    assert.equal(powers.pool.rainbow.length, 1);
 });

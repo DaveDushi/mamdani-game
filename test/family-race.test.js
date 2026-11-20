@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { courseSpeed } from '../game/Course.js';
 import { FamilyRace, RACE_TOP_SPEED, raceSpeedBonus, takeoverPercent } from '../game/FamilyRace.js';
 import { RacePanel } from '../game/RacePanel.js';
-import { familySchedule, RaceSchedule } from '../game/RaceSchedule.js';
+import { familySchedule, PRESSURE_CAP_METRES, RaceSchedule } from '../game/RaceSchedule.js';
 
 const opening = familySchedule(null);
-const fullLength = familySchedule(3000);
+const fullLength = familySchedule(PRESSURE_CAP_METRES);
 
 function runRace(rival, level, tapsPerSecond) {
     const race = new FamilyRace(rival, level);
@@ -18,19 +18,19 @@ function runRace(rival, level, tapsPerSecond) {
     return race;
 }
 
-test('the opening campaign has five short heats in family order and a full-length final', () => {
+test('opening races grow in length and keep the five children ahead of Donald', () => {
     assert.deepEqual(opening.map(({ id, at, metres, countdown }) => [id, at, metres, countdown]), [
-        ['junior', 34, 32, 2],
-        ['ivanka', 80, 36, 2],
-        ['eric', 139, 40, 2],
-        ['tiffany', 214, 44, 2],
-        ['barron', 307, 48, 2],
-        ['donald', 421, 100, 3]
+        ['junior', 650, 64, 2],
+        ['ivanka', 1670, 72, 2],
+        ['eric', 2975, 80, 2],
+        ['tiffany', 4650, 88, 2],
+        ['barron', 6650, 98, 2],
+        ['donald', 9001, 100, 3]
     ]);
     assert.deepEqual(opening.map(({ index }) => takeoverPercent(index + 1)), [17, 33, 50, 67, 83, 100]);
 });
 
-test('a clean campaign with five street returns reaches Donald in 55–80 seconds', async t => {
+test('a clean opener gives progressively longer street legs and reaches Donald in about four minutes', async t => {
     for (const mode of ['day', 'night']) {
         const schedule = new RaceSchedule({
             getRecord: async () => ({ score: null }),
@@ -41,6 +41,7 @@ test('a clean campaign with five street returns reaches Donald in 55–80 second
         let speed = courseSpeed(0, mode);
         let elapsed = 0;
         let resultAndReturnTime = 0;
+        const streetLegs = [];
         for (const rival of opening) {
             const streetStart = elapsed;
             while (!schedule.canEnter(rival, Math.floor(distance))) {
@@ -49,19 +50,24 @@ test('a clean campaign with five street returns reaches Donald in 55–80 second
                 elapsed += 1 / 60;
                 const request = schedule.update(Math.floor(distance), rival.index, elapsed);
                 if (request) await request;
-                assert.ok(elapsed < 80, 'reached the next heat');
+                assert.ok(elapsed < 260, 'reached the next heat');
             }
-            if (rival.index) assert.ok(elapsed - streetStart >= 2);
+            const streetTime = elapsed - streetStart;
+            assert.ok(streetTime > (streetLegs.at(-1) ?? 0), `${mode}: ${rival.name} at ${streetTime} s`);
+            streetLegs.push(streetTime);
             if (rival.id === 'donald') break;
-            const heat = runRace(rival, 0, 6);
+            const heat = runRace(rival, 0, 8);
             assert.equal(heat.phase, 'won');
             elapsed += rival.countdown + heat.elapsed;
             schedule.returnedToStreet(elapsed);
             resultAndReturnTime += .65 + 3;
         }
         const total = elapsed + resultAndReturnTime;
-        assert.ok(total >= 55 && total <= 80, `${mode} took ${total} seconds`);
-        t.diagnostic(`${mode}: ${total.toFixed(2)} s to Donald at six taps/s`);
+        const [first, ...later] = streetLegs;
+        assert.ok(first >= (mode === 'day' ? 20 : 15) && first <= 30);
+        assert.ok(later.every(seconds => seconds >= 18));
+        assert.ok(total >= 195 && total <= 260, `${mode} took ${total} seconds`);
+        t.diagnostic(`${mode}: road legs ${streetLegs.map(seconds => seconds.toFixed(1)).join(', ')} s, ${total.toFixed(1)} s to Donald`);
     }
 });
 
@@ -101,24 +107,42 @@ test('every rival wins without taps at every race speed level and heat length', 
 });
 
 test('each rival requires a faster tap cadence, and all are beatable at level zero', () => {
-    const baseRates = [4.3, 4.5, 4.7, 4.9, 5.1, 5.3];
-    for (const rival of [...opening, ...familySchedule(1500), ...fullLength]) {
-        const rate = baseRates[rival.index];
+    const fastestRequired = [4.9, 5.5, 6.2, 6.9, 7.7, 8.0];
+    const losingPaces = [4.7, 5.2, 5.9, 6.5, 7.2, 7.4];
+    for (const rival of [...opening, ...familySchedule(19500), ...fullLength]) {
+        const rate = fastestRequired[rival.index];
         const won = runRace(rival, 0, rate);
         assert.equal(won.phase, 'won', rival.name);
         assert.equal(won.playerProgress, 1);
         assert.ok(won.rivalProgress < 1);
         assert.equal(won.distance, rival.metres);
-        assert.equal(runRace(rival, 0, rate - .2).phase, 'lost', rival.name);
+        assert.equal(runRace(rival, 0, losingPaces[rival.index]).phase, 'lost', rival.name);
     }
 });
 
 test('each purchased level adds speed per tap and lowers the final rival cadence', () => {
-    const finalRates = [5.3, 4.8, 4.4, 4.0, 3.7, 3.4];
+    const finalRates = [7.55, 7.03, 6.66, 6.38, 6.16, 6];
     assert.deepEqual(finalRates.map((_, level) => raceSpeedBonus(level)), [0, 11, 22, 33, 44, 55]);
+    const launchSpeeds = finalRates.map((_, level) => {
+        const race = new FamilyRace(opening[5], level);
+        race.update(race.countdown);
+        race.tap();
+        return race.speed;
+    });
     for (const [level, rate] of finalRates.entries()) {
+        assert.ok(Math.abs(launchSpeeds[level] - launchSpeeds[0] * (1 + level * .11)) < 1e-10);
         assert.equal(runRace(opening[5], level, rate).phase, 'won');
-        assert.equal(runRace(opening[5], level, rate - .2).phase, 'lost');
+        assert.equal(runRace(opening[5], level, rate - .12).phase, 'lost');
+    }
+});
+
+test('steady moderate tapping loses the last two races even with all training', () => {
+    for (const schedule of [opening, fullLength]) {
+        for (const rival of schedule.slice(-2)) {
+            assert.equal(runRace(rival, 5, 5).phase, 'lost');
+            assert.equal(runRace(rival, 5, 5.5).phase, 'lost');
+        }
+        assert.equal(runRace(schedule.at(-1), 5, 6.5).phase, 'won');
     }
 });
 

@@ -18,6 +18,7 @@ import { FamilyRace, RIVALS, takeoverPercent } from './FamilyRace.js';
 import { RaceSchedule, raceDistance } from './RaceSchedule.js';
 import { RacePanel } from './RacePanel.js';
 import { RaceStage } from './RaceStage.js';
+import { CITY_REVEAL, FINISH_HOLD, frameOpenBlock } from './RaceFinish.js';
 
 const STEP = 1 / 60;
 const pickups = {
@@ -161,7 +162,7 @@ export class Run {
         this.player.reset();
         this.trump.reset();
         this.powerupManager.reset();
-        this.obstacleManager.reset(mode);
+        this.obstacleManager.reset(mode, Math.random, () => this.world.overtime);
         this.particles.reset();
         this.scoreManager.reset();
         this.reportedAuditGross = 0;
@@ -230,6 +231,7 @@ export class Run {
 
     stop() {
         this.race = null;
+        this.upcomingRace = null;
         this.raceStage?.stop();
         this.racePanel.hide();
         this.sound.music(false, true);
@@ -383,12 +385,14 @@ export class Run {
         }
     }
 
-    // Start in a clear stretch so the return countdown shows a route the player has time to read.
     canStartRace() {
-        if (this.trump.isChasing || !this.player.isGrounded || this.player.slideTimer > 0) return false;
-        // Reveal the completed city on an open avenue after the final race.
-        if (this.familyWins === RIVALS.length - 1 && !streetClear(this.world.distance - 25, this.world.distance + 80)) return false;
-        const ahead = this.world.speed * 0.42;
+        const { player, world } = this;
+        const laneX = (player.currentLane - 1) * 3;
+        if (this.trump.isChasing || !player.isGrounded || player.slideTimer > 0 ||
+            player.confusionTimer > 0 || Math.abs(player.mesh.position.x - laneX) > .35) return false;
+        if (this.familyWins === RIVALS.length - 1) return true;
+        // Children return to the same traffic after the heat.
+        const ahead = world.speed * .65;
         return !this.obstacleManager.obstacles.some(({ type, mesh }) =>
             type !== 'coin' && type !== 'cue' && mesh.position.z > -ahead && mesh.position.z < 2
         );
@@ -396,10 +400,11 @@ export class Run {
 
     startRace(rival) {
         this.input.reset();
-        this.race = new FamilyRace(rival, this.speedLevel);
+        // Leave about 0.8 seconds of clear road at Overtime speed.
+        if (rival.index === RIVALS.length - 1) this.obstacleManager.clearFinishChute(this.world.speed * .9);
+        this.race = this.upcomingRace?.rival === rival ? this.upcomingRace : new FamilyRace(rival, this.speedLevel);
         this.raceStage.start(this.race.rival);
-        this.racePanel.show(this.race.rival, this.speedLevel);
-        this.racePanel.paint(this.race);
+        this.racePanel.show(this.race);
         this.sound.play('count');
         // Give the introductory artwork a full first frame on phones that compile a new shader here.
         this.acc = 0;
@@ -455,7 +460,10 @@ export class Run {
             return;
         }
         const message = this.world.overtime ? 'Takeover complete. Overtime is 10% faster.' : race.rival.name + ' beaten · ' + takeoverPercent(this.familyWins) + '% takeover.';
-        if (!this.world.overtime) this.raceSchedule.returnedToStreet(this.elapsed);
+        if (!this.world.overtime) {
+            this.raceSchedule.returnedToStreet(this.elapsed);
+            if (this.familyWins === RIVALS.length - 1) this.prepareRace(this.raceSchedule.rivals[this.familyWins]);
+        }
         this.bulletin(message, 'Race desk', true);
         this.updateHud();
         this.pause();
@@ -471,13 +479,18 @@ export class Run {
 
     renderCourse(dt) {
         if (this.race) {
-            if (this.world.overtime && this.race.phase === 'won') {
+            const finale = this.world.overtime && this.race.phase === 'won';
+            const ready = this.raceStage.finishTime >= (finale ? CITY_REVEAL : FINISH_HOLD);
+            if (finale && ready) {
                 this.follow(dt);
+                if (!streetClear(this.world.distance - 25, this.world.distance + 80)) {
+                    frameOpenBlock(this.camera, this.world.blocks);
+                }
                 this.renderer.render(this.scene, this.camera);
             } else {
                 this.raceStage.render(this.renderer, this.race, dt, this.reduce);
             }
-            this.racePanel.paint(this.race);
+            this.racePanel.paint(this.race, ready);
         } else {
             this.follow(dt);
             this.renderer.render(this.scene, this.camera);
@@ -643,8 +656,12 @@ export class Run {
         const next = schedule.rivals[this.familyWins];
         if (next && world.distance >= next.at - 550) {
             this.prepareRace(next);
-            if (!schedule.initialRecordPending && this.raceAnnounced !== next.id && world.distance >= next.at - world.speed * 4.5) {
-                if (this.bulletin(raceDispatches[next.id], 'Race desk')) this.raceAnnounced = next.id;
+            if (!schedule.initialRecordPending && world.distance >= next.at - world.speed * 4.5) {
+                if (this.upcomingRace?.rival !== next) {
+                    this.upcomingRace = new FamilyRace(next, this.speedLevel);
+                    this.racePanel.prepare(this.upcomingRace);
+                }
+                if (this.raceAnnounced !== next && this.bulletin(raceDispatches[next.id], 'Race desk')) this.raceAnnounced = next;
             }
             if (schedule.canEnter(next, metres) && this.preparedRivals.has(next.id) && this.canStartRace()) this.startRace(next);
         }

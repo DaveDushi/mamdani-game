@@ -414,6 +414,22 @@ if (!installed()) {
     else if (/Android/i.test(navigator.userAgent))
         $('pwa-prompt').textContent = 'Choose Install app in your browser menu to keep the game.';
 }
+function showResultArt(overtime) {
+    const file = overtime ? 'takeover-finish.webp' : 'american-finish.webp';
+    const src = import.meta.env.BASE_URL + 'art/' + file;
+    const figure = $('result-illustration');
+    if (figure.firstElementChild?.getAttribute('src') === src) return;
+    // A reused img can keep painting its previous portrait while the new source loads.
+    const art = new Image(1050, 700);
+    art.id = 'result-art';
+    art.alt = overtime
+        ? 'Zohran Mamdani before gray New York towers, between a Palestinian flag and a red banner bearing a gold hammer and sickle.'
+        : 'Donald Trump waves at a New York race with a United States flag behind him.';
+    art.decoding = 'async';
+    art.src = src;
+    figure.replaceChildren(art);
+}
+
 async function finish(attempt, distance, gross, cause) {
     if (activeAttempt !== attempt) return;
     activeAttempt = null;
@@ -421,6 +437,7 @@ async function finish(attempt, distance, gross, cause) {
     const night = attempt.mode === 'night';
     const cleanMoves = run.cleanMoves;
     const familyWins = run.familyWins;
+    const overtime = run.world.overtime;
     const seconds = Math.floor(run.elapsed);
     const result = settleScore(attempt, distance);
     lastResult = result;
@@ -440,10 +457,10 @@ async function finish(attempt, distance, gross, cause) {
     const rival = RIVALS.find(racer => cause === 'race:' + racer.id);
     const [headline, copy] = rival
         ? [rival.name + ' takes the tape.', 'The flag goes up. City Hall files to move the finish line back.']
-        : frontPage(cause, issue - 1);
-    $('result-edition').textContent = modeNames[attempt.mode] + ' · No. ' + issue;
+        : frontPage(cause, issue - 1, overtime);
+    $('result-edition').textContent = modeNames[attempt.mode] + (overtime ? ' · Overtime' : '') + ' · No. ' + issue;
     $('result-headline').textContent = headline;
-    if (!$('result-art').hasAttribute('src')) $('result-art').src = import.meta.env.BASE_URL + 'art/american-finish.webp';
+    showResultArt(overtime);
     $('result-copy').textContent = copy;
     $('final-moves').textContent = cleanMoves;
     $('run-seconds').textContent = seconds + ' second' + (seconds === 1 ? '' : 's');

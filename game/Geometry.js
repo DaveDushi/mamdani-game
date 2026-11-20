@@ -109,10 +109,10 @@ const artMaps = new Map();
 const firstFrameMaps = new Set(['facades', 'districts', 'posters', 'asphalt', 'skyline', 'locust', 'blue-hour']);
 const pendingDetails = new Map();
 const artLoader = new THREE.ImageLoader();
-const artUrl = name => import.meta.env.BASE_URL + 'art/' + name + '.webp';
+const artUrl = name => (import.meta.env?.BASE_URL ?? './') + 'art/' + name + '.webp';
 
 export function preloadStreetArt() {
-    for (const name of ['asphalt', 'facades', 'districts', 'skyline', 'pavement', 'posters', 'locust', 'blue-hour', 'pickup-markers']) {
+    for (const name of ['asphalt', 'facades', 'districts', 'skyline', 'pavement', 'posters', 'locust', 'blue-hour', 'pickup-markers', 'street-hazards']) {
         artTexture(name);
     }
 }
@@ -123,6 +123,8 @@ export function artTexture(name) {
     map.colorSpace = THREE.SRGBColorSpace;
     map.anisotropy = 4;
     artMaps.set(name, map);
+    // Node course simulations still build and pool the real meshes, without a browser image decoder.
+    if (typeof Image === 'undefined') return map;
     const firstFrame = firstFrameMaps.has(name);
     const image = firstFrame ? artLoader.loadAsync(artUrl('entry-' + name)).catch(() => artLoader.loadAsync(artUrl(name)))
         : artLoader.loadAsync(artUrl(name));
@@ -137,7 +139,7 @@ export async function loadStreetDetails() {
     await Promise.all(artLoads);
     for (const name of firstFrameMaps) {
         const map = artMaps.get(name);
-        if (!map) continue;
+        if (!map?.image) continue;
         if (!pendingDetails.has(name)) {
             const request = artLoader.loadAsync(artUrl(name)).then(image => {
                 // Three allocates immutable GPU storage from the image size. Keep all material

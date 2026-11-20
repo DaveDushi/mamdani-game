@@ -62,10 +62,10 @@ const receipts = {
     ]
 };
 
-export function frontPage(cause, edition) {
+export function frontPage(cause, edition, overtime = false) {
     const stories = receipts[cause] || receipts.protestor;
     const [news, detail] = stories[edition % stories.length];
-    return ['Trump returns.', news + ' ' + detail];
+    return [overtime ? 'Mamdani keeps NYC.' : 'Trump returns.', news + ' ' + detail];
 }
 
 export const stuntLines = {

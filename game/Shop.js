@@ -1,8 +1,7 @@
 import { ApiClient } from './ApiClient.js';
 import { RIVALS, raceSpeedBonus } from './FamilyRace.js';
 import { SPEED_PRICES, walletBalance } from './Progression.js';
-import { familySchedule, raceDistance } from './RaceSchedule.js';
-import { OPENING_RECORD_METRES } from '../backend/src/season-rules.js';
+import { CAMPAIGN_FLOOR_METRES, familySchedule, raceDistance } from './RaceSchedule.js';
 
 const $ = id => document.getElementById(id);
 const stamps = n => n.toLocaleString() + (n === 1 ? ' stamp' : ' stamps');
@@ -80,18 +79,17 @@ export class Shop {
     }
     async refreshSchedule() {
         const request = ++this.scheduleRequest;
-        const opening = raceDistance(OPENING_RECORD_METRES);
-        this.paintSchedule(null, 'Checking record. Preview target ' + opening + '.');
+        this.paintSchedule(null, 'Opening course · checking the season record…');
         const record = await this.api.getSeasonRecord();
         if (request !== this.scheduleRequest || !$('race-schedule').open) return;
         let status;
         if (!record) {
-            status = 'Record unavailable. Offline preview at ' + opening + '.';
+            status = 'Offline preview. Connect to check the season record.';
         } else if (record.score === null) {
-            status = 'No season score yet. Opening target ' + opening + '.';
+            status = 'No season score yet. These are the opening checkpoints.';
         } else {
-            status = 'Season record ' + raceDistance(record.score) + '.';
-            if (record.score < OPENING_RECORD_METRES) status += ' Minimum target ' + opening + '.';
+            status = 'Live season record · ' + raceDistance(record.score) + '.';
+            if (record.score <= CAMPAIGN_FLOOR_METRES) status += ' Donald starts past ' + raceDistance(CAMPAIGN_FLOOR_METRES) + '.';
         }
         this.paintSchedule(record?.score ?? null, status);
     }

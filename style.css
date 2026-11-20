@@ -989,6 +989,11 @@ h1 strong {
         font-size: 12px;
     }
 }
+@media (max-width: 360px) and (orientation: portrait) {
+    .frontpage-mast b { font-size: 22px; white-space: nowrap; }
+    .frontpage-mast span { font-size: 11px; text-align: right; }
+    .results #result-headline { font-size: 25px; }
+}
 .rankings-paper { width: min(100%, 520px); min-width: 0; }
 .rankings-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .rankings-heading .slug { margin: 0 0 5px; }

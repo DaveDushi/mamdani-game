@@ -8,8 +8,7 @@ import { prune } from '@gltf-transform/functions';
 
 const models = new URL('../public/models/', import.meta.url);
 const street = new URL('street/', models);
-const outfits = new URL('outfits/231/', models);
-await Promise.all([mkdir(street, { recursive: true }), mkdir(outfits, { recursive: true })]);
+await mkdir(street, { recursive: true });
 
 for (const name of ['mayor', 'chaser', 'commuter', 'new-yorker']) {
     const original = await readFile(new URL(name + '.glb', models));
@@ -19,6 +18,9 @@ for (const name of ['mayor', 'chaser', 'commuter', 'new-yorker']) {
 const io = new NodeIO().registerExtensions([EXTTextureWebP]);
 const apparel = await readFile(new URL('apparel.glb', models));
 for (const id of ['wearables', 'rebel', 'worker', 'activist', 'imam']) {
+    const edition = id === 'rebel' ? '232' : '231';
+    const outfits = new URL('outfits/' + edition + '/', models);
+    await mkdir(outfits, { recursive: true });
     const document = await io.readBinary(apparel);
     for (const node of document.getRoot().listNodes()) {
         if (!node.getMesh()) continue;

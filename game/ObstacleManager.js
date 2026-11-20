@@ -3,7 +3,7 @@ import { streetCourse } from './Course.js';
 import { labelMaterial } from './Geometry.js';
 import { courseCueModels, railClearance, railInnerFoot, skillGateBounds, skillGateModels, slideClearance } from './SkillGates.js';
 
-const LOOKAHEAD = 83;
+const MIN_LOOKAHEAD = 83;
 const escortStampColors = {
     kafiyeh: ['#e9f5f7', '#233b45'],
     covidMask: ['#a1ecf0', '#174952'],
@@ -59,6 +59,7 @@ export class ObstacleManager {
         obj.gate = null;
         obj.stunt = null;
         obj.passed = false;
+        obj.cueLead = 0;
         this.scene.add(obj.mesh);
         this.obstacles.push(obj);
         return obj;
@@ -68,19 +69,24 @@ export class ObstacleManager {
         this.scene.remove(obj.mesh);
         this.pool[obj.key].push(obj);
     }
-    reset(mode = 'day', random = Math.random) {
+    reset(mode = 'day', random = Math.random, isOvertime) {
         for (let i = this.obstacles.length - 1; i >= 0; i--) this.remove(i);
-        this.course = streetCourse(random, mode);
+        this.course = streetCourse(random, mode, isOvertime);
         this.nextRow = this.course.next().value;
         this.fillCourse(0);
         this.lastStunt = null;
     }
     markLane(x, z, row, cue = 'laneCue') {
         const leads = row.gate ? [4, 3] : [3, 2];
-        for (const lead of leads) this.add(cue, x, z + lead * row.cueStep);
+        for (const lead of leads) {
+            const offset = lead * row.cueStep;
+            this.add(cue, x, z + offset).cueLead = offset;
+        }
     }
-    fillCourse(distance) {
-        while (this.nextRow.distance <= distance + LOOKAHEAD) {
+    fillCourse(distance, speed = 0) {
+        // At marathon pace the old fixed horizon gave less than a second of warning.
+        const horizon = Math.max(MIN_LOOKAHEAD, speed * 1.65);
+        while (this.nextRow.distance <= distance + horizon) {
             const row = this.nextRow;
             const z = distance - row.distance;
             if (row.gate) {
@@ -93,7 +99,8 @@ export class ObstacleManager {
                     const jump = key === 'jumpGate';
                     const guide = obstacle.mesh.getObjectByName('tutorialSign');
                     if (guide) guide.visible = row.tutorial;
-                    this.markLane(x, z, row, row.tutorial ? (jump ? 'jumpCue' : 'slideCue') : 'laneCue');
+                    const cue = key === 'railGate' ? 'laneCue' : jump ? 'jumpCue' : 'slideCue';
+                    this.markLane(x, z, row, cue);
                     if (key === 'railGate') {
                         // One ticket on the rail is reachable above or below the bar.
                         const stamp = this.add('coin', x, z + 0.35, 'route', 1.31);
@@ -123,9 +130,16 @@ export class ObstacleManager {
         for (let i = this.obstacles.length - 1; i >= 0; i--)
             if (this.obstacles[i].type !== 'coin') this.remove(i);
     }
+    clearFinishChute(distance) {
+        for (let i = this.obstacles.length - 1; i >= 0; i--) {
+            const { type, mesh, cueLead } = this.obstacles[i];
+            const rowZ = mesh.position.z - cueLead;
+            if (type !== 'coin' && rowZ > -distance && rowZ < 2) this.remove(i);
+        }
+    }
     update(dt, speed, distance) {
         const step = speed * dt;
-        this.fillCourse(distance - step);
+        this.fillCourse(distance - step, speed);
         for (let i = this.obstacles.length - 1; i >= 0; i--) {
             const obj = this.obstacles[i];
             obj.previousZ = obj.mesh.position.z;

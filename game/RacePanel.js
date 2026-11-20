@@ -1,8 +1,6 @@
 import { RACE_TOP_SPEED, RIVALS, takeoverPercent } from './FamilyRace.js';
 import { raceDistance } from './RaceSchedule.js';
 
-const FINISH_HOLD_MS = 650;
-
 const markup = `
     <div class="race-standings">
         <header class="race-heading">
@@ -133,8 +131,8 @@ export class RacePanel {
         this.tap();
     }
 
-    show(rival, speedLevel) {
-        clearTimeout(this.finishTimer);
+    prepare(race) {
+        const { rival, speedLevel } = race;
         write(this.opponent, rival.name);
         write(this.nodes.number, `${rival.index + 1}/${RIVALS.length}`);
         write(this.nodes.milepost, `Street ${raceDistance(rival.at)}`);
@@ -143,6 +141,11 @@ export class RacePanel {
         this.nodes.board.setAttribute('aria-label', `Positions in the ${rival.metres} m sprint`);
         this.continueButton.disabled = false;
         this.setPhase('intro');
+        this.paint(race);
+    }
+
+    show(race) {
+        if (this.lastRace !== race) this.prepare(race);
         this.element.hidden = false;
         this.hud.classList.add('is-racing');
         this.element.inert = false;
@@ -150,8 +153,11 @@ export class RacePanel {
         this.tapButton.focus({ preventScroll: true });
     }
 
-    paint(race) {
-        if (this.element.hidden) return;
+    paint(race, finishReady = false) {
+        if (finishReady && this.done && this.continueButton.disabled) {
+            this.continueButton.disabled = false;
+            if (this.active) this.continueButton.focus({ preventScroll: true });
+        }
         const { phase, countdown, elapsed, playerProgress, rivalProgress, speed } = race;
         // The clock stands still at the tape and between countdown digits.
         if (this.lastRace === race && this.lastTime === elapsed && this.lastCount === countdown && this.lastSpeed === speed) return;
@@ -208,10 +214,6 @@ export class RacePanel {
             }
             write(this.continueButton, champion ? 'Run Overtime' : phase === 'won' ? 'Back to street' : 'See results');
             this.continueButton.disabled = true;
-            this.finishTimer = setTimeout(() => {
-                this.continueButton.disabled = false;
-                if (this.active) this.continueButton.focus({ preventScroll: true });
-            }, FINISH_HOLD_MS);
         }
     }
 
@@ -236,8 +238,9 @@ export class RacePanel {
     }
 
     hide() {
-        clearTimeout(this.finishTimer);
         this.element.hidden = true;
+        this.element.inert = true;
+        delete this.element.dataset.phase;
         this.hud.classList.remove('is-racing');
     }
 }

@@ -1,15 +1,15 @@
-export const RACE_TOP_SPEED = 16;
+export const RACE_TOP_SPEED = 13.2;
 const COAST_DECAY = 1.65;
-const TAP_IMPULSE = 3.65;
+const TAP_IMPULSE = 2.65;
 const BOOST_PER_LEVEL = 11;
 
 export const RIVALS = Object.freeze([
-    { id: 'junior', name: 'Donald Trump Jr.', finish: 11.35, start: -0.06, surge: 0.015 },
-    { id: 'ivanka', name: 'Ivanka Trump', finish: 10.85, start: 0.03, surge: 0.035 },
-    { id: 'eric', name: 'Eric Trump', finish: 10.45, start: -0.035, surge: -0.025 },
-    { id: 'tiffany', name: 'Tiffany Trump', finish: 10.05, start: 0.06, surge: -0.035 },
-    { id: 'barron', name: 'Barron Trump', finish: 9.65, start: -0.055, surge: -0.035 },
-    { id: 'donald', name: 'Donald Trump', finish: 9.25, start: 0.07, surge: 0.025 }
+    { id: 'junior', name: 'Donald Trump Jr.', metres: 64, finish: 9.02, start: -0.06, surge: 0.015 },
+    { id: 'ivanka', name: 'Ivanka Trump', metres: 72, finish: 9.08, start: 0.03, surge: 0.035 },
+    { id: 'eric', name: 'Eric Trump', metres: 80, finish: 9.02, start: -0.035, surge: -0.025 },
+    { id: 'tiffany', name: 'Tiffany Trump', metres: 88, finish: 8.95, start: 0.06, surge: -0.035 },
+    { id: 'barron', name: 'Barron Trump', metres: 98, finish: 9.05, start: -0.055, surge: 0.016 },
+    { id: 'donald', name: 'Donald Trump', metres: 100, finish: 9.14, start: 0.055, surge: 0.045 }
 ].map((rival, index) => Object.freeze({ ...rival, index })));
 
 export function takeoverPercent(wins) {

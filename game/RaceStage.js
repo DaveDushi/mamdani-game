@@ -3,11 +3,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneRig } from 'three/addons/utils/SkeletonUtils.js';
 import { Batch } from './Geometry.js';
 import { groundShadow } from './Player.js';
+import { WinnerPose } from './RaceFinish.js';
+import { grandstands } from './RaceCrowd.js';
 
 const COURSE = 50;
 const BASE = import.meta.env.BASE_URL;
 const plank = new THREE.PlaneGeometry();
-const footprint = new THREE.CircleGeometry(1, 8);
 const runnerSize = { junior: 1.08, ivanka: 1.07, eric: 1.14, tiffany: 1.01, barron: 1.21 };
 const ink = 0x17374b;
 const steel = 0x758995;
@@ -38,15 +39,23 @@ function signSheet() {
         ['BROOKLYN  /  NYC', '#18384b', '#f7e7bf'],
         ['EAST RIVER TRACK CLUB', '#e3ae4b', '#1d3745'],
         ['CITY WIRE   /   SPORT', '#efe6d5', '#19364b'],
-        ['START', '#17394e', '#fff1cf'],
-        ['SPRINT', '#f3b442', '#153447'],
-        ['FINISH', '#fff1ce', '#19364b']
+        ['MAMDANI', '#154e47', '#fff3d3'],
+        ['TEAM TRUMP', '#742e3e', '#fff3d3']
     ];
     rows.forEach(([title, paper, text], i) => {
         const y = i * 128;
         g.fillStyle = paper;
         g.fillRect(0, y, 1024, 128);
         g.fillStyle = text;
+        if (i === 5 || i === 6) {
+            g.save();
+            g.translate(0, y);
+            g.scale(1024 / 400, 1);
+            g.font = 'italic 900 83px Condensed, Impact, sans-serif';
+            g.fillText(title, 200, 68, 372);
+            g.restore();
+            return;
+        }
         for (let j = 0; j < 4; j++) {
             g.beginPath();
             g.moveTo(15 + j * 16, y + 96);
@@ -60,12 +69,26 @@ function signSheet() {
         g.textBaseline = 'middle';
         g.fillText(title, 565, y + 69, 836);
     });
+    const names = ['AOC', 'TLAIB', 'OMAR', 'RUBIO', 'DESANTIS', 'SHAPIRO'];
+    const cell = canvas.width / names.length;
+    names.forEach((name, i) => {
+        const x = i * cell, y = 7 * 128;
+        g.save();
+        g.translate(x, y);
+        g.scale(cell / 340, 128 / 100);
+        g.fillStyle = i < 3 ? '#153e39' : '#572b35';
+        g.fillRect(0, 0, 340, 100);
+        g.fillStyle = '#ffedcb';
+        g.font = '700 85px Condensed, Impact, sans-serif';
+        g.fillText(name, 170, 53, 324);
+        g.restore();
+    });
     return new THREE.MeshBasicMaterial({ map: canvasMap(canvas), side: THREE.DoubleSide });
 }
 
-function sign(batch, row, x, y, z, width, height, angle = 0) {
+function sign(batch, row, x, y, z, width, height, angle = 0, column = 0, columns = 1) {
     batch.shape(plank, 0xffffff, x, y, z, width, height, 1, 0, angle, 0,
-        [0.002, (7 - row) / 8 + 0.002, 0.996, 1 / 8 - 0.004]);
+        [column / columns + .002, (7 - row) / 8 + .002, 1 / columns - .004, 1 / 8 - .004]);
 }
 
 function track() {
@@ -102,17 +125,19 @@ function track() {
 }
 
 function venue(scene) {
-    const structure = new Batch(), boards = new Batch(), fans = new Batch();
-    const startZ = -1.9;
+    const structure = new Batch(), boards = new Batch();
+    const startZ = -4.8;
     for (const [z, finish] of [[startZ, false], [COURSE, true]]) {
+        const height = finish ? 3.53 : 4.36;
+        const beam = finish ? .59 : .32;
         for (const side of [-1, 1]) {
             const x = side * 2.62;
-            structure.box(ink, x, 1.8, z, .28, 3.6, .27);
+            structure.box(ink, x, height / 2, z, .28, height, .27);
             structure.box(0xf2bc50, x, 2.72, z + .15, .29, .13, .025);
             structure.box(steel, x, .045, z, .60, .09, .56);
         }
-        structure.box(ink, 0, 3.53, z, 5.53, .59, .26);
-        sign(boards, finish ? 1 : 0, 0, 3.53, z + .141, 5.51, .55);
+        structure.box(ink, 0, height, z, 5.53, beam, .26);
+        sign(boards, finish ? 1 : 0, 0, height, z + .141, 5.51, beam - .035);
     }
     for (const z of [0, COURSE]) {
         structure.box(cream, 0, .008, z, 4.26, .008, .15);
@@ -137,27 +162,14 @@ function venue(scene) {
             structure.box(0x71817c, side * 6.55, .43, z, .05, .86, .05);
             if (n % 2 === 0) sign(boards, 2 + ((n / 2 + (side > 0 ? 1 : 0)) % 3),
                 x - side * .038, .53, z + 1.42, 2.65, .50, -side * Math.PI / 2);
-            const choice = (n * (side > 0 ? 3 : 5) + (side > 0 ? 1 : 4)) % 8;
-            const h = 1.65 + ((n * 31) % 11) * .024;
-            if (side === 1 && Math.abs(z - COURSE) < 4) continue;
-            const fanX = side * (3.56 + (n % 3) * .13), fanZ = z + (n % 4) * .27;
-            structure.shape(footprint, 0xa99e8c, fanX, -.010, fanZ, .35, .19, 1, -Math.PI / 2);
-            fans.shape(plank, 0xffffff, fanX, h / 2, fanZ,
-                h * .4, h, 1, 0, -side * .77, 0, [choice / 8 + .0005, 0, .124, 1]);
         }
         for (let k = 0; k < 10; k++) {
             const z = k * 5;
             structure.box(cream, side * 1.88, .008, z, .40, .008, .05);
-            if (k % 2) continue;
-            const poleX = side * 4.0;
-            structure.box(steel, poleX, 1.5, z - 2.0, .038, 3, .04);
-            structure.box(k % 4 ? 0xeeae39 : 0x287383, poleX, 2.65, z - 2.02, .36, .88, .025, 0, -side * .55, -.045);
         }
     }
+    const crowd = grandstands(scene, structure, (...args) => sign(boards, ...args));
     scene.add(track(), structure.mesh(new THREE.MeshLambertMaterial({ vertexColors: true })), boards.mesh(signSheet()));
-    const crowd = fans.mesh(new THREE.MeshBasicMaterial({ transparent: false, alphaTest: .48, side: THREE.DoubleSide }));
-    crowd.visible = false;
-    scene.add(crowd);
     return crowd;
 }
 
@@ -208,6 +220,10 @@ function ribbon(scene) {
     };
 }
 
+function laneDistance(dx, dz, sin, cos, clearance, viewWidth) {
+    return dx * sin + dz * cos + (Math.abs(dx * cos - dz * sin) + clearance) / viewWidth;
+}
+
 class Athlete {
     constructor(figure, animations, scale) {
         this.figure = figure;
@@ -224,6 +240,7 @@ class Athlete {
         this.mixer = new THREE.AnimationMixer(figure);
         this.stand = this.mixer.clipAction(THREE.AnimationClip.findByName(animations, 'Idle')).play();
         this.run = this.mixer.clipAction(THREE.AnimationClip.findByName(animations, 'Run')).play();
+        this.finish = new WinnerPose(figure);
     }
 
     pose(stride, idle) {
@@ -239,6 +256,7 @@ export class RaceStage {
     constructor(cast, player, renderer) {
         this.cast = cast;
         this.renderer = renderer;
+        this.viewport = new THREE.Vector2();
         this.warmedTextures = new WeakSet();
         this.warmedMeshes = new WeakSet();
         this.loader = new GLTFLoader();
@@ -260,7 +278,7 @@ export class RaceStage {
         const fill = new THREE.DirectionalLight(0xc3e7ff, .8);
         fill.position.set(2, 3, -4);
         this.scene.add(fill);
-        const crowd = venue(this.scene);
+        this.crowd = venue(this.scene);
         this.updateRibbon = ribbon(this.scene);
         this.back = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ fog: false, depthWrite: false }));
         this.back.visible = false;
@@ -273,7 +291,7 @@ export class RaceStage {
             mesh.material.needsUpdate = true;
             mesh.visible = true;
         }).catch(() => {});
-        this.ready = Promise.all([attach(this.back, 'race-waterfront'), attach(crowd, 'race-crowd')]);
+        this.ready = Promise.all([attach(this.back, 'race-waterfront'), this.crowd.ready]);
         const figure = cloneRig(player.rig.figure);
         this.player = new Athlete(figure, cast.mayor.animations, player.mesh.scale.x);
         const originals = [], copies = [];
@@ -401,15 +419,18 @@ export class RaceStage {
             }
         });
         this.idle = 0;
+        this.finishTime = 0;
+        this.crowd.clock.value = 0;
     }
 
     render(renderer, race, dt, reducedMotion) {
         if (!this.active) return;
-        const w = renderer.domElement.clientWidth || innerWidth;
-        const h = renderer.domElement.clientHeight || innerHeight;
+        const { x: w, y: h } = renderer.getSize(this.viewport);
         const aspect = w / h, portrait = aspect < .82;
         const p = race.playerProgress, r = race.rivalProgress;
-        const done = race.phase === 'won' || race.phase === 'lost';
+        const winnerLane = race.phase === 'won' ? 0 : race.phase === 'lost' ? 1 : -1;
+        const done = winnerLane !== -1;
+        if (done) this.finishTime += dt;
         const intro = race.phase === 'intro';
         const lead = Math.max(p, r), gap = Math.abs(p - r) * COURSE;
         const focus = lead * COURSE - Math.min(gap * .46, 1.3);
@@ -421,21 +442,28 @@ export class RaceStage {
             camera.fov = fov;
             camera.updateProjectionMatrix();
         }
-        const finishAngle = done && !reducedMotion ? (portrait ? .49 : 1.03) : 0;
-        const angle = Math.max(portrait ? .14 : .41, finishAngle) * close;
+        const courseAngle = THREE.MathUtils.smoothstep(lead, .02, .16);
+        const finishFrame = reducedMotion ? 1 : THREE.MathUtils.smoothstep(lead, .84, .99);
+        const finishAngle = reducedMotion ? 0 : (portrait ? .24 : .36) * THREE.MathUtils.smoothstep(this.finishTime, 0, .4);
+        const angle = Math.max((portrait ? .08 : .20) * courseAngle, finishAngle) * close;
         const sin = Math.sin(angle), cos = Math.cos(angle);
-        const aimX = portrait ? 0 : -.49;
+        const leaderX = reducedMotion ? 0 : .40 * THREE.MathUtils.clamp((r - p) * COURSE, -1, 1);
+        const aimX = (portrait ? 0 : -.20 * courseAngle) + finishFrame * leaderX;
         const halfFov = Math.tan(THREE.MathUtils.degToRad(fov / 2));
         const viewWidth = halfFov * aspect * .88;
-        // Keep limb clearance in both lanes, including the nearer runner when the lead changes hands.
-        const fit = (x, z) => {
-            const dx = x - aimX, dz = z - focus;
-            return dx * sin + dz * cos + (Math.abs(dx * cos - dz * sin) + .48) / viewWidth;
-        };
-        const base = portrait ? Math.max(6.45, 4.5 / aspect) : (h < 500 ? 10.6 : 5.8);
-        const dist = Math.max(base, fit(-.86, p * COURSE), fit(.86, r * COURSE));
+        const clearance = .48 + .57 * finishFrame;
+        const shortPortrait = portrait ? THREE.MathUtils.clamp((780 - h) / 212, 0, 1) : 0;
+        const base = portrait ? Math.max(6.45, 4.5 / aspect) + 3.3 * shortPortrait : (h < 500 ? 6.9 : 6.1);
+        // Reserve the strip below the standings for the winner's hands and Donald's raised case.
+        const dist = Math.max(base + (portrait ? 0 : 3.1) * finishFrame,
+            laneDistance(-.86 - aimX, p * COURSE - focus, sin, cos, clearance, viewWidth),
+            laneDistance(.86 - aimX, r * COURSE - focus, sin, cos, clearance, viewWidth));
         camera.position.set(aimX + dist * sin, portrait ? 1.70 : 1.53, focus + dist * cos);
-        camera.lookAt(aimX, h < 500 ? .98 : 1.02, focus);
+        // Leave the countdown clear above the flags and a full stride below the athletes.
+        const lift = reducedMotion ? (portrait ? .65 : .40) :
+            ((portrait || h < 500 ? .65 : .27) + .46 * shortPortrait) * (1 - courseAngle) +
+            (portrait ? .50 * shortPortrait : .18) * finishFrame;
+        camera.lookAt(aimX, (h < 500 ? .98 : 1.02) + lift, focus);
         // The distant skyline tracks the broadcast camera; the near rail and spectators have true parallax.
         const far = 100, viewHeight = 2 * far * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
         const backH = Math.max(viewHeight * .75, viewHeight * aspect / 2.7);
@@ -444,15 +472,17 @@ export class RaceStage {
         this.sun.position.set(-3.1, 6.5, focus + 3.6);
         this.sun.target.position.set(0, 0, focus);
         if (!done && dt > 0) this.idle += Math.min(.1, dt);
+        this.crowd.clock.value = reducedMotion ? 0 : this.crowd.clock.value + Math.min(dt, .1);
         for (let i = 0; i < 2; i++) {
             const athlete = i ? this.rival : this.player;
             const lane = i ? .86 : -.86, progress = i ? r : p;
             if (!athlete) continue;
             const z = progress * COURSE;
             athlete.root.position.set(lane, 0, z);
-            const waiting = intro || (!i && race.speed < .3 && !done);
+            const waiting = intro || (!i && race.speed < .3);
             const stride = waiting ? this.idle + .7 * i : progress * 34 + (i ? .36 : .09);
-            athlete.pose(stride, waiting);
+            if (!athlete.finish.active) athlete.pose(stride, waiting);
+            if (i === winnerLane) athlete.finish.lift(this.finishTime, reducedMotion);
             this.shadows[i].position.set(lane - .035, .018, z - .04);
         }
         this.updateRibbon(lead, done, reducedMotion);
@@ -460,6 +490,8 @@ export class RaceStage {
     }
 
     stop() {
+        this.player.finish.reset();
+        this.rival?.finish.reset();
         if (this.rival) this.rival.root.removeFromParent();
         this.rival = null;
         this.active = null;
