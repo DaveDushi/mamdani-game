@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { artLoads, artTexture } from './Geometry.js';
-import { Wardrobe } from './Wardrobe.js';
+import { Wardrobe, createRenderer, sizeRenderer } from './Wardrobe.js';
 import { impact } from './Native.js';
 import { World } from './World.js';
+import { streetClear } from './Crossings.js';
 import { StreetLight } from './StreetLight.js';
 import { Player } from './Player.js';
 import { Trump } from './Trump.js';
@@ -13,7 +14,8 @@ import { PowerupManager } from './PowerupManager.js';
 import { ScoreManager, stampReceipt } from './ScoreManager.js';
 import { editionLines, raceDispatches, stuntLines } from './CityWire.js';
 import { captions } from './Posters.js';
-import { FamilyRace, RIVALS } from './FamilyRace.js';
+import { FamilyRace, RIVALS, takeoverPercent } from './FamilyRace.js';
+import { RaceSchedule, raceDistance } from './RaceSchedule.js';
 import { RacePanel } from './RacePanel.js';
 import { RaceStage } from './RaceStage.js';
 
@@ -24,19 +26,13 @@ const pickups = {
     covidMask: { title: 'listen to Fauci', detail: 'COVID mask · Traffic cleared', short: 'Clear street' }
 };
 export class Run {
-    constructor(canvas, sound, onEnd, cast) {
+    constructor(canvas, sound, onEnd, cast, fittingRoom) {
         this.sound = sound;
         this.cast = cast;
         this.preparedRivals = new Set();
         this.onEnd = onEnd;
         this.mode = 'menu';
-        this.renderer = new THREE.WebGLRenderer({
-            canvas,
-            antialias: true,
-            powerPreference: 'high-performance'
-        });
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer = fittingRoom?.renderer ?? createRenderer(canvas);
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0xf4d9b1);
         this.scene.fog = new THREE.FogExp2(0xf2d4af, 0.011);
@@ -56,7 +52,8 @@ export class Run {
         fill.position.set(3, 5, 10);
         this.scene.add(fill);
         this.world = new World(this.scene, cast, new StreetLight(this.scene, skyLight, sun, fill));
-        this.player = new Player(this.scene, cast.mayor);
+        this.player = fittingRoom?.player ?? new Player(this.scene, cast.mayor);
+        if (fittingRoom) this.scene.add(this.player.mesh, this.player.shadow);
         this.pickupRing = new THREE.Mesh(
             new THREE.RingGeometry(0.84, 1, 40),
             new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, toneMapped: false })
@@ -66,7 +63,7 @@ export class Run {
         this.pickupRing.visible = false;
         this.player.mesh.add(this.pickupRing);
         this.trump = new Trump(this.scene, cast.chaser);
-        this.wardrobe = new Wardrobe(this.renderer, this.player);
+        this.wardrobe = fittingRoom ?? new Wardrobe(this.renderer, this.player);
         this.powerupManager = new PowerupManager(this.scene, artTexture('pickup-markers'));
         this.obstacleManager = new ObstacleManager(this.scene, this.powerupManager, cast);
         this.scoreManager = new ScoreManager();
@@ -107,7 +104,7 @@ export class Run {
         this.countFrame = this.countFrame.bind(this);
         this.quality = 1;
         this.frameId = 0;
-        this.ready = Promise.all(artLoads).then(() => this.prepareStreet());
+        this.ready = this.prepareStreet();
         this.resize();
         window.addEventListener('resize', () => this.resize());
     }
@@ -116,8 +113,13 @@ export class Run {
         // Stage the first stamp burst, collision and pickup before the run clock starts.
         const encounters = new THREE.Group();
         encounters.add(...Object.values(this.obstacleManager.models), ...Object.values(this.powerupManager.models));
-        await this.renderer.compileAsync(this.scene, this.camera);
-        await this.renderer.compileAsync(encounters, this.camera, this.scene);
+        await Promise.all([
+            this.renderer.compileAsync(this.scene, this.camera),
+            this.renderer.compileAsync(encounters, this.camera, this.scene),
+            ...artLoads
+        ]);
+        // Query linked programs before their first draw can queue more GPU work.
+        for (const program of this.renderer.info.programs || []) program.getUniforms?.();
         // iOS also uploads the skinned vertices and shadow variants on the first actual draw.
         this.scene.add(encounters);
         this.trump.startChase(0);
@@ -134,15 +136,9 @@ export class Run {
     resize() {
         const w = innerWidth,
             h = innerHeight;
-        this.renderer.setPixelRatio(
-            Math.min(devicePixelRatio || 1, 1.4, Math.sqrt(1850000 / (w * h))) * this.quality
-        );
-        this.renderer.setSize(w, h, false);
+        if (this.wardrobe.active) return;
+        sizeRenderer(this.renderer, this.quality);
         this.camera.aspect = w / h;
-        if (this.mode === 'outfits') {
-            this.wardrobe.resize();
-            return;
-        }
         this.baseFov = this.camera.aspect < 0.8 ? 59 : 53;
         this.camera.fov = this.baseFov;
         this.camera.updateProjectionMatrix();
@@ -151,10 +147,11 @@ export class Run {
         }
     }
 
-    start(mode = 'day', speedLevel = 0) {
+    start(mode = 'day', speedLevel = 0, recordProvider) {
         this.stop();
         this.runType = mode;
         this.speedLevel = speedLevel;
+        this.raceSchedule = new RaceSchedule(recordProvider);
         this.familyWins = 0;
         this.preparingRival = null;
         this.raceRetryAt = 0;
@@ -356,9 +353,20 @@ export class Run {
         const secondary = active.slice(0, -1).map(type => pickups[type].short + ' · ' + Math.ceil(p[type + 'Timer']) + 's');
         if (p.confusionTimer > 0) secondary.push('Haram! Reversed · ' + Math.ceil(p.confusionTimer) + 's');
         const effect = secondary.join('\n');
-        const next = RIVALS[this.familyWins];
-        const checkpoint = next ? 'Next race · ' + next.name + ' · ' + next.at.toLocaleString() + ' m'
-            : 'All six beaten · Overtime';
+        const schedule = this.raceSchedule;
+        const next = schedule.rivals[this.familyWins];
+        const awaiting = next?.index === RIVALS.length - 1 && !schedule.qualified && this.scoreManager.getDisplayScore() >= next.at;
+        let status = '';
+        if (schedule.initialRecordPending) status = 'Checking season record';
+        else if (awaiting) status = schedule.retryClaim && !schedule.claiming ? ' · Server unavailable, retrying' : ' · Awaiting server confirmation';
+        if (next !== this.hudRival || status !== this.hudRecordStatus) {
+            this.hudRival = next;
+            this.hudRecordStatus = status;
+            const progress = this.familyWins ? takeoverPercent(this.familyWins) + '% takeover' : 'Next race';
+            if (schedule.initialRecordPending) this.hud['race-checkpoint'].textContent = status;
+            else if (next) this.hud['race-checkpoint'].textContent = `${progress} · ${next.name} at ${raceDistance(next.at)} · ${next.metres} m sprint${status}`;
+            else this.hud['race-checkpoint'].textContent = '100% takeover · Overtime';
+        }
         this.hud['chase-card'].hidden = !this.trump.isChasing;
         if (this.trump.isChasing) {
             this.hud['chase-meter'].style.transform = 'scaleX(' + this.trump.chaseTimer / 5 + ')';
@@ -369,7 +377,6 @@ export class Run {
             ['pace', (this.world.speed / 17.5).toFixed(1) + '×'],
             ['food-stamps', this.scoreManager.foodStamps],
             ['district', this.world.crossings?.currentName || this.world.currentEventLabel || this.world.district],
-            ['race-checkpoint', checkpoint],
             ['effect', effect]
         ]) {
             if (this.hud[key].textContent !== String(value)) this.hud[key].textContent = value;
@@ -379,15 +386,17 @@ export class Run {
     // Start in a clear stretch so the return countdown shows a route the player has time to read.
     canStartRace() {
         if (this.trump.isChasing || !this.player.isGrounded || this.player.slideTimer > 0) return false;
+        // Reveal the completed city on an open avenue after the final race.
+        if (this.familyWins === RIVALS.length - 1 && !streetClear(this.world.distance - 25, this.world.distance + 80)) return false;
         const ahead = this.world.speed * 0.42;
         return !this.obstacleManager.obstacles.some(({ type, mesh }) =>
             type !== 'coin' && type !== 'cue' && mesh.position.z > -ahead && mesh.position.z < 2
         );
     }
 
-    startRace() {
+    startRace(rival) {
         this.input.reset();
-        this.race = new FamilyRace(this.familyWins, this.speedLevel);
+        this.race = new FamilyRace(rival, this.speedLevel);
         this.raceStage.start(this.race.rival);
         this.racePanel.show(this.race.rival, this.speedLevel);
         this.racePanel.paint(this.race);
@@ -400,11 +409,12 @@ export class Run {
     prepareRace(rival) {
         if (this.preparingRival === rival.id || this.preparedRivals.has(rival.id) || this.elapsed < this.raceRetryAt) return;
         this.preparingRival = rival.id;
+        const schedule = this.raceSchedule;
         this.raceStage ??= new RaceStage(this.cast, this.player, this.renderer);
         this.raceStage.prepare(rival).then(() => {
             this.preparedRivals.add(rival.id);
         }).catch(() => {
-            if (this.preparingRival !== rival.id) return;
+            if (this.raceSchedule !== schedule || this.preparingRival !== rival.id) return;
             this.preparingRival = null;
             this.raceRetryAt = this.elapsed + 5;
         });
@@ -420,6 +430,8 @@ export class Run {
         if (phase !== race.phase) {
             if (race.phase === 'won') {
                 this.familyWins++;
+                this.world.setTakeover(this.familyWins);
+                this.world.overtime = this.familyWins === RIVALS.length;
                 this.onRaceWin?.(this.familyWins);
                 this.sound.play('victory');
                 impact(true);
@@ -442,8 +454,8 @@ export class Run {
             this.endRun('race:' + race.rival.id);
             return;
         }
-        this.world.overtime = this.familyWins === RIVALS.length;
-        const message = this.world.overtime ? 'Donald beaten. Overtime runs 10% faster.' : race.rival.name + ' beaten. Back to the street.';
+        const message = this.world.overtime ? 'Takeover complete. Overtime is 10% faster.' : race.rival.name + ' beaten · ' + takeoverPercent(this.familyWins) + '% takeover.';
+        if (!this.world.overtime) this.raceSchedule.returnedToStreet(this.elapsed);
         this.bulletin(message, 'Race desk', true);
         this.updateHud();
         this.pause();
@@ -459,7 +471,12 @@ export class Run {
 
     renderCourse(dt) {
         if (this.race) {
-            this.raceStage.render(this.renderer, this.race, dt, this.reduce);
+            if (this.world.overtime && this.race.phase === 'won') {
+                this.follow(dt);
+                this.renderer.render(this.scene, this.camera);
+            } else {
+                this.raceStage.render(this.renderer, this.race, dt, this.reduce);
+            }
             this.racePanel.paint(this.race);
         } else {
             this.follow(dt);
@@ -554,7 +571,7 @@ export class Run {
             if (player.rainbowTimer <= 0) {
                 player.activateConfusion();
                 this.notify('Haram!', 'warning');
-                this.bulletin('Both swipe axes reversed for five seconds.', 'City wire', true);
+                this.bulletin('Controls reversed · 5s', 'City wire', true);
                 this.sound.play('haram');
                 particles.spawnParticles(player.mesh.position, 12, 0xa95fbc, 1.2);
             }
@@ -570,7 +587,7 @@ export class Run {
             player.flashRed();
             this.shake = 0.38;
             this.notify('Stumble!', 'warning');
-            this.bulletin('Trump would like a word about those receipts.', 'City wire', true);
+            this.bulletin('Trump wants the receipts.', 'City wire', true);
             this.sound.play('chase');
             impact(true);
             particles.spawnParticles(player.mesh.position, 16, 0xe5ad69, 1.45);
@@ -620,13 +637,16 @@ export class Run {
             this.updateHud();
             this.hudTimer = 0.08;
         }
-        const next = RIVALS[this.familyWins];
+        const metres = score.getDisplayScore();
+        const schedule = this.raceSchedule;
+        schedule.update(metres, this.familyWins, this.elapsed);
+        const next = schedule.rivals[this.familyWins];
         if (next && world.distance >= next.at - 550) {
             this.prepareRace(next);
-            if (this.raceAnnounced !== next.id && world.distance >= next.at - world.speed * 4.5) {
+            if (!schedule.initialRecordPending && this.raceAnnounced !== next.id && world.distance >= next.at - world.speed * 4.5) {
                 if (this.bulletin(raceDispatches[next.id], 'Race desk')) this.raceAnnounced = next.id;
             }
-            if (world.distance >= next.at && this.preparedRivals.has(next.id) && this.canStartRace()) this.startRace();
+            if (schedule.canEnter(next, metres) && this.preparedRivals.has(next.id) && this.canStartRace()) this.startRace(next);
         }
     }
     collect() {

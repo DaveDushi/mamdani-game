@@ -2,9 +2,10 @@ import { Capacitor } from '@capacitor/core';
 import { setupPosters } from './game/Posters.js';
 import { frontPage } from './game/CityWire.js';
 import { RIVALS } from './game/FamilyRace.js';
-import { Shop, familyRecord } from './game/Shop.js';
+import { Shop } from './game/Shop.js';
 import { startAnalytics, track, trackScreen, setupSupportLinks } from './game/Analytics.js';
 import { Sound } from './game/Sound.js';
+import { loadCast, loadMayor, loadOutfit } from './game/Cast.js';
 import { ApiClient } from './game/ApiClient.js';
 import {
     NIGHT_SHIFT_STAMPS, availableMode, emptyWallet, onWalletChange, purchaseSpeedUpgrade,
@@ -30,24 +31,23 @@ const screenIds = [
 const sound = new Sound(),
     api = new ApiClient();
 let run,
-    loading,
+    fittingRoom,
+    roomRequest,
+    streetRequest,
+    startButton,
+    entryVersion = 0,
     view,
     resultVersion = 0,
     activeAttempt,
     lastResult,
     wallet = emptyWallet,
     walletAvailable = true;
-const shop = new Shop((skin) => {
-    if (run) {
-        run.player.setSkin(skin);
-        run.wardrobe.render();
-    }
-}, async expectedLevel => {
+const shop = new Shop(() => updatePreview(), async expectedLevel => {
     const result = await purchaseSpeedUpgrade(expectedLevel);
     wallet = result.wallet;
     walletAvailable = true;
     return result;
-}, () => run?.wardrobe.resize());
+}, () => fittingRoom?.resize());
 const best = () => Number(localStorage.getItem('mamdani_best_score')) || 0;
 const modeKey = 'mamdani_run_type';
 const modeNames = { day: 'Day Run', night: 'Night Shift' };
@@ -56,7 +56,11 @@ const metres = (n) => Number(n).toLocaleString() + ' m';
 const stampCount = (n) => n.toLocaleString() + (n === 1 ? ' stamp' : ' stamps');
 const homeOverlay = new Set(['story-modal', 'instructions-modal', 'feedback-modal']);
 function show(id, focus) {
-    if (view !== id) trackScreen(id);
+    if (view !== id) {
+        entryVersion++;
+        clearStartButton();
+        trackScreen(id);
+    }
     view = id;
     for (const key of screenIds) {
         const visible = key === id || (key === 'start-screen' && homeOverlay.has(id));
@@ -117,7 +121,8 @@ window.addEventListener('storage', (event) => {
 });
 function home() {
     document.querySelector('.wire p').textContent = dispatches[dispatchIndex++ % dispatches.length];
-    run?.stop();
+    if (run) run.stop();
+    else fittingRoom?.close();
     activeAttempt = null;
     resultVersion++;
     $('load-status').hidden = true;
@@ -138,8 +143,8 @@ document.querySelector('.sound-toggle').addEventListener('click', () => {
 });
 updateSound();
 home();
-$('turn-left').onclick = () => run?.wardrobe.rotate(-Math.PI / 4);
-$('turn-right').onclick = () => run?.wardrobe.rotate(Math.PI / 4);
+$('turn-left').onclick = () => fittingRoom?.rotate(-Math.PI / 4);
+$('turn-right').onclick = () => fittingRoom?.rotate(Math.PI / 4);
 let lastDrag = null;
 $('shop-screen').addEventListener('pointerdown', (e) => {
     if (e.target !== $('shop-screen')) return;
@@ -148,7 +153,7 @@ $('shop-screen').addEventListener('pointerdown', (e) => {
 });
 $('shop-screen').addEventListener('pointermove', (e) => {
     if (lastDrag !== null) {
-        run?.wardrobe.rotate((e.clientX - lastDrag) * 0.014);
+        fittingRoom?.rotate((e.clientX - lastDrag) * 0.014);
         lastDrag = e.clientX;
     }
 });
@@ -157,67 +162,189 @@ for (const type of ['pointerup', 'pointercancel'])
         lastDrag = null;
     });
 setupPosters(() => show('poster-room', 'poster-next'));
-const status = $('load-status');
-async function enter(mode, requested) {
-    if (loading) return;
-    loading = true;
-    sound.unlock();
-    const btn = mode === 'run' ? $('start-btn') : $('shop-btn');
+const previewStatus = $('preview-status');
+let status = $('load-status');
+
+function clearStartButton() {
+    if (!startButton) return;
+    startButton.disabled = false;
+    startButton.removeAttribute('aria-busy');
+    startButton = null;
+    status.hidden = true;
+}
+
+function getRoom() {
+    if (fittingRoom) return Promise.resolve(fittingRoom);
+    roomRequest ??= Promise.all([
+        import('./game/Wardrobe.js'),
+        loadMayor(),
+        afterPaint()
+    ]).then(([{ createFittingRoom }, mayor]) => {
+        if (view !== 'shop-screen' && !startButton) return null;
+        return (fittingRoom = createFittingRoom($('game-canvas'), mayor));
+    }).finally(() => { roomRequest = null; });
+    return roomRequest;
+}
+
+function streetFiles() {
+    return Promise.all([
+        import('./game/Run.js'),
+        loadCast(),
+        import('./game/Geometry.js').then(module => module.preloadStreetArt()),
+        document.fonts.load('700 16px Condensed')
+    ]);
+}
+
+async function getStreet(ticket) {
+    const outfit = shop.selected;
+    const [files, room, clothing] = await Promise.all([run ? null : streetFiles(), getRoom(), outfitFiles(outfit)]);
+    if (entryVersion !== ticket) return null;
+    applyOutfit(room, outfit, clothing);
+    if (run) return run;
+    const [{ Run }, cast] = files;
+    streetRequest ??= (async () => {
+        const street = new Run($('game-canvas'), sound, null, cast, room);
+        await street.ready;
+        return (run = street);
+    })().catch(error => { streetRequest = null; throw error; });
+    return streetRequest;
+}
+
+function afterPaint() {
+    return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+}
+
+function outfitFiles(outfit) {
+    if (outfit.id === 'default' || fittingRoom?.player.rig.suits.has(outfit.id)) return null;
+    return loadOutfit(outfit.id);
+}
+
+function applyOutfit(room, outfit, clothing) {
+    const pieces = room.player.rig.addOutfit(outfit.id, clothing);
+    if (pieces.length) run?.raceStage?.addOutfit(pieces);
+    room.player.setSkin(outfit);
+}
+
+function openShop() {
+    if (view === 'shop-screen') return;
+    shop.open(wallet, walletAvailable);
+    show('shop-screen', 'show-training');
+    refreshWallet();
+    updatePreview();
+}
+
+async function updatePreview() {
+    const ticket = entryVersion;
+    const outfit = shop.selected;
+    if (fittingRoom?.active && fittingRoom.player.rig.suits.has(outfit.id)) {
+        fittingRoom.player.setSkin(outfit);
+        fittingRoom.render();
+        previewStatus.hidden = true;
+        $('shop-screen').classList.remove('preparing-preview');
+        return;
+    }
+    previewStatus.hidden = false;
+    previewStatus.textContent = 'Loading fitting room…';
+    $('shop-screen').classList.add('preparing-preview');
     try {
-        if (!run) {
-            btn.disabled = true;
-            status.hidden = false;
-            status.textContent = 'Opening the street…';
-            const [{ Run }, { loadCast }] = await Promise.all([
-                import('./game/Run.js'),
-                import('./game/RunnerModel.js')
-            ]);
-            const [cast] = await Promise.all([loadCast(), document.fonts.load('700 16px Condensed')]);
-            run = new Run($('game-canvas'), sound, null, cast);
-            await run.ready;
+        const [room, clothing] = await Promise.all([getRoom(), outfitFiles(outfit), afterPaint()]);
+        if (streetRequest && !run) await streetRequest;
+        if (entryVersion !== ticket || shop.selected !== outfit) return;
+        applyOutfit(room, outfit, clothing);
+        if (room.active) room.render();
+        else if (run) run.showOutfit();
+        else {
+            room.player.reset();
+            room.open();
         }
-        await refreshWallet();
-        if (view !== 'start-screen' && view !== 'game-over-screen') return;
-        status.hidden = true;
-        run.player.setSkin(shop.selected);
-        if (mode === 'run') {
-            const attempt = startAttempt(availableMode(requested ?? selectedMode(), wallet));
-            activeAttempt = attempt;
-            run.onEnd = (distance, gross, cause) => finish(attempt, distance, gross, cause);
-            run.onRaceWin = count => recordFamilyWin(count).catch(() => { walletAvailable = false; });
-            // The photo finish ends the attempt even if the player closes the app before Results.
-            run.onRaceLoss = (gross, distance) => {
-                if (attempt.mode === 'day') localStorage.setItem('mamdani_best_score', Math.max(best(), distance));
-                attempt.bank(gross, distance).catch(() => { walletAvailable = false; });
-            };
-            resultVersion++;
-            show('hud');
-            run.start(attempt.mode, wallet.speedLevel);
-            sound.play('start');
-            track('game_start', { run_mode: attempt.mode });
-        } else {
-            shop.open(wallet, walletAvailable);
-            show('shop-screen', 'show-training');
-            run.showOutfit();
-        }
+        previewStatus.hidden = true;
+        $('shop-screen').classList.remove('preparing-preview');
     } catch (error) {
         console.error(error);
-        run = null;
-        status.hidden = false;
-        status.textContent = 'The street could not load. Enable WebGL and try again.';
-    } finally {
-        btn.disabled = false;
-        loading = false;
+        if (entryVersion === ticket && shop.selected === outfit) previewStatus.textContent = 'Preview unavailable. You can still train or pick an outfit.';
     }
 }
-$('start-btn').onclick = () => enter('run');
-$('restart-btn').onclick = () => enter('run', lastResult.mode);
-$('play-night').onclick = () => {
+
+async function startRun(requested, button = $('start-btn')) {
+    if (startButton) return;
+    const ticket = ++entryVersion;
+    startButton = button;
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    status = button === $('start-btn') ? $('load-status') : $('result-load-status');
+    status.hidden = false;
+    status.textContent = 'Loading street…';
+    try {
+        const ready = getStreet(ticket);
+        let openingRecord = api.getSeasonRecord();
+        sound.unlock();
+        const [street] = await Promise.all([ready, refreshWallet(), afterPaint()]);
+        if (entryVersion !== ticket || !street) return;
+        const attempt = {
+            ...startAttempt(availableMode(requested ?? selectedMode(), wallet)),
+            playerId: playerId()
+        };
+        const attemptId = newId();
+        const recordProvider = {
+            getRecord() {
+                const request = openingRecord ?? api.getSeasonRecord();
+                openingRecord = null;
+                return request;
+            },
+            claim: score => api.claimSeasonRecord({ playerId: attempt.playerId, attemptId, score, mode: attempt.mode })
+        };
+        activeAttempt = attempt;
+        street.onEnd = (distance, gross, cause) => finish(attempt, distance, gross, cause);
+        street.onRaceWin = count => recordFamilyWin(count).catch(() => { walletAvailable = false; });
+        // Bank at the tape even if the player leaves before opening Results.
+        street.onRaceLoss = (gross, distance) => {
+            settleScore(attempt, distance);
+            attempt.bank(gross, distance).catch(() => { walletAvailable = false; });
+        };
+        resultVersion++;
+        show('hud');
+        street.start(attempt.mode, wallet.speedLevel, recordProvider);
+        sound.play('start');
+        afterPaint().then(() => import('./game/Geometry.js')).then(module => module.loadStreetDetails()).catch(() => {});
+        track('game_start', { run_mode: attempt.mode });
+    } catch (error) {
+        console.error(error);
+        if (entryVersion === ticket) {
+            clearStartButton();
+            status.hidden = false;
+            status.textContent = 'The street could not load. Enable WebGL and try again.';
+        }
+    }
+}
+
+$('start-btn').onclick = () => startRun();
+$('restart-btn').onclick = event => startRun(lastResult.mode, event.currentTarget);
+$('play-night').onclick = event => {
     selectMode('night');
-    enter('run', 'night');
+    startRun('night', event.currentTarget);
 };
-$('shop-btn').onclick = () => enter('outfits');
-$('result-shop').onclick = () => enter('outfits');
+$('shop-btn').onclick = openShop;
+$('result-shop').onclick = openShop;
+
+// Warm shared files after the title paints. Only a requested run constructs the city or starts its renderer.
+afterPaint().then(() => {
+    const connection = navigator.connection;
+    if (document.hidden || connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || '')) return;
+    const warmShared = () => {
+        if (view !== 'start-screen' || startButton) return;
+        loadMayor().catch(() => {});
+        if (shop.selected.id !== 'default') outfitFiles(shop.selected)?.catch(() => {});
+        import('./game/Wardrobe.js').catch(() => {});
+        setTimeout(() => {
+            if (view !== 'start-screen' || document.hidden || startButton) return;
+            streetFiles().then(async () => {
+                if (view === 'start-screen' && !startButton) await (await import('./game/Geometry.js')).loadStreetDetails();
+            }).catch(() => {});
+        }, 750);
+    };
+    if (window.requestIdleCallback) window.requestIdleCallback(warmShared, { timeout: 600 });
+    else setTimeout(warmShared, 70);
+});
 $('story-btn').onclick = () => show('story-modal', 'close-story-btn');
 $('instructions-btn').onclick = () => show('instructions-modal', 'instructions-modal');
 $('feedback-btn').onclick = () => show('feedback-modal', 'feedback-msg');
@@ -258,18 +385,21 @@ window.addEventListener('keydown', (e) => {
         else resume();
     } else if (view === 'start-screen' && e.code === 'Enter' && document.activeElement === document.body) {
         e.preventDefault();
-        enter('run');
+        startRun();
     }
 });
+
+function newId() {
+    return crypto.randomUUID?.() ??
+        'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) =>
+            ((c === 'x' ? Math.random() * 16 : 8 + Math.random() * 4) | 0).toString(16)
+        );
+}
 
 function playerId() {
     let id = localStorage.getItem('mamdani_player_id');
     if (!id) {
-        id =
-            crypto.randomUUID?.() ??
-            'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) =>
-                ((c === 'x' ? Math.random() * 16 : 8 + Math.random() * 4) | 0).toString(16)
-            );
+        id = newId();
         localStorage.setItem('mamdani_player_id', id);
     }
     return id;
@@ -292,9 +422,8 @@ async function finish(attempt, distance, gross, cause) {
     const cleanMoves = run.cleanMoves;
     const familyWins = run.familyWins;
     const seconds = Math.floor(run.elapsed);
-    const result = { mode: attempt.mode, distance };
+    const result = settleScore(attempt, distance);
     lastResult = result;
-    if (!night) localStorage.setItem('mamdani_best_score', Math.max(best(), distance));
     let receipt;
     try {
         receipt = await attempt.bank(gross, distance);
@@ -310,10 +439,11 @@ async function finish(attempt, distance, gross, cause) {
     localStorage.setItem('mamdani_edition', String(issue));
     const rival = RIVALS.find(racer => cause === 'race:' + racer.id);
     const [headline, copy] = rival
-        ? [rival.name + ' takes the tape.', 'City Hall demands a recount. The finish-line camera has declined to testify.']
+        ? [rival.name + ' takes the tape.', 'The flag goes up. City Hall files to move the finish line back.']
         : frontPage(cause, issue - 1);
     $('result-edition').textContent = modeNames[attempt.mode] + ' · No. ' + issue;
     $('result-headline').textContent = headline;
+    if (!$('result-art').hasAttribute('src')) $('result-art').src = import.meta.env.BASE_URL + 'art/american-finish.webp';
     $('result-copy').textContent = copy;
     $('final-moves').textContent = cleanMoves;
     $('run-seconds').textContent = seconds + ' second' + (seconds === 1 ? '' : 's');
@@ -329,33 +459,45 @@ async function finish(attempt, distance, gross, cause) {
         : !wallet.nightUnlocked ? stampCount(remaining) + ' to unlock Night Shift.'
         : 'Night Shift unlocked';
     $('play-night').hidden = !receipt?.unlocked;
-    const familyLine = 'Family races this run · ' + familyRecord(familyWins);
+    const familyLine = 'Family races · ' + familyWins + '/' + RIVALS.length + ' this run';
     $('result-family').textContent = walletAvailable && wallet.familyBest > familyWins
-        ? familyLine + '. Device best · ' + familyRecord(wallet.familyBest)
+        ? familyLine + ' · Best ' + wallet.familyBest + '/' + RIVALS.length
         : familyLine;
     $('result-progress').parentElement.classList.toggle('just-unlocked', !!receipt?.unlocked);
-    $('result-best-label').textContent = night ? 'Night Shift best on this device' : 'Day Run best';
+    $('result-best-label').textContent = night ? 'Night Shift best on this device' : 'Day Run best on this device';
     $('pb-score').textContent = metres(night ? wallet.nightBest : best());
     $('pb-rank-display').textContent = '';
     $('join-lb-btn').hidden = !!localStorage.getItem('mamdani_name');
-    $('day-board').hidden = night;
     document.querySelector('.results').scrollTop = 0;
     show('game-over-screen', 'restart-btn');
-    if (!night) loadBoard(version, result);
+    loadBoard(version, result);
 }
-async function submitDayScore(score) {
-    const id = playerId();
-    const rank = await api.submitScore(id, score);
-    if (rank.ok) return rank;
-    const registration = await api.register(id, localStorage.getItem('mamdani_name') || '', localStorage.getItem('mamdani_social') || '', installed());
-    if (!registration.ok && !registration.updated) return rank;
-    return api.submitScore(id, score);
+
+function settleScore(attempt, distance) {
+    if (attempt.result) return attempt.result;
+    if (attempt.mode === 'day') localStorage.setItem('mamdani_best_score', Math.max(best(), distance));
+    const result = attempt.result = { playerId: attempt.playerId, mode: attempt.mode, distance };
+    postScore(result);
+    return result;
+}
+
+function postScore(result, retry = false) {
+    if (retry && result.submitFailed) {
+        result.rank = null;
+        result.submitFailed = false;
+    }
+    return result.rank ??= api.submitSeasonScore({
+        playerId: result.playerId, mode: result.mode, score: result.distance
+    }).then(rank => {
+        result.submitFailed = !rank.ok;
+        return rank;
+    });
 }
 
 function showStandings(list, entries) {
     list.replaceChildren();
     if (!entries?.length) {
-        list.textContent = entries ? 'No scores yet.' : 'The standings could not be loaded.';
+        list.textContent = entries ? 'No scores on the season board yet.' : 'The standings could not be loaded.';
         return;
     }
     const rows = document.createDocumentFragment();
@@ -386,7 +528,7 @@ function showStandings(list, entries) {
 async function standings(list, retry, current) {
     list.textContent = 'Loading standings…';
     retry.hidden = true;
-    const entries = await api.getLeaderboard(50);
+    const entries = await api.getSeasonLeaderboard(50);
     if (current()) {
         showStandings(list, entries);
         retry.hidden = entries !== null;
@@ -407,58 +549,53 @@ $('close-rankings').onclick = () => {
     $('rankings-btn').focus({ preventScroll: true });
 };
 
-async function loadBoard(version, result) {
-    if (result.mode !== 'day') return;
+async function loadBoard(version, result, retryScore = false) {
+    if (!result) return;
     const current = () => version === resultVersion && result === lastResult;
     const list = $('leaderboard-list');
     const retry = $('result-board-retry');
-    const board = standings(list, retry, current);
-    result.rank ??= submitDayScore(result.distance);
-    const rank = await result.rank;
+    list.textContent = 'Updating season standings…';
+    retry.hidden = true;
+    const rank = await postScore(result, retryScore);
     if (!current()) return;
-    if (rank.ok) {
-        localStorage.setItem('mamdani_best_score', Math.max(best(), Number(rank.bestScore) || 0));
-        $('pb-score').textContent = metres(best());
-        if (rank.rank > 0 && localStorage.getItem('mamdani_name')) {
-            $('pb-rank-display').textContent = ' · Rank #' + rank.rank;
-        }
-    } else {
-        result.rank = null;
-        $('pb-rank-display').textContent = ' · Saved locally. Tap Retry to post.';
-    }
-    const entries = await board;
+    if (!rank.ok) $('pb-rank-display').textContent = ' · Saved locally. Tap Retry to post.';
+    const entries = await standings(list, retry, current);
     if (!current()) return;
-    if (!rank.ok) retry.hidden = false;
-    else if (entries?.length && localStorage.getItem('mamdani_name') && rank.rank > 0 && rank.rank <= 50 &&
-        !entries.some(entry => entry.player_id === playerId() && Number(entry.score) >= result.distance)) {
-        const updated = await api.getLeaderboard(50);
-        if (updated && current()) showStandings(list, updated);
+    if (!rank.ok) {
+        retry.hidden = false;
+        return;
     }
+    const listed = entries?.findIndex(entry => entry.player_id === result.playerId) ?? -1;
+    const position = listed >= 0 ? listed + 1 : rank.rank;
+    $('pb-rank-display').textContent = position > 0 ? ' · Season rank #' + position : '';
 }
-$('result-board-retry').onclick = () => loadBoard(++resultVersion, lastResult);
+$('result-board-retry').onclick = () => loadBoard(++resultVersion, lastResult, true);
 $('join-lb-btn').onclick = () => show('registration-modal', 'reg-name');
 $('cancel-reg').onclick = () => show('game-over-screen', 'join-lb-btn');
 $('register-form').onsubmit = async (e) => {
     e.preventDefault();
+    const button = $('submit-score-btn');
+    if (button.disabled) return;
     const name = $('reg-name').value.trim(),
         social = $('reg-social').value.trim();
     if (!name) {
-        $('reg-error').textContent = 'Enter a name to join.';
+        $('reg-error').textContent = 'Enter a leaderboard name.';
         return;
     }
     const version = resultVersion;
-    $('submit-score-btn').disabled = true;
-    const result = await api.register(playerId(), name, social, installed());
-    $('submit-score-btn').disabled = false;
+    button.disabled = true;
+    const result = await api.register(lastResult?.playerId ?? playerId(), name, social, installed());
+    button.disabled = false;
     if (result.ok || result.updated) {
         localStorage.setItem('mamdani_name', name);
         if (social) localStorage.setItem('mamdani_social', social);
+        else localStorage.removeItem('mamdani_social');
         if (view === 'registration-modal' && version === resultVersion) {
             show('game-over-screen', 'restart-btn');
             $('join-lb-btn').hidden = true;
             loadBoard(++resultVersion, lastResult);
         }
-    } else $('reg-error').textContent = 'Could not join. Try again.';
+    } else $('reg-error').textContent = 'Couldn’t save your name. Try again.';
 };
 $('feedback-form').onsubmit = async (e) => {
     e.preventDefault();

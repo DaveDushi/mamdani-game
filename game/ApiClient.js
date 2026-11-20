@@ -1,16 +1,28 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
+import { SEASON } from '../backend/src/season-rules.js';
 
 const live = 'https://api.mamdanirun.cc';
 const localHosts = ['localhost', '127.0.0.1', '[::1]'];
+const seasonPath = '/seasons/' + SEASON;
+const fresh = { cache: 'no-store' };
+
+function standings(result) {
+    const entries = Array.isArray(result) ? result : (result?.entries ?? result?.scores);
+    return Array.isArray(entries) ? entries : null;
+}
+
+function seasonRecord(score) {
+    return score === null || (Number.isSafeInteger(score) && score >= 0) ? { score } : null;
+}
 
 export class ApiClient {
     constructor(baseUrl) {
         this.native = Capacitor.isNativePlatform();
-        const preview = !this.native && (import.meta.env.DEV || localHosts.includes(location.hostname));
+        const preview = !this.native && (import.meta.env?.DEV || localHosts.includes(globalThis.location?.hostname));
         this.baseUrl = baseUrl ?? (preview ? '/game-api' : live);
     }
 
-    async request(path, data) {
+    async request(path, data, { cache } = {}) {
         const method = data === undefined ? 'GET' : 'POST';
         const headers = data === undefined ? {} : { 'Content-Type': 'application/json' };
         const url = this.baseUrl + path;
@@ -25,7 +37,7 @@ export class ApiClient {
             const controller = new AbortController();
             timeout = setTimeout(() => controller.abort(), 8000);
             const response = await fetch(url, {
-                method, headers, body: data === undefined ? undefined : JSON.stringify(data), signal: controller.signal
+                method, headers, body: data === undefined ? undefined : JSON.stringify(data), signal: controller.signal, cache
             });
             return response.ok ? await response.json() : null;
         } catch {
@@ -48,9 +60,28 @@ export class ApiClient {
     }
 
     async getLeaderboard(limit = 50) {
-        const result = await this.request('/leaderboard?limit=' + limit);
-        const entries = Array.isArray(result) ? result : (result?.entries ?? result?.scores);
-        return Array.isArray(entries) ? entries : null;
+        return standings(await this.request('/leaderboard?limit=' + limit));
+    }
+
+    async getSeasonLeaderboard(limit = 50) {
+        return standings(await this.request(seasonPath + '/leaderboard?limit=' + limit, undefined, fresh));
+    }
+
+    async getSeasonRecord() {
+        const result = await this.request(seasonPath + '/record', undefined, fresh);
+        return result?.ok === true ? seasonRecord(result.record) : null;
+    }
+
+    async claimSeasonRecord({ playerId, attemptId, score, mode }) {
+        const result = await this.request(seasonPath + '/record/claim', { playerId, attemptId, score, mode });
+        if (result?.ok !== true || typeof result.qualified !== 'boolean') return null;
+        const record = seasonRecord(result.record);
+        const previous = seasonRecord(result.previousRecord);
+        return record && previous ? { qualified: result.qualified, record, previousRecord: previous.score } : null;
+    }
+
+    async submitSeasonScore({ playerId, score, mode }) {
+        return await this.request(seasonPath + '/score', { playerId, score, mode }) ?? { ok: false };
     }
 
     async healthCheck() {

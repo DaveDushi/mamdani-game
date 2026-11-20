@@ -6,13 +6,13 @@ export const placards = [
 export const captions = [
     'Our Fair Share. One for you. Nine for the committee.',
     'Public Parking. Cars abolished. Meters retained.',
-    'Seize the Suite. Reserved for senior Party officials.',
-    'Five-Year Express. Due at your stop in Year Four.',
-    'Rent on Ice. Heat requires a separate resolution.',
-    'Bagel Rations. Everyone gets an equal hole.',
+    'Seize the Suite. Party brass only.',
+    'Five-Year Express. Arrives in Year Four.',
+    'Rent on Ice. Heat needs a vote.',
+    'Bagel Rations. An equal hole for all.',
     'Collective Tap. Two signatures for hot. Three for cold.',
-    'Free Transit. Fare waived. Party dues apply.',
-    'Workers, Adjourn! Motion to end the meeting tabled.'
+    'Free Transit. Party dues apply.',
+    'Workers, Adjourn! Adjournment tabled.'
 ];
 export function setupPosters(open) {
     let index = 0;

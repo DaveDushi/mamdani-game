@@ -1,7 +1,7 @@
 import { streetProps } from './StreetProps.js';
 import { streetCourse } from './Course.js';
 import { labelMaterial } from './Geometry.js';
-import { courseCueModels, skillGateBounds, skillGateModels, slideClearance } from './SkillGates.js';
+import { courseCueModels, railClearance, railInnerFoot, skillGateBounds, skillGateModels, slideClearance } from './SkillGates.js';
 
 const LOOKAHEAD = 83;
 const escortStampColors = {
@@ -18,6 +18,12 @@ const bounds = {
     alcohol: [0.25, 1.02, 0.25],
     coin: [0.47, 0.4, 0.24],
     ...skillGateBounds
+};
+const floorClearance = {
+    halal: 1.36,
+    scaffold: 1.36,
+    slideGate: slideClearance,
+    railGate: railClearance
 };
 
 export class ObstacleManager {
@@ -48,6 +54,7 @@ export class ObstacleManager {
         obj.mesh.position.set(x, key === 'coin' ? height : 0, z);
         obj.mesh.rotation.y = 0;
         obj.height = height;
+        obj.stampReach = null;
         obj.previousZ = z;
         obj.gate = null;
         obj.stunt = null;
@@ -68,10 +75,9 @@ export class ObstacleManager {
         this.fillCourse(0);
         this.lastStunt = null;
     }
-    markLane(x, z, cueStep, cue, height) {
-        const leads = cue === 'laneCue' ? [3, 2] : [4, 3];
-        for (const lead of leads) this.add(cue, x, z + lead * cueStep);
-        this.add('coin', x, z, 'route', height);
+    markLane(x, z, row, cue = 'laneCue') {
+        const leads = row.gate ? [4, 3] : [3, 2];
+        for (const lead of leads) this.add(cue, x, z + lead * row.cueStep);
     }
     fillCourse(distance) {
         while (this.nextRow.distance <= distance + LOOKAHEAD) {
@@ -81,17 +87,29 @@ export class ObstacleManager {
                 const gate = { hit: false };
                 row.lanes.forEach((key, lane) => {
                     const x = (lane - 1) * 3;
-                    this.add(key, x, z).gate = gate;
+                    const obstacle = this.add(key, x, z);
+                    obstacle.gate = gate;
                     if (key === 'gateBlock') return;
                     const jump = key === 'jumpGate';
-                    this.markLane(x, z, row.cueStep, jump ? 'jumpCue' : 'slideCue', jump ? 2.42 : 0.55);
+                    const guide = obstacle.mesh.getObjectByName('tutorialSign');
+                    if (guide) guide.visible = row.tutorial;
+                    this.markLane(x, z, row, row.tutorial ? (jump ? 'jumpCue' : 'slideCue') : 'laneCue');
+                    if (key === 'railGate') {
+                        // One ticket on the rail is reachable above or below the bar.
+                        const stamp = this.add('coin', x, z + 0.35, 'route', 1.31);
+                        stamp.stampReach = 0.58;
+                        stamp.gate = gate;
+                    } else {
+                        this.add('coin', x, z, 'route', jump ? 2.42 : 0.55);
+                    }
                 });
             } else if (row.lanes) {
                 row.lanes.forEach((key, lane) => {
                     if (key && lane !== row.exitLane) this.add(key, (lane - 1) * 3, z);
                 });
                 const x = (row.exitLane - 1) * 3;
-                this.markLane(x, z, row.cueStep, 'laneCue', 1.02);
+                this.markLane(x, z, row);
+                this.add('coin', x, z);
             } else {
                 const x = (row.pickupLane - 1) * 3;
                 this.add('coin', x, z + 5, row.pickup);
@@ -126,7 +144,8 @@ export class ObstacleManager {
         let collected = -1;
         for (let i = this.obstacles.length - 1; i >= 0; i--) {
             const obj = this.obstacles[i];
-            if (obj.type === 'cue' || obj.gate?.hit) continue;
+            const isStamp = obj.type === 'coin';
+            if (obj.type === 'cue' || (obj.gate?.hit && !(isStamp && player.invincible))) continue;
             const q = obj.mesh.position;
             const [w, h, d] = bounds[obj.type];
             const dz = d + 0.27,
@@ -146,18 +165,21 @@ export class ObstacleManager {
                     obj.stunt = 'sidestep';
                 continue;
             }
-            if (obj.type === 'coin') {
-                if (q.y + h < p.y + 0.1 || q.y - h > p.y + (player.slideTimer > 0 ? 0.87 : 1.87)) continue;
+            if (isStamp) {
+                const reach = obj.stampReach ?? h;
+                if (q.y + reach < p.y + 0.1 || q.y - reach > p.y + (player.slideTimer > 0 ? 0.87 : 1.87))
+                    continue;
                 if (collected === -1) collected = i;
                 continue;
             }
             if (p.y + 0.09 > h) {
                 if (obj.type === 'taxi') obj.stunt = 'cab';
-                if (obj.type === 'jumpGate') obj.stunt = 'jump';
+                if (obj.type === 'jumpGate' || obj.type === 'railGate') obj.stunt = 'jump';
                 continue;
             }
-            const overhead = obj.type === 'halal' || obj.type === 'scaffold' || obj.type === 'slideGate';
-            if (overhead && player.slideTimer > 0 && p.y + 0.89 < (obj.gate ? slideClearance : 1.36)) {
+            const clearance = floorClearance[obj.type] ?? 0;
+            const betweenFeet = obj.type !== 'railGate' || dx + 0.24 < railInnerFoot;
+            if (player.slideTimer > 0 && p.y + 0.89 < clearance && betweenFeet) {
                 obj.stunt = 'slide';
                 continue;
             }

@@ -105,20 +105,49 @@ export function labelMaterial(lines, paper, ink, width = 512, height = 160) {
 }
 
 export const artLoads = [];
+const artMaps = new Map();
+const firstFrameMaps = new Set(['facades', 'districts', 'posters', 'asphalt', 'skyline', 'locust', 'blue-hour']);
+const pendingDetails = new Map();
+const artLoader = new THREE.ImageLoader();
+const artUrl = name => import.meta.env.BASE_URL + 'art/' + name + '.webp';
+
+export function preloadStreetArt() {
+    for (const name of ['asphalt', 'facades', 'districts', 'skyline', 'pavement', 'posters', 'locust', 'blue-hour', 'pickup-markers']) {
+        artTexture(name);
+    }
+}
+
 export function artTexture(name) {
-    let finish;
-    artLoads.push(
-        new Promise((resolve) => {
-            finish = resolve;
-        })
-    );
-    const map = new THREE.TextureLoader().load(
-        import.meta.env.BASE_URL + 'art/' + name + '.webp',
-        finish,
-        undefined,
-        finish
-    );
+    if (artMaps.has(name)) return artMaps.get(name);
+    const map = new THREE.Texture();
     map.colorSpace = THREE.SRGBColorSpace;
     map.anisotropy = 4;
+    artMaps.set(name, map);
+    const firstFrame = firstFrameMaps.has(name);
+    const image = firstFrame ? artLoader.loadAsync(artUrl('entry-' + name)).catch(() => artLoader.loadAsync(artUrl(name)))
+        : artLoader.loadAsync(artUrl(name));
+    artLoads.push(image.then(bitmap => {
+        map.image = bitmap;
+        map.needsUpdate = true;
+    }).catch(() => artMaps.delete(name)));
     return map;
+}
+
+export async function loadStreetDetails() {
+    await Promise.all(artLoads);
+    for (const name of firstFrameMaps) {
+        const map = artMaps.get(name);
+        if (!map) continue;
+        if (!pendingDetails.has(name)) {
+            const request = artLoader.loadAsync(artUrl(name)).then(image => {
+                // Three allocates immutable GPU storage from the image size. Keep all material
+                // references and UV settings, and replace only the lower-resolution allocation.
+                map.dispose();
+                map.source = new THREE.Source(image);
+                map.needsUpdate = true;
+            }).catch(() => pendingDetails.delete(name));
+            pendingDetails.set(name, request);
+        }
+        await pendingDetails.get(name);
+    }
 }

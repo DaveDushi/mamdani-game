@@ -35,7 +35,8 @@ function worldWithoutScenery(mode = 'day') {
     const world = Object.assign(Object.create(World.prototype), {
         blocks: [],
         landmarks: { update: noOp },
-        light: { update: noOp }
+        light: { update: noOp },
+        setTakeover: noOp
     });
     world.reset(mode);
     return world;
@@ -87,7 +88,8 @@ test('stunt cards get denser, pair different actions, and still give each row ti
     const expected = {
         jump: ['gateBlock', 'gateBlock', 'jumpGate'],
         slide: ['gateBlock', 'gateBlock', 'slideGate'],
-        choice: ['gateBlock', 'jumpGate', 'slideGate']
+        choice: ['gateBlock', 'jumpGate', 'slideGate'],
+        rail: ['gateBlock', 'gateBlock', 'railGate']
     };
     for (const mode of ['day', 'night']) {
         for (let seed = 1; seed <= 64; seed++) {
@@ -106,7 +108,14 @@ test('stunt cards get denser, pair different actions, and still give each row ti
                 const { distance } = rows[i];
                 assert.ok((distance - rows[i - 1].distance) / courseSpeed(distance, mode) >= 0.96);
             }
-            for (const row of rows.filter(row => row.gate)) {
+            const stunts = rows.filter(row => row.gate);
+            assert.deepEqual(stunts.slice(0, 4).map(row => [row.gate, row.tutorial]), [
+                ['jump', true], ['slide', true], ['choice', true], ['rail', false]
+            ]);
+            assert.ok(stunts.slice(3).every(row => row.tutorial === false));
+            const railRate = late.filter(row => row.gate === 'rail').length / late.length;
+            assert.ok(railRate > 0.1 && railRate < 0.2);
+            for (const row of stunts) {
                 assert.deepEqual([...row.lanes].sort(), expected[row.gate]);
             }
         }
@@ -195,23 +204,25 @@ test('all generated pieces are pooled and painted lane cues lead to one collecti
                 const leads = row.gate ? [4, 3] : [3, 2];
                 advanceTo(row.distance - leads[0] * row.cueStep - 1);
                 const marks = new Map();
-                if (!row.gate) marks.set(row.exitLane, ['laneCue', 1.02]);
+                if (!row.gate) marks.set(row.exitLane, ['laneCue', 1.02, 0]);
                 for (const [lane, key] of row.lanes.entries()) {
-                    if (key === 'jumpGate') marks.set(lane, ['jumpCue', 2.42]);
-                    if (key === 'slideGate') marks.set(lane, ['slideCue', 0.55]);
+                    if (key === 'jumpGate') marks.set(lane, [row.tutorial ? 'jumpCue' : 'laneCue', 2.42, 0]);
+                    if (key === 'slideGate') marks.set(lane, [row.tutorial ? 'slideCue' : 'laneCue', 0.55, 0]);
+                    if (key === 'railGate') marks.set(lane, ['laneCue', 1.31, 0.35]);
                 }
                 const at = (obj, x, distance) => obj.mesh.position.x === x &&
                     Math.abs(viewDistance - obj.mesh.position.z - distance) < 1e-6;
-                for (const [lane, [cue, height]] of marks) {
+                for (const [lane, [cue, height, lead]] of marks) {
                     keys.add(cue);
                     const x = (lane - 1) * 3;
                     for (const lead of leads) {
                         const objects = traffic.obstacles.filter(obj => at(obj, x, row.distance - lead * row.cueStep));
                         assert.ok(objects.some(obj => obj.key === cue && obj.type === 'cue'));
+                        assert.ok(objects.every(obj => obj.type !== 'cue' || obj.key === cue));
                         assert.ok(objects.every(obj => obj.type !== 'coin' || obj.mesh.material !== traffic.stampMaterials.route));
                     }
                     const stamps = traffic.obstacles.filter(obj => obj.type === 'coin' &&
-                        obj.mesh.material === traffic.stampMaterials.route && at(obj, x, row.distance));
+                        obj.mesh.material === traffic.stampMaterials.route && at(obj, x, row.distance - lead));
                     assert.equal(stamps.length, 1);
                     assert.equal(stamps[0].height, height);
                 }
@@ -221,7 +232,10 @@ test('all generated pieces are pooled and painted lane cues lead to one collecti
                     keys.add(key);
                     assert.ok(traffic.models[key] && traffic.pool[key], key);
                     const x = (lane - 1) * 3;
-                    assert.ok(traffic.obstacles.some(obj => obj.key === key && at(obj, x, row.distance)), key);
+                    const object = traffic.obstacles.find(obj => obj.key === key && at(obj, x, row.distance));
+                    assert.ok(object, key);
+                    assert.equal(object.mesh.getObjectByName('tutorialSign')?.visible ?? false,
+                        !!row.tutorial && (key === 'jumpGate' || key === 'slideGate'), key);
                 }
             }
         }
@@ -265,10 +279,7 @@ test('a standing runner cannot slip between stunt lanes or take two strikes from
     assert.equal(traffic.checkCollisions(player), null);
 });
 
-function courseTrial(seed, mode, strategy, dt, pace = 1, jumpLead = 0.35) {
-    const world = worldWithoutScenery(mode);
-    const traffic = createTraffic();
-    traffic.reset(mode, seededRandom(seed));
+function createPlayer() {
     const player = Object.assign(Object.create(Player.prototype), {
         mesh: new Group(),
         shadow: Object.assign(new Group(), { material: {} }),
@@ -276,6 +287,55 @@ function courseTrial(seed, mode, strategy, dt, pace = 1, jumpLead = 0.35) {
         scarf: {}, sash: {}, mask: {}, flagAura: {}, bottleStars: {}
     });
     player.reset();
+    return player;
+}
+
+test('one ticket rail pays one stamp and move for either clear, and hits a standing runner', () => {
+    const traffic = createTraffic();
+    for (const mode of ['day', 'night']) {
+        const row = layout(9, 40, mode).find(row => row.gate === 'rail');
+        const railLane = row.lanes.indexOf('railGate');
+        const speed = courseSpeed(120000, mode) * 1.1;
+        for (const dt of [1 / 120, 1 / 60, 1 / 30, 1 / 20]) {
+            for (const [action, move] of [['up', 'jump'], ['down', 'slide'], [null, null]]) {
+                traffic.reset(mode, seededRandom(9));
+                while (traffic.obstacles.length) traffic.remove(traffic.obstacles.length - 1);
+                traffic.nextRow = row;
+                traffic.course = [{ distance: row.distance + 1000 }].values();
+                const player = createPlayer();
+                player.currentLane = railLane;
+                player.mesh.position.x = (railLane - 1) * 3;
+                let distance = row.distance - 44;
+                let inputUsed = false;
+                const outcomes = [];
+                const stunts = [];
+                while (distance < row.distance + 6) {
+                    const trigger = !inputUsed && (row.distance - distance) / speed <= (action === 'up' ? 0.35 : 0.26);
+                    let pressed = trigger ? action : null;
+                    if (trigger) inputUsed = true;
+                    distance += speed * dt;
+                    player.update(dt, { isJustPressed: key => {
+                        if (key !== pressed) return false;
+                        pressed = null;
+                        return true;
+                    } }, speed);
+                    traffic.update(dt, speed, distance);
+                    const hit = traffic.checkCollisions(player);
+                    if (hit) outcomes.push(hit);
+                    if (traffic.lastStunt) stunts.push(traffic.lastStunt);
+                }
+                assert.deepEqual(outcomes, [move ? 'coin' : 'railGate'], `${mode} ${dt} ${move}`);
+                assert.deepEqual(stunts, move ? [move] : []);
+            }
+        }
+    }
+});
+
+function courseTrial(seed, mode, strategy, dt, pace = 1, jumpLead = 0.35) {
+    const world = worldWithoutScenery(mode);
+    const traffic = createTraffic();
+    traffic.reset(mode, seededRandom(seed));
+    const player = createPlayer();
     const rows = layout(seed, 270, mode).filter(row => row.lanes);
     const maxSpeed = courseSpeed(10000, mode) * pace;
     const stuntsAtCap = new Set();
@@ -287,8 +347,10 @@ function courseTrial(seed, mode, strategy, dt, pace = 1, jumpLead = 0.35) {
         const { distance, exitLane } = row;
         const jumpLane = row.lanes.indexOf('jumpGate');
         const slideLane = row.lanes.indexOf('slideGate');
-        const takeSlide = jumpLane < 0 || (strategy === 'slideChoice' && slideLane >= 0);
-        const target = exitLane ?? (takeSlide ? slideLane : jumpLane);
+        const railLane = row.lanes.indexOf('railGate');
+        const takeSlide = railLane >= 0 ? strategy === 'slideChoice' :
+            jumpLane < 0 || (strategy === 'slideChoice' && slideLane >= 0);
+        const target = exitLane ?? (railLane >= 0 ? railLane : takeSlide ? slideLane : jumpLane);
         const action = row.gate && strategy !== 'laneOnly' ? (takeSlide ? 'down' : 'up') : null;
         let acted = false;
         while (world.distance < distance + 2.1) {
@@ -338,6 +400,7 @@ test('lane changes alone hit the first gate and timed stunts clear both choice r
                         assert.ok(stuntsAtCap.has('jump') && stuntsAtCap.has('slide'), `${mode}, seed ${seed}`);
                         assert.ok(cleared.has('jump:jump') && cleared.has('slide:slide'));
                         assert.ok(cleared.has(strategy === 'jumpChoice' ? 'choice:jump' : 'choice:slide'));
+                        assert.ok(cleared.has(strategy === 'jumpChoice' ? 'rail:jump' : 'rail:slide'));
                     }
                 }
             }

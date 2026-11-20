@@ -84,18 +84,18 @@ const protections = ['rainbow', 'kafiyeh', 'covidMask'];
 const stuntCards = [
     [
         [null, 'jump', null, 'slide', null, 'choice'],
-        ['choice', null, 'slide', null, 'jump', null]
+        ['choice', null, 'rail', null, 'jump', null]
     ],
     [
         ['jump', 'slide', null, 'choice', null],
-        ['slide', 'choice', null, 'jump', 'slide', null],
-        [null, 'choice', 'slide', 'jump', null]
+        ['slide', 'choice', null, 'rail', 'slide', null],
+        [null, 'choice', 'slide', 'rail', null]
     ],
     [
-        ['jump', 'slide', 'choice', null, 'slide'],
-        ['slide', 'jump', null, 'choice', 'jump'],
+        ['jump', 'slide', 'choice', null, 'rail'],
+        ['slide', 'rail', null, 'choice', 'jump'],
         ['choice', 'slide', 'jump', 'slide', null],
-        [null, 'jump', 'choice', 'slide', 'jump']
+        [null, 'jump', 'choice', 'slide', 'rail']
     ]
 ];
 
@@ -141,9 +141,12 @@ export function* streetCourse(random = Math.random, mode = 'day') {
         }
     }
 
-    let card = night ? [null, null, 'jump', 'slide', null, 'choice'] : ['jump', null, 'slide', null, 'choice'];
+    let card = night
+        ? [null, null, 'jump', 'slide', null, 'choice', 'rail']
+        : ['jump', null, 'slide', null, 'choice', 'rail'];
     let cardIndex = 0;
     let lastStuntLane;
+    let tutorialGates = 3;
     function nextRow(slots, mirror, cueStep) {
         if (cardIndex === card.length) {
             const difficulty = distance + (night ? 260 : 0);
@@ -159,9 +162,11 @@ export function* streetCourse(random = Math.random, mode = 'day') {
         const lane = lastStuntLane === undefined ? lastExit : (lastStuntLane + 1 + Math.floor(random() * 2)) % 3;
         lastStuntLane = lane;
         const lanes = ['gateBlock', 'gateBlock', 'gateBlock'];
-        lanes[lane] = gate === 'slide' ? 'slideGate' : 'jumpGate';
+        lanes[lane] = gate === 'choice' ? 'jumpGate' : gate + 'Gate';
         if (gate === 'choice') lanes[(lane + 1 + Math.floor(random() * 2)) % 3] = 'slideGate';
-        return { distance, lanes, gate, cueStep };
+        const tutorial = tutorialGates > 0;
+        if (tutorial) tutorialGates--;
+        return { distance, lanes, gate, tutorial, cueStep };
     }
 
     let previousGate;

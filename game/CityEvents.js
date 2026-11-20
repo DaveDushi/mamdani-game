@@ -10,13 +10,13 @@ const ink = 0x293c40, brass = 0xcf9650, ivory = 0xf7e7bc, red = 0xb6362d, spruce
 
 // Letterpress plates and a white swatch share one texture, including on moving props.
 const plates = [
-    ['strike', 'TRANSIT LOCAL 7', 'FARE STRIKE', '#9e2925', '#ffedc6', 5.7],
+    ['strike', 'TRANSIT LOCAL 7', 'FARE STRIKE', '#9e2925', '#ffedc6', 2.9],
     ['pay', '', 'PAY UP', '#f4d262', '#372f29', 2],
     ['walk', '', 'WE WALK', '#f9e9c7', '#8a251d', 2.4],
     ['tv', '', 'LIVE 5', '#ae3029', '#fff1d7', 2.8],
     ['van', 'CITY WIRE TELEVISION', 'SPIN UNIT', '#f4e5c3', '#203e4b', 3.5],
     ['bagel', 'OFFICE OF BREAKFAST', 'BAGEL BAILOUT', '#193f41', '#ffe0a1', 5],
-    ['counter', 'CITY HALL  /  OFFICIAL TALLY', 'DAYS SINCE LAST SCANDAL', '#243d3f', '#ffe4a4', 7.2],
+    ['counter', 'DAYS SINCE', 'LAST SCANDAL', '#243d3f', '#ffe4a4', 3.5],
     ['zero', '', '0', '#182e31', '#ffe4a4', 0.73],
     ['one', '', '1', '#182e31', '#ffe4a4', 0.73],
     ['permit', 'DEPT. OF PAPERWORK', 'PERMIT OFFICE', '#344d56', '#ffe4aa', 4.6],
@@ -115,20 +115,12 @@ function worker(b, x, z, coat, skin, sign, phase) {
     b.rod(coat, x + 0.27, 1.43, z, x + 0.36, 1.65, z + 0.17, 0.115);
     b.oval(skin, x + 0.36, 1.71, z + 0.17, 0.1, 0.13, 0.1);
     b.rod(brass, x + 0.37, 1.48, z + 0.17, x + 0.37, 2.7, z + 0.17, 0.038);
-    b.box(0xc7aa78, x + 0.37, 2.73, z + 0.17, 1.41, 0.68, 0.06);
-    b.plate(sign, x + 0.37, 2.73, z + 0.205, 1.4, 0.675);
+    const width = sign === 'strike' ? 2.05 : 1.4;
+    b.box(0xc7aa78, x + 0.37, 2.73, z + 0.17, width + 0.01, 0.68, 0.06);
+    b.plate(sign, x + 0.37, 2.73, z + 0.205, width, 0.675);
 }
 
 function picket(group, mat) {
-    piece(group, mat, b => {
-        for (const s of [-1, 1]) {
-            b.rod(ink, s * 6.4, 0.14, 0, s * 6.4, 7.7, 0, 0.075);
-            b.rod(ink, s * 6.4, 7.64, 0, s * 3.93, 7.13, 0, 0.033);
-            b.rod(ink, s * 6.4, 7.41, 0, s * 3.93, 5.83, 0, 0.022);
-        }
-        b.box(red, 0, 6.48, 0, 8, 1.4, 0.055);
-        b.plate('strike', 0, 6.48, 0.031, 7.99, 1.39);
-    });
     // The inflatable leans toward the avenue, with its tail tucked along the curb.
     const rat = piece(group, mat, b => {
         const hide = 0x766d64, belly = 0xc1a68a, pink = 0xd38474;
@@ -153,18 +145,19 @@ function picket(group, mat) {
         b.rod(pink, -0.45, 0.44, -0.18, -1.06, 0.29, -1.65, 0.12);
         b.rod(pink, -1.06, 0.29, -1.65, -0.64, 0.33, -2.48, 0.085);
     });
-    rat.position.set(-6.47, 0.12, 2.65);
+    rat.position.set(-6.63, 0.12, 2.65);
+    rat.scale.setScalar(0.82);
     rat.rotation.y = 0.3;
     const marches = [0, 1].map(row => piece(group, mat, b => {
         for (let i = 0; i < 3; i++) {
-            const x = row ? -6.2 : 5.64;
+            const x = row ? -6.45 : 5.92;
+            const sign = !row && i === 0 ? 'strike' : i % 2 ? 'walk' : 'pay';
             worker(b, x + (i % 2) * 0.18, (row ? -1 : 5.9) - i * 2.17,
-                [0xcc6e39, spruce, 0x526c83][(row + i) % 3], [0xaf7154, 0xdbac84, 0x795346][i],
-                i % 2 ? 'walk' : 'pay', i % 2);
+                [0xcc6e39, spruce, 0x526c83][(row + i) % 3], [0xaf7154, 0xdbac84, 0x795346][i], sign, i % 2);
         }
     }));
     return (t, reduced) => {
-        rat.scale.y = 1 + (reduced ? 0 : 0.018 * Math.sin(2.2 * t));
+        rat.scale.y = 0.82 + (reduced ? 0 : 0.015 * Math.sin(2.2 * t));
         for (let i = 0; i < 2; i++) {
             marches[i].position.z = reduced ? 0 : Math.sin(t * 0.79 + i * 2.6) * 1.52;
             marches[i].position.y = reduced ? 0 : Math.abs(Math.sin(t * 5 + i)) * 0.055;
@@ -222,7 +215,7 @@ function broadcast(group, mat, lamps) {
         }
     });
     rotor.position.set(-0.2, 1.14, 0);
-    heli.scale.setScalar(1.27);
+    heli.scale.setScalar(0.82);
     piece(group, mat, b => {
         for (let i = 0; i < 3; i++) {
             const x = 5.58 + i * 1.36, z = 0.6 - i * 0.39, y = 1.73 + (i % 2) * 0.26;
@@ -235,13 +228,13 @@ function broadcast(group, mat, lamps) {
     });
     const glints = new Batch();
     for (let i = 0; i < 3; i++) glints.shape(face, 0xffe0af, 5.44 + i * 1.36,
-        2.04 + (i % 2) * 0.26, 0.82 - i * 0.39, 1, 1, 1);
+        2.04 + (i % 2) * 0.26, 0.82 - i * 0.39, 0.6, 0.6, 1);
     const flash = glints.mesh(lamps.clone());
     group.add(flash);
     return (t, reduced) => {
         van.position.x = -7.45 - (reduced ? 0.3 : 1.5 + 1.5 * Math.cos(t * 0.68));
-        heli.position.set(reduced ? 0.5 : 0.5 + Math.sin(t * 0.7) * 1.55,
-            8.25 + (reduced ? 0 : Math.sin(t * 1.4) * 0.22), 4.6);
+        heli.position.set(-12.8 + (reduced ? 0 : Math.sin(t * 0.45) * 0.65),
+            19.5 + (reduced ? 0 : Math.sin(t * 0.83) * 0.14), -1);
         heli.rotation.set(0.04, -0.22, reduced ? 0 : Math.cos(t * 0.7) * 0.06);
         rotor.rotation.y = reduced ? 0.4 : t * 11;
         flash.visible = lamps.visible;
@@ -252,32 +245,27 @@ function broadcast(group, mat, lamps) {
 }
 
 function market(group, mat) {
+    const x = 6.72;
     piece(group, mat, b => {
-        for (const s of [-1, 1]) {
-            const x = s * 6.66;
-            for (const side of [-1, 1]) {
-                for (const end of [-1, 1])
-                    b.rod(spruce, x + side * 1.12, 0.14, end * 2.08,
-                        x + side * 1.12, 2.85, end * 2.08, 0.056);
-                for (let i = 0; i < 9; i++) {
-                    const z = (i - 4) * 0.52, stripe = i % 2 ? ivory : 0xd65438;
-                    b.box(stripe, x + side * 0.68, 3.06, z, 1.55, 0.09, 0.524, 0, 0, -side * 0.46);
-                    b.box(stripe, x + side * 1.36, 2.61, z, 0.08, 0.34, 0.52);
-                }
+        for (const side of [-1, 1]) {
+            for (const end of [-1, 1])
+                b.rod(spruce, x + side * 1.12, 0.14, end * 2.08,
+                    x + side * 1.12, 2.85, end * 2.08, 0.056);
+            for (let i = 0; i < 9; i++) {
+                const z = (i - 4) * 0.52, stripe = i % 2 ? ivory : 0xd65438;
+                b.box(stripe, x + side * 0.68, 3.06, z, 1.55, 0.09, 0.524, 0, 0, -side * 0.46);
+                b.box(stripe, x + side * 1.36, 2.61, z, 0.08, 0.34, 0.52);
             }
-            b.box(spruce, x, 0.7, 0.2, 2.17, 1.2, 3.71);
-            b.box(brass, x, 1.35, 0.2, 2.32, 0.12, 3.84);
-            for (let i = 0; i < 7; i++) {
-                b.box(0xb87949, x - s * 0.74, 1.48, 1.67 - i * 0.51, 0.65, 0.19, 0.48);
-                b.oval(0xe69b4f, x - s * 0.74, 1.64, 1.67 - i * 0.51, 0.28, 0.16, 0.2);
-            }
-            b.rod(spruce, s * 5.54, 0.14, 1.86, s * 5.54, 5.14, 1.86, 0.053);
-            b.rod(brass, s * 5.54, 5.14, 1.86, s * 2.07, 7.87, 0.04, 0.024);
-            b.rod(ink, s * 5.54, 5.14, 1.86, s * 1.9, 8.12, -0.21, 0.026);
-            b.rod(brass, s * 1.71, 7.61, 0, s * 2.08, 6.6, 0, 0.032);
         }
-        b.box(spruce, 0, 6.14, 0, 5.31, 1.02, 0.12);
-        b.plate('bagel', 0, 6.14, 0.067, 5.28, 1.0);
+        b.box(spruce, x, 0.7, 0.2, 2.17, 1.2, 3.71);
+        b.box(brass, x, 1.35, 0.2, 2.32, 0.12, 3.84);
+        for (let i = 0; i < 7; i++) {
+            b.box(0xb87949, x - 0.74, 1.48, 1.67 - i * 0.51, 0.65, 0.19, 0.48);
+            b.oval(0xe69b4f, x - 0.74, 1.64, 1.67 - i * 0.51, 0.28, 0.16, 0.2);
+        }
+        b.rod(brass, x, 3.32, 1.7, x, 3.73, 1.7, 0.075);
+        b.box(spruce, x, 2.78, 2.36, 2.7, 0.57, 0.1);
+        b.plate('bagel', x, 2.78, 2.415, 2.67, 0.55);
     });
     const bagel = piece(group, mat, b => {
         b.shape(dough, 0xffe2ae, 0, 0, 0, 1.19, 0.96, 0.85, 0, 0, 0, crust);
@@ -289,42 +277,34 @@ function market(group, mat) {
                 Math.sin(tube) * 0.595, 0.083, 0.038, 0.03, 0, 0, a * 2);
         }
     });
-    bagel.position.y = 8.97;
+    bagel.scale.setScalar(0.46);
+    bagel.position.set(x, 4.48, 1.7);
     return (t, reduced) => {
-        bagel.rotation.y = reduced ? -0.18 : Math.sin(t * 1.15) * 0.5;
-        bagel.rotation.z = reduced ? -0.1 : -0.1 + Math.sin(t * 0.82) * 0.075;
-        bagel.position.y = 8.97 + (reduced ? 0 : Math.sin(t * 1.5) * 0.093);
+        bagel.rotation.y = -0.25 + (reduced ? 0 : Math.sin(t * 0.8) * 0.3);
     };
 }
 
 function scandalClock(group, mat, lamps) {
+    group.position.x = -6.72;
+    group.rotation.y = 0.3;
     const bulbs = new Batch();
     piece(group, mat, b => {
-        for (const s of [-1, 1]) {
-            const x = s * 6.07;
-            b.box(spruce, x, 3.31, 0, 0.67, 6.58, 0.75);
-            b.box(brass, x, 3.32, 0.4, 0.12, 6.47, 0.07);
-            for (let j = 0; j < 3; j++)
-                b.box(j % 2 ? brass : spruce, s * (4.29 + j * 0.53), 6.79 + j * 0.24, -0.07 * j,
-                    2.64 - j * 0.3, 0.95 - j * 0.16, 0.89);
+        for (const x of [-0.88, 0.88]) {
+            b.box(spruce, x, 0.92, 0, 0.26, 1.84, 0.47);
+            b.box(brass, x, 0.93, 0.24, 0.065, 1.66, 0.04);
         }
-        b.box(0x813c34, 0, 7.36, 0, 8.05, 3.22, 0.98);
-        b.box(ink, 0, 6.94, 0.51, 7.63, 1.9, 0.13);
-        b.box(brass, 0, 8.46, 0, 8.41, 1.23, 1.12);
-        b.plate('counter', 0, 8.47, 0.567, 8.18, 1.08);
-        for (const s of [-1, 1]) {
-            for (let i = 0; i < 3; i++)
-                b.box(brass, s * (2.16 + i * 0.43), 6.94, 0.6, 0.15, 0.95 - i * 0.17, 0.17);
-        }
-        for (const y of [5.9, 9.13]) {
-            b.box(brass, 0, y, 0.35, 8.26, 0.14, 0.79);
-            for (let i = 0; i < 18; i++) {
-                const x = (i - 8.5) * 0.45;
-                b.shape(seed, 0xffdb8b, x, y, 0.75, 0.092, 0.094, 0.065);
-                bulbs.shape(face, 0xffc36c, x, y, 0.83, 0.68, 0.68, 1);
+        b.box(0x813c34, 0, 2.98, 0, 2.62, 2.5, 0.48);
+        b.box(ink, 0, 2.59, 0.25, 2.43, 1.35, 0.05);
+        b.plate('counter', 0, 3.7, 0.25, 2.56, 0.79);
+        for (const y of [1.78, 4.19]) {
+            b.box(brass, 0, y, 0.19, 2.73, 0.11, 0.3);
+            for (let i = -3; i <= 3; i++) {
+                const x = i * 0.37;
+                b.shape(seed, 0xffdb8b, x, y, 0.35, 0.057, 0.058, 0.047);
+                bulbs.shape(face, 0xffc36c, x, y, 0.41, 0.3, 0.3, 1);
             }
         }
-        b.plate('zero', -0.76, 6.91, 0.595, 1.28, 1.67);
+        b.plate('zero', -0.48, 2.59, 0.28, 0.81, 1.15);
     });
     const drum = piece(group, mat, b => {
         // Four faces rotate about a physical axle, advancing to one then back to zero.
@@ -334,7 +314,8 @@ function scandalClock(group, mat, lamps) {
                 1.28, 1.66, 1, a, 0, 0, tiles[i % 2 ? 'one' : 'zero']);
         }
     });
-    drum.position.set(0.76, 6.91, 0.34);
+    drum.scale.set(0.63, 0.69, 0.69);
+    drum.position.set(0.48, 2.59, -0.24);
     const trim = bulbs.mesh(lamps);
     group.add(trim);
     return (t, reduced) => {
@@ -355,13 +336,9 @@ function paperwork(group, mat) {
                     1.23 + i * 0.111, 0, 2.67, 0.105, 3.88, 0, Math.sin(i * 3.4) * 0.06);
             }
         }
-        for (const s of [-1, 1]) {
-            const x = s * 6;
-            b.rod(ink, x, 0.15, -2.1, x, 7.73, -2.1, 0.096);
-            b.rod(brass, x, 7.6, -2.1, s * 2.92, 6.9, -2.1, 0.042);
-        }
-        b.box(ink, 0, 6.43, -2.1, 6.44, 1.24, 0.12);
-        b.plate('permit', 0, 6.43, -2.031, 6.4, 1.22);
+        b.box(ink, -6.59, 1.76, 2.09, 2.53, 0.62, 0.09);
+        b.plate('permit', -6.59, 1.76, 2.14, 2.49, 0.59);
+        b.rod(ink, 6.65, 2.6, -1.14, 6.65, 4.23, -1.14, 0.13);
     });
     const stamp = piece(group, mat, b => {
         b.box(ink, 0, 0.16, 0, 2.94, 0.31, 2.48);
@@ -372,13 +349,13 @@ function paperwork(group, mat) {
         b.shape(cylinder, 0x8b3327, 0, 2.04, 0, 0.39, 1.64, 0.39);
         b.oval(red, 0, 2.94, 0, 1.02, 0.88, 0.98);
     });
+    stamp.scale.setScalar(0.78);
     stamp.position.x = 6.65;
     stamp.rotation.y = -0.22;
     return (t, reduced) => {
         const p = t % 2.85;
         const lift = THREE.MathUtils.smoothstep(p, 0.4, 1.75) * (1 - THREE.MathUtils.smoothstep(p, 2.3, 2.52));
-        stamp.position.y = 2.62 + (reduced ? 0.6 : 2.05 * lift);
-        stamp.rotation.z = reduced ? 0 : -0.08 * lift;
+        stamp.position.y = 2.62 + (reduced ? 0 : 0.78 * lift);
     };
 }
 
@@ -441,7 +418,8 @@ export class CityEvents {
             this.place(this.sets[id], at, speed);
             this.index++;
             if (this.index === 1) this.next = this.night ? 179.5 : 131.5;
-            else if (this.index === 2 && !this.night) this.next = 251;
+            // The opening bakery sign comes into view past the east-side tree.
+            else if (this.index === 2 && !this.night) this.next = 264;
             else this.next = at + speed * (5.8 + (edition % 4) * 0.46);
         }
         let closest = Infinity;

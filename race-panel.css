@@ -266,6 +266,28 @@
     color: var(--gold);
 }
 
+.race-takeover { display: none; }
+.race-panel[data-phase="won"] .race-board { display: none; }
+.race-panel[data-phase="won"] .race-takeover {
+    display: grid;
+    align-content: center;
+    gap: 7px;
+    padding: 9px 12px;
+    font: 700 14px/1.1 Condensed, sans-serif;
+    color: var(--race-muted);
+}
+.race-takeover > div:first-child {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 5px;
+    color: var(--paper);
+    font-size: 19px;
+}
+.race-takeover b { color: var(--gold); font-variant-numeric: tabular-nums; }
+.takeover-track { height: 5px; background: #475057; }
+.takeover-track i { display: block; height: 100%; background: #de6859; transform-origin: left; }
+
 .race-panel[data-phase="won"] .race-boost,
 .race-panel[data-phase="lost"] .race-boost {
     display: none;

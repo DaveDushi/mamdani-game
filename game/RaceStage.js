@@ -34,12 +34,12 @@ function signSheet() {
     const g = canvas.getContext('2d');
     const rows = [
         ['EAST RIVER SPRINT', '#152f43', '#ffe4a1'],
-        ['100 M   /   FINISH', '#f0ae38', '#173449'],
+        ['BROOKLYN   /   FINISH', '#f0ae38', '#173449'],
         ['BROOKLYN  /  NYC', '#18384b', '#f7e7bf'],
         ['EAST RIVER TRACK CLUB', '#e3ae4b', '#1d3745'],
         ['CITY WIRE   /   SPORT', '#efe6d5', '#19364b'],
         ['START', '#17394e', '#fff1cf'],
-        ['100 M', '#f3b442', '#153447'],
+        ['SPRINT', '#f3b442', '#153447'],
         ['FINISH', '#fff1ce', '#19364b']
     ];
     rows.forEach(([title, paper, text], i) => {
@@ -240,6 +240,7 @@ export class RaceStage {
         this.cast = cast;
         this.renderer = renderer;
         this.warmedTextures = new WeakSet();
+        this.warmedMeshes = new WeakSet();
         this.loader = new GLTFLoader();
         this.cache = new Map();
         this.pending = new Map();
@@ -283,6 +284,19 @@ export class RaceStage {
         this.shadows = [groundShadow(this.scene, 1.1, 1.2), groundShadow(this.scene, 1.1, 1.2)];
     }
 
+    addOutfit(pieces) {
+        // A player can visit the fitting room after this independent race rig was created.
+        const formal = this.player.figure.getObjectByName('Outfit_formal');
+        for (const source of pieces) {
+            const copy = source.clone(true);
+            copy.traverse(part => {
+                if (part.isSkinnedMesh) part.bind(formal.skeleton, formal.bindMatrix);
+            });
+            this.player.figure.add(copy);
+            this.wardrobe.push([source, copy]);
+        }
+    }
+
     prepare(rival) {
         if (!this.pending.has(rival.id)) {
             const loading = Promise.all([this.loadAthlete(rival.id), this.ready]).then(async ([athlete]) => {
@@ -311,9 +325,12 @@ export class RaceStage {
             await spareFrame();
             program.getUniforms();
         }
-        const textures = new Set();
+        const textures = new Set(), meshes = [];
         const collect = object => {
             if (!object.isMesh) return;
+            // Link the cutout shadow first, before the driver queues any new vertex pipelines.
+            if (object.castShadow && object.material.alphaTest > 0) meshes.unshift(object);
+            else meshes.push(object);
             for (const value of Object.values(object.material)) {
                 if (value?.isTexture && !this.warmedTextures.has(value)) textures.add(value);
             }
@@ -326,20 +343,29 @@ export class RaceStage {
             this.warmedTextures.add(texture);
         }
 
-        // A real draw also initializes the skinned vertex buffers and alpha-cutout shadow pass.
-        // The empty scissor uses the screen's shader variants without writing any street pixels.
-        await spareFrame();
-        const scissor = renderer.getScissor(new THREE.Vector4()), enabled = renderer.getScissorTest();
-        const addRival = !athlete.root.parent;
-        if (addRival) scene.add(athlete.root);
-        try {
-            renderer.setScissor(0, 0, 0, 0);
-            renderer.setScissorTest(true);
-            renderer.render(scene, camera);
-        } finally {
-            renderer.setScissor(scissor);
-            renderer.setScissorTest(enabled);
-            if (addRival) scene.remove(athlete.root);
+        // First draws build vertex pipelines even with an empty scissor. Submit a pair per frame
+        // so the driver can process them between street renders without changing any screen pixels.
+        const pending = meshes.filter(mesh => !this.warmedMeshes.has(mesh));
+        const scissor = new THREE.Vector4();
+        for (let i = 0; i < pending.length; i += 2) {
+            await spareFrame();
+            const pair = pending.slice(i, i + 2);
+            const masks = meshes.map(mesh => mesh.layers.mask);
+            const enabled = renderer.getScissorTest(), addRival = !athlete.root.parent;
+            renderer.getScissor(scissor);
+            if (addRival) scene.add(athlete.root);
+            try {
+                for (const mesh of meshes) if (!pair.includes(mesh)) mesh.layers.disableAll();
+                renderer.setScissor(0, 0, 0, 0);
+                renderer.setScissorTest(true);
+                renderer.render(scene, camera);
+                for (const mesh of pair) this.warmedMeshes.add(mesh);
+            } finally {
+                renderer.setScissor(scissor);
+                renderer.setScissorTest(enabled);
+                meshes.forEach((mesh, index) => { mesh.layers.mask = masks[index]; });
+                if (addRival) scene.remove(athlete.root);
+            }
         }
     }
 

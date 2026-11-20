@@ -1,4 +1,25 @@
 import * as THREE from 'three';
+import { Player } from './Player.js';
+
+export function createRenderer(canvas) {
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    return renderer;
+}
+
+export function sizeRenderer(renderer, quality = 1) {
+    const w = innerWidth, h = innerHeight;
+    const ratio = Math.min(devicePixelRatio || 1, 1.4, Math.sqrt(1850000 / (w * h))) * quality;
+    if (renderer.getPixelRatio() !== ratio) renderer.setPixelRatio(ratio);
+    if (renderer.domElement.width !== Math.floor(w * ratio) || renderer.domElement.height !== Math.floor(h * ratio)) {
+        renderer.setSize(w, h, false);
+    }
+}
+
+export function createFittingRoom(canvas, mayor) {
+    return new Wardrobe(createRenderer(canvas), new Player(new THREE.Group(), mayor));
+}
 
 export class Wardrobe {
     constructor(renderer, player) {
@@ -42,10 +63,13 @@ export class Wardrobe {
         this.active = false;
         this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
         this.tick = this.tick.bind(this);
+        this.resize = this.resize.bind(this);
     }
 
     open() {
+        if (this.active) return;
         this.active = true;
+        window.addEventListener('resize', this.resize);
         this.time = 1.7;
         this.turn = Math.PI + 0.21;
         this.scene.add(this.player.mesh, this.player.shadow);
@@ -54,6 +78,8 @@ export class Wardrobe {
         if (!this.reduced) this.frame = requestAnimationFrame(this.tick);
     }
     resize() {
+        if (!this.active) return;
+        sizeRenderer(this.renderer);
         const w = innerWidth,
             h = innerHeight,
             portrait = w / h < 0.8;
@@ -90,6 +116,8 @@ export class Wardrobe {
         if (!this.active) return;
         this.active = false;
         cancelAnimationFrame(this.frame);
-        city.add(this.player.mesh, this.player.shadow);
+        window.removeEventListener('resize', this.resize);
+        this.scene.remove(this.player.mesh, this.player.shadow);
+        city?.add(this.player.mesh, this.player.shadow);
     }
 }

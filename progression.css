@@ -81,10 +81,20 @@
     text-transform: uppercase;
     margin-top: 7px;
 }
-.results .stats {
-    display: grid;
-    grid-template-columns: auto 1fr 1fr;
-    gap: clamp(8px, 3vw, 24px);
+#shop-screen.preparing-preview {
+    background: radial-gradient(ellipse at 48% 38%, #70868a, #213640 78%);
+}
+#preview-status {
+    position: absolute;
+    top: max(16px, env(safe-area-inset-top));
+    left: max(16px, env(safe-area-inset-left));
+    margin: 0;
+    padding: 6px 10px;
+    max-width: min(78vw, 32ch);
+    color: #fff3d5;
+    background: #1c303d;
+    font: 700 15px/1.2 Condensed, sans-serif;
+    pointer-events: none;
 }
 #shop-screen {
     touch-action: pan-y;
@@ -148,10 +158,6 @@
     #start-screen .record { white-space: normal; line-height: 1.05; }
     #start-screen .record b { white-space: nowrap; }
     #start-screen .touch-guide { max-width: 48%; }
-    #game-over-screen { padding-inline: 10px; }
-    .results.paper { padding-inline: 12px; }
-    .results .stats strong { font-size: 26px; }
-    .results .stats small { letter-spacing: .04em; }
 }
 @media (max-aspect-ratio: 4/5) {
     .cover-copy .run-controls { width: min(100%, 300px); }
@@ -234,29 +240,28 @@
             max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
     }
     .results.paper {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-        align-content: start;
-        gap: 8px 14px;
-        width: min(100%, 760px);
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+        grid-template-areas: "mast mast" "story totals" "board board";
+        grid-template-rows: auto;
+        gap: 7px 12px;
         padding: 8px 12px;
     }
-    .results .frontpage-mast { flex-wrap: wrap; gap: 0 5px; }
-    .results .frontpage-mast b { font-size: 21px; }
-    .results .frontpage-mast span, .results .audit-line { font-size: 10px; }
-    .results .press-sketch { height: 36px; margin-block: 4px; }
-    .results #result-headline { font-size: 23px; margin: 4px 0; }
-    .results #result-copy { margin-block: 4px; font-size: 13px; }
+    .results .frontpage-mast { padding-block: 3px 4px; }
+    .results .frontpage-mast b { font-size: 23px; }
+    .results .frontpage-mast span, .results .audit-line { font-size: 11px; }
+    .results #result-headline { font-size: clamp(22px, 4.1vw, 32px); margin: 0; }
+    .results #result-copy { margin-block: 4px; font-size: 14px; }
+    .results .result-illustration { margin-block: 5px; }
+    .results .result-illustration img { aspect-ratio: 16 / 9; }
     .results .stats { gap: 5px; padding-block: 5px; }
-    .results .stats small { font-size: 11px; letter-spacing: .02em; }
+    .results .stats small { font-size: 11px; letter-spacing: .02em; white-space: nowrap; }
     .results .stats strong { font-size: 24px; margin-top: 4px; }
+    .results .stats #final-distance { font-size: 28px; }
     .results .bank-receipt { margin-top: 6px; padding: 5px 7px; }
     .results .bank-receipt p, .results #result-wallet { font-size: 13px; }
     .results .just-unlocked #result-progress { font-size: 20px; margin-top: 4px; }
     .results .best-line { margin-block: 6px; }
-    .results .action-row button { min-height: 34px; padding: 5px 11px; }
-    .results #day-board { grid-column: 1 / -1; }
-    .results #day-board h3 { margin-top: 0; }
+    .results .action-row button { padding: 5px 11px; }
 }
 @media (max-height: 530px) and (min-aspect-ratio: 1/1) {
     #start-screen .cover-copy {

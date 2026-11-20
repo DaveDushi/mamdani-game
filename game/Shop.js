@@ -1,5 +1,8 @@
+import { ApiClient } from './ApiClient.js';
 import { RIVALS, raceSpeedBonus } from './FamilyRace.js';
 import { SPEED_PRICES, walletBalance } from './Progression.js';
+import { familySchedule, raceDistance } from './RaceSchedule.js';
+import { OPENING_RECORD_METRES } from '../backend/src/season-rules.js';
 
 const $ = id => document.getElementById(id);
 const stamps = n => n.toLocaleString() + (n === 1 ? ' stamp' : ' stamps');
@@ -9,28 +12,26 @@ export function familyRecord(count) {
 }
 
 export const outfits = [
-    { id: 'default', name: 'Civilian', swatch: '#344b65' },
-    { id: 'rebel', name: 'Hamas parody fatigues', swatch: 'linear-gradient(35deg, #43503a 34%, #a69e76 35% 54%, #738056 55%)' },
-    { id: 'worker', name: 'Antifa black bloc', swatch: 'linear-gradient(140deg, #4b5055 45%, #24272d 46%)' },
-    { id: 'activist', name: 'LGBTQ+ Pride', swatch: 'linear-gradient(#df4355 17%, #e99146 17% 33%, #e9c14d 33% 50%, #43a476 50% 67%, #4d85bd 67% 83%, #8c5ca7 83%)' },
-    { id: 'imam', name: 'Imam robes', swatch: 'linear-gradient(90deg, #2c534e 36%, #c1a46a 36% 48%, #e7dcc0 48%)' }
+    { id: 'default', name: 'Mayor', swatch: '#344b65' },
+    { id: 'rebel', name: 'Zahra Mamdani', swatch: 'linear-gradient(135deg, #9acee5 40%, #e898b5 40% 60%, #f5eee9 60%)' },
+    { id: 'worker', name: 'Antifa', swatch: 'linear-gradient(140deg, #4b5055 45%, #24272d 46%)' },
+    { id: 'imam', name: 'Imam', swatch: 'linear-gradient(90deg, #2c534e 36%, #c1a46a 36% 48%, #e7dcc0 48%)' },
+    { id: 'activist', name: 'Communist', swatch: 'linear-gradient(140deg, #913138 48%, #e3b259 48% 61%, #47282a 61%)' }
 ];
 
 export class Shop {
     constructor(select, buy, resize) {
         this.selected = outfits.find((s) => s.id === localStorage.getItem('mamdani_outfit')) || outfits[0];
-        this.rivalMarks = RIVALS.map(rival => {
-            const row = document.createElement('li');
-            const name = document.createElement('span');
-            const checkpoint = document.createElement('span');
-            const mark = document.createElement('b');
-            name.textContent = rival.name;
-            checkpoint.textContent = rival.at.toLocaleString() + ' m';
-            row.append(name, checkpoint, mark);
-            $('shop-rivals').append(row);
-            return mark;
-        });
-        $('race-schedule').ontoggle = resize;
+        this.api = new ApiClient();
+        this.scheduleRequest = 0;
+        const schedule = $('race-schedule');
+        schedule.ontoggle = () => {
+            if (schedule.open) {
+                this.refreshSchedule();
+                schedule.scrollIntoView({ block: 'nearest' });
+            }
+            resize();
+        };
         for (const section of ['training', 'outfits']) {
             $('show-' + section).onclick = () => {
                 this.showSection(section);
@@ -45,12 +46,12 @@ export class Shop {
                 const { wallet, status } = await buy(this.wallet.speedLevel);
                 this.updateWallet(wallet, true);
                 if (status === 'bought') {
-                    $('speed-feedback').textContent = 'Bought speed level ' + wallet.speedLevel + '.';
+                    $('speed-feedback').textContent = 'Trained to Sprint Lv. ' + wallet.speedLevel + '.';
                 } else if (status === 'short') {
                     const missing = SPEED_PRICES[wallet.speedLevel] - walletBalance(wallet);
-                    $('speed-feedback').textContent = 'Bank ' + stamps(missing) + ' more to buy this level.';
+                    $('speed-feedback').textContent = 'Bank another ' + stamps(missing) + ' to train.';
                 } else if (status === 'changed') {
-                    $('speed-feedback').textContent = 'Another tab bought that level. Check the new price.';
+                    $('speed-feedback').textContent = 'Already trained in another tab.';
                 }
             } catch {
                 $('speed-feedback').textContent = 'Purchase could not be saved. Try again.';
@@ -77,6 +78,43 @@ export class Shop {
         });
         this.paint();
     }
+    async refreshSchedule() {
+        const request = ++this.scheduleRequest;
+        const opening = raceDistance(OPENING_RECORD_METRES);
+        this.paintSchedule(null, 'Checking record. Preview target ' + opening + '.');
+        const record = await this.api.getSeasonRecord();
+        if (request !== this.scheduleRequest || !$('race-schedule').open) return;
+        let status;
+        if (!record) {
+            status = 'Record unavailable. Offline preview at ' + opening + '.';
+        } else if (record.score === null) {
+            status = 'No season score yet. Opening target ' + opening + '.';
+        } else {
+            status = 'Season record ' + raceDistance(record.score) + '.';
+            if (record.score < OPENING_RECORD_METRES) status += ' Minimum target ' + opening + '.';
+        }
+        this.paintSchedule(record?.score ?? null, status);
+    }
+    paintSchedule(score, status) {
+        const rows = familySchedule(score).map(rival => {
+            const row = document.createElement('tr');
+            const name = document.createElement('th');
+            name.scope = 'row';
+            name.append(rival.name, ' ', document.createElement('b'));
+            row.append(name);
+            row.insertCell().textContent = raceDistance(rival.at);
+            row.insertCell().textContent = raceDistance(rival.metres);
+            return row;
+        });
+        $('shop-rivals').replaceChildren(...rows);
+        this.paintRivalMarks();
+        $('schedule-status').textContent = status;
+    }
+    paintRivalMarks() {
+        $('shop-rivals').querySelectorAll('b').forEach((mark, index) => {
+            mark.textContent = !this.available ? '' : index < this.wallet.familyBest ? 'Beaten' : index === this.wallet.familyBest ? 'Next unbeaten' : '';
+        });
+    }
     showSection(section) {
         for (const name of ['training', 'outfits']) {
             const active = section === name;
@@ -98,16 +136,14 @@ export class Shop {
         this.available = available;
         const level = wallet.speedLevel;
         const maxed = level === SPEED_PRICES.length;
-        $('speed-level').textContent = 'Level ' + level + '/' + SPEED_PRICES.length;
+        $('speed-level').textContent = 'Sprint Lv. ' + level + '/' + SPEED_PRICES.length;
         $('speed-effect').textContent = maxed
-            ? `Your taps add ${raceSpeedBonus(level)}% more speed in every family sprint.`
-            : `Train to raise your permanent speed bonus per tap from +${raceSpeedBonus(level)}% to +${raceSpeedBonus(level + 1)}% in family sprints.`;
-        $('shop-wallet').textContent = available ? 'After-tax wallet · ' + stamps(walletBalance(wallet)) : 'Stamp wallet unavailable.';
+            ? `Sprint tap boost +${raceSpeedBonus(level)}%.`
+            : `Next level boosts sprint taps from +${raceSpeedBonus(level)}% to +${raceSpeedBonus(level + 1)}%.`;
+        $('shop-wallet').textContent = available ? 'Wallet · ' + stamps(walletBalance(wallet)) : 'Stamp wallet unavailable.';
         $('buy-speed').textContent = maxed ? 'Fully trained' : 'Buy level ' + (level + 1) + ' · ' + stamps(SPEED_PRICES[level]);
-        $('shop-record').textContent = available ? 'Family best on this device · ' + familyRecord(wallet.familyBest) : 'Family record unavailable.';
-        this.rivalMarks.forEach((mark, index) => {
-            mark.textContent = !available ? '' : index < wallet.familyBest ? 'Beaten' : index === wallet.familyBest ? 'Next to beat' : '';
-        });
+        $('shop-record').textContent = available ? 'Device best · ' + familyRecord(wallet.familyBest) : 'Family record unavailable.';
+        this.paintRivalMarks();
         this.paintBuyButton();
     }
     paintBuyButton() {

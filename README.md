@@ -1,16 +1,20 @@
 # Mamdani Run — Escape Trump!
 
-A portrait-first 3D endless runner by Dave Dushi. In this fictional New York, Mayor Mamdani has endorsed every march on the calendar. Trump wants the receipts for his five-year plan. The mayor has five minutes to get across town.
+A portrait-first 3D endless runner by Dave Dushi. In this fictional New York, Mayor Mamdani has endorsed every march on the calendar. Trump wants the receipts for his five-year plan.
 
 ## Play
 
-Swipe left or right to change lanes, up to jump and down to slide. On a keyboard, use the arrow keys or WASD. Space also jumps. Tap the pause button or press P or Escape to pause and reread the last street sign. In Outfits, drag or use the turn buttons to inspect each costume. The Posters gallery contains all nine City Hall prints with large-text captions.
+Swipe left or right to change lanes, up to jump and down to slide. On a keyboard, use the arrow keys or WASD. Space also jumps. Tap the pause button or press P or Escape to pause and reread the last street sign. In Shop → Free outfits, drag or use the turn buttons to inspect each costume. The Posters gallery contains all nine City Hall prints with large-text captions.
 
-Follow the painted arrows through the three lanes. Jump the low striped barriers and slide under the overhead beams. When both routes are marked, pick either stunt. The route crosses the Brooklyn and Manhattan bridges and passes through the Queens–Midtown and Brooklyn–Battery tunnels. Watch the sidewalks for the fare strike, bagel bailout and mobile press unit. The City Wire prints a front page about the obstacle that caught you.
+Follow the lane markings. The opening stunt gates teach the moves. Jump low hurdles, slide under beams, or clear the waist-high ticket rail either way. The route crosses the Brooklyn and Manhattan bridges and passes through the Queens–Midtown and Brooklyn–Battery tunnels. Watch the sidewalks for the fare strike, bagel bailout and mobile press unit. On a loss, City Wire runs a Stars and Stripes front page with the score and stamp receipt.
 
 Distance determines your score. One collision starts a five-second chase. A second collision during the chase ends the run. The Stamp Office takes 90 out of every 100 food stamps. Bank 150 after tax across completed runs to unlock Night Shift, a faster course with wet streets, rarer pickups and a separate local best. Outfits stay free. See [game rules](game-rules.md) for obstacles and power-ups.
 
-At 1,000 m, Donald Jr. challenges Mamdani to a 100 m sprint. Tap the sprint pad or press Space repeatedly to build speed. The next five races are farther apart. Beating Donald in the sixth race opens Overtime, where street traffic moves 10% faster. Shop & outfits sells permanent race-speed upgrades for after-tax stamps and shows your furthest win. Night Shift counts lifetime earnings, including stamps you have spent.
+Race Donald Jr., Ivanka, Eric, Tiffany and Barron in order. Tap the sprint pad or press Space repeatedly. The five kids race offline too. Their opening sprints range from 32 to 48 m and grow harder and longer, up to 100 m, as the season record rises. The Shop shows each street checkpoint and sprint length. Spend after-tax stamps there for permanent sprint training. Spent stamps still count toward Night Shift.
+
+After five wins in one run, pass both 420 m and the live season record while online to qualify for Donald's 100 m final. On an empty board, Donald can appear from 421 m. The opening campaign aims for about a minute of street running and sprints before the final. Each win changes one sixth of the city. Beat Donald to complete the takeover and continue in endless Overtime at 10% higher speed.
+
+Day Run and Night Shift share the new Season 2.3.1 distance rankings. Earlier scores stay on the historical board.
 
 ## Run locally
 
@@ -20,7 +24,7 @@ Use Node.js 22 or newer, then run `npm ci` and `npm run dev`. Use `npm run build
 
 On a Mac with Xcode 26 and an iOS Simulator runtime, run `npm ci`, `npm run ios:sync`, then `npm run ios:open`. Select the App scheme and an iPhone simulator and press Run. Run `npm run ios:sync` again after changing the game. To install on a physical iPhone, select your development team in Signing & Capabilities.
 
-The Capacitor app bundles the game, fonts, posters and models for offline play. Leaderboards and feedback use the existing online service. Runs pause when the app loses focus.
+The iPhone release is pending. The Capacitor app bundles the game, fonts, posters and models for offline play. Qualifying for Donald's final, viewing the season rankings and sending feedback require a connection. Runs pause when the app loses focus.
 
 ## Analytics and creator support
 

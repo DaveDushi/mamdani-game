@@ -1,30 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-
-const loader = new GLTFLoader();
-let castRequest;
-
-export function loadCast() {
-    if (!castRequest) {
-        const names = ['mayor', 'chaser', 'commuter', 'new-yorker', 'apparel'];
-        castRequest = Promise.all(
-            names.map(async (name) => [
-                name,
-                await loader.loadAsync(import.meta.env.BASE_URL + 'models/' + name + '.glb')
-            ])
-        )
-            .then(Object.fromEntries)
-            .then((cast) => {
-                cast.mayor.apparel = cast.apparel.scene;
-                return cast;
-            })
-            .catch((error) => {
-                castRequest = null;
-                throw error;
-            });
-    }
-    return castRequest;
-}
+export { loadCast, loadMayor } from './Cast.js';
 
 export class RunnerModel {
     constructor(asset, chaser = false) {
@@ -50,18 +25,9 @@ export class RunnerModel {
         if (!chaser) {
             this.suits = new Map([['default', outfit]]);
             this.headwear = new Map();
-            // The clothing was tailored in the mayor's bind pose. All layers follow his live skeleton.
             for (const piece of [...asset.apparel.children]) {
-                if (piece.isBone) continue;
-                piece.traverse((part) => {
-                    if (!part.isSkinnedMesh) return;
-                    part.bind(outfit.skeleton, outfit.bindMatrix);
-                    part.material.emissive = this.material.emissive;
-                });
-                this.figure.add(piece);
-                piece.visible = false;
-                if (piece.name.startsWith('Suit_')) this.suits.set(piece.name.slice(5), piece);
-                if (piece.name.startsWith('Head_')) this.headwear.set(piece.name.slice(5), piece);
+                if (piece.name.startsWith('Suit_')) this.addOutfit(piece.name.slice(5), { scene: asset.apparel });
+                else if (!piece.isBone && !piece.name.startsWith('Head_')) this.attachClothing(piece);
             }
             this.scarf = this.figure.getObjectByName('Keffiyeh');
             this.flag = this.figure.getObjectByName('Rainbow_flag');
@@ -87,6 +53,32 @@ export class RunnerModel {
         this.crouch = this.mixer.clipAction(clip('Crouch')).play();
         this.jump = this.mixer.clipAction(clip('Run').clone()).play();
         this.pose(0, 0, 0, 0, true);
+    }
+
+    attachClothing(piece) {
+        // Every wardrobe pack uses the mayor's bind pose and joint order.
+        const formal = this.suits.get('default');
+        piece.traverse(part => {
+            if (!part.isSkinnedMesh) return;
+            part.bind(formal.skeleton, formal.bindMatrix);
+            part.material.emissive = this.material.emissive;
+            part.castShadow = true;
+            part.receiveShadow = false;
+            part.frustumCulled = false;
+        });
+        this.figure.add(piece);
+        piece.visible = false;
+    }
+
+    addOutfit(id, asset) {
+        if (!asset || this.suits.has(id)) return [];
+        const suit = asset.scene.getObjectByName('Suit_' + id);
+        const cap = asset.scene.getObjectByName('Head_' + id);
+        const pieces = cap ? [suit, cap] : [suit];
+        for (const piece of pieces) this.attachClothing(piece);
+        this.suits.set(id, suit);
+        if (cap) this.headwear.set(id, cap);
+        return pieces;
     }
 
     setOutfit(id) {

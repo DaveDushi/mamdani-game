@@ -830,63 +830,117 @@ h1 strong {
 #effect:empty {
     display: none;
 }
+.results.paper {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    grid-template-areas:
+        "mast mast"
+        "story totals"
+        "story board";
+    grid-template-rows: auto auto 1fr;
+    align-content: start;
+    column-gap: clamp(16px, 3vw, 34px);
+    row-gap: 10px;
+    width: min(100%, 940px);
+    padding: clamp(14px, 2.5vw, 25px);
+    border-top: 5px solid #9a2e28;
+    overscroll-behavior: contain;
+}
 .frontpage-mast {
+    grid-area: mast;
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    gap: 12px;
-    border-block: 3px double #564a38;
-    padding: 4px 0;
+    gap: 8px;
+    border-block: 1px solid #756858;
+    padding: 6px 0 8px;
 }
 .frontpage-mast b {
-    font:
-        bold clamp(24px, 4vw, 38px)/1 Georgia,
-        serif;
+    font: bold clamp(24px, 3vw, 36px)/1 Georgia, serif;
     letter-spacing: -0.06em;
 }
 .frontpage-mast span,
 .results .audit-line {
-    font:
-        700 12px/1.2 Condensed,
-        sans-serif;
+    color: #792c2a;
+    font: 700 13px/1.2 Condensed, sans-serif;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: .045em;
 }
-.press-sketch {
-    height: clamp(76px, 15svh, 142px);
-    margin: 7px 0 5px;
-    background: url('/art/front-page.webp') center 47% / cover;
-    mix-blend-mode: multiply;
-    border-bottom: 1px solid #a59a80;
+.result-story {
+    grid-area: story;
+    min-width: 0;
+}
+.result-illustration {
+    margin: 8px 0;
+    border-bottom: 3px solid #9a2e28;
+}
+.result-illustration img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    object-position: 55% 12%;
+    background: #dbc9aa;
 }
 .results #result-headline {
-    font:
-        bold clamp(29px, 4.6vw, 49px)/0.97 Georgia,
-        serif;
+    font: bold clamp(28px, 4.3vw, 52px)/.97 Georgia, serif;
     text-transform: none;
-    letter-spacing: -0.055em;
-    margin: 7px 0;
+    letter-spacing: -.05em;
+    margin: 0 0 7px;
 }
 .results #result-copy {
-    margin: 6px 0 9px;
+    margin: 6px 0 8px;
+    max-width: 62ch;
+    line-height: 1.33;
 }
 .results .audit-line {
-    color: #784632;
-    margin: 9px 0;
+    margin: 8px 0 0;
+    line-height: 1.3;
 }
-@media (max-width: 520px) {
-    .results .stats {
-        gap: 16px;
-    }
-    .results .stats strong {
-        font-size: 28px;
-    }
+.result-totals {
+    grid-area: totals;
+    min-width: 0;
 }
 .results .stats {
-    display: flex;
-    gap: 32px;
-    padding: 15px 0;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr;
+    align-items: baseline;
+    gap: 6px 12px;
+    padding: 9px 0 10px;
     border-block: 1px solid #b8ac99;
+}
+.results .stats strong {
+    font-size: clamp(24px, 3.2vw, 38px);
+    font-variant-numeric: tabular-nums;
+}
+.results .stats #final-distance {
+    color: #792c2a;
+    font-size: clamp(31px, 4.1vw, 49px);
+    white-space: nowrap;
+}
+.results .action-row {
+    margin-top: 8px;
+    gap: 8px;
+}
+.results .action-row .solid {
+    flex: 1;
+    background: #1b3348;
+}
+.results .action-row .solid:hover {
+    background: #314b62;
+}
+.results.paper button {
+    min-height: 44px;
+}
+.results .bank-receipt .text-btn,
+.results #day-board .text-btn {
+    margin-top: 1px;
+}
+.results #day-board {
+    grid-area: board;
+    min-width: 0;
+    border-top: 1px solid #b8ac99;
 }
 .stats small {
     display: block;
@@ -905,11 +959,35 @@ h1 strong {
         700 24px Condensed,
         sans-serif;
     text-transform: uppercase;
-    margin: 23px 0 8px;
+    margin: 8px 0 4px;
 }
 #leaderboard-list {
-    max-height: 18svh;
+    max-height: clamp(106px, 22svh, 210px);
     overflow: auto;
+}
+@media (max-width: 600px) and (orientation: portrait) {
+    #game-over-screen {
+        padding-inline: max(9px, env(safe-area-inset-left)) max(9px, env(safe-area-inset-right));
+    }
+    .results.paper {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: "mast" "story" "totals" "board";
+        grid-template-rows: auto;
+        gap: 8px;
+        padding: 10px 12px;
+        box-shadow: 3px 4px 0 #0e1b24;
+    }
+    .results #result-copy {
+        font-size: 15px;
+    }
+}
+@media (max-height: 650px) and (orientation: portrait) {
+    .result-illustration img {
+        aspect-ratio: 8 / 5;
+    }
+    .results .audit-line {
+        font-size: 12px;
+    }
 }
 .rankings-paper { width: min(100%, 520px); min-width: 0; }
 .rankings-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }

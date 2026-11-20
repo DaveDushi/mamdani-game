@@ -3,13 +3,17 @@ import { Batch, labelMaterial } from './Geometry.js';
 
 const width = 2.96;
 export const slideClearance = 1.38;
+export const railClearance = 1.1;
+export const railInnerFoot = 1.1;
 export const skillGateBounds = {
     jumpGate: [width / 2, 1.08, 0.62],
     slideGate: [width / 2, 2.44, 0.62],
+    railGate: [width / 2, 1.28, 0.62],
     gateBlock: [width / 2, 2.68, 0.62]
 };
+const reflective = new MeshBasicMaterial({ vertexColors: true, toneMapped: false });
 
-function gateModel(key, bottom, face, paper, ink, signWidth) {
+function gateModel(key, bottom, color, sign) {
     const [, top, depth] = skillGateBounds[key];
     const height = top - bottom;
     const middle = bottom + height / 2;
@@ -17,27 +21,55 @@ function gateModel(key, bottom, face, paper, ink, signWidth) {
     const markings = 0xe6c54e;
     const batch = new Batch();
     batch.box(frame, 0, middle, 0, width, height, depth * 2);
-    batch.box(markings, 0, bottom + 0.095, depth + 0.004, width, 0.13, 0.01);
+    const trim = new Batch();
+    for (const y of [bottom + 0.095, top - 0.095])
+        trim.box(color, 0, y, depth + 0.009, width, 0.11, 0.02);
     for (const side of [-1, 1]) {
         batch.box(frame, side * (width / 2 - 0.085), top / 2, 0, 0.17, top, depth * 2);
         for (const y of [bottom + 0.25, top - 0.17])
-            batch.box(markings, side * 1.3, y, depth + 0.012, 0.13, 0.21, 0.025, 0, 0, -side * 0.55);
+            trim.box(markings, side * 1.3, y, depth + 0.019, 0.13, 0.21, 0.025, 0, 0, -side * 0.55);
+        if (bottom) trim.box(color, side * 1.39, bottom / 2, depth + 0.009, 0.075, bottom * 0.74, 0.02);
     }
     const model = new Group();
-    const sign = new Mesh(
-        new PlaneGeometry(signWidth, Math.min(1.12, height - 0.25)),
-        labelMaterial([face], paper, ink, 384, 144)
-    );
-    sign.position.set(0, middle + 0.04, depth + 0.03);
-    model.add(batch.mesh(), sign);
+    model.add(batch.mesh(), trim.mesh(reflective));
+    if (sign) {
+        const [face, paper, ink] = sign;
+        const plate = new Mesh(new PlaneGeometry(2.4, height - 0.25), labelMaterial([face], paper, ink, 384, 144));
+        plate.name = 'tutorialSign';
+        plate.position.set(0, middle + 0.04, depth + 0.04);
+        model.add(plate);
+    }
+    return model;
+}
+
+function ticketRail() {
+    const [, top, footDepth] = skillGateBounds.railGate;
+    const beamDepth = 0.24;
+    const material = 0x4b3d36;
+    const frame = new Batch();
+    const trim = new Batch();
+    const ivory = 0xffe8b1;
+    const middle = (top + railClearance) / 2;
+    frame.box(material, 0, middle, 0, width, top - railClearance, beamDepth * 2);
+    trim.box(ivory, 0, middle, beamDepth + 0.01, width, 0.13, 0.02);
+    for (const side of [-1, 1]) {
+        const x = side * (railInnerFoot + 0.18);
+        frame.box(material, x, railClearance / 2, 0, 0.18, railClearance, 0.24);
+        frame.box(material, x, 0.06, 0, 0.36, 0.12, footDepth * 2);
+        trim.box(ivory, x, railClearance / 2, 0.13, 0.08, 0.86, 0.02);
+        trim.box(0xf28d56, side * 1.35, middle, beamDepth + 0.025, 0.2, 0.14, 0.02);
+    }
+    const model = new Group();
+    model.add(frame.mesh(), trim.mesh(reflective));
     return model;
 }
 
 export function skillGateModels() {
     return {
-        jumpGate: gateModel('jumpGate', 0, '↑ JUMP', '#ffdc69', '#29212a', 2.4),
-        slideGate: gateModel('slideGate', slideClearance, '↓ SLIDE', '#a5eff3', '#16313e', 2.4),
-        gateBlock: gateModel('gateBlock', 0, '×', '#34313c', '#ffac8c', 1.46)
+        jumpGate: gateModel('jumpGate', 0, 0xffdc69, ['↑ JUMP', '#ffdc69', '#29212a']),
+        slideGate: gateModel('slideGate', slideClearance, 0xa5eff3, ['↓ SLIDE', '#a5eff3', '#16313e']),
+        railGate: ticketRail(),
+        gateBlock: gateModel('gateBlock', 0, 0xe18a62)
     };
 }
 
@@ -55,10 +87,9 @@ function roadCue(points, color, material) {
 }
 
 export function courseCueModels() {
-    const material = new MeshBasicMaterial({ vertexColors: true, toneMapped: false });
     return {
-        laneCue: roadCue(chevron, 0xf2e9d2, material),
-        jumpCue: roadCue(arrow, 0xffdc69, material),
-        slideCue: roadCue(arrow.map(([x, y]) => [x, -y]), 0xa5eff3, material)
+        laneCue: roadCue(chevron, 0xf2e9d2, reflective),
+        jumpCue: roadCue(arrow, 0xffdc69, reflective),
+        slideCue: roadCue(arrow.map(([x, y]) => [x, -y]), 0xa5eff3, reflective)
     };
 }

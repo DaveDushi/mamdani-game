@@ -5,6 +5,7 @@ import { Batch, artTexture } from './Geometry.js';
 import { Landmarks, districts, districtAt } from './Landmarks.js';
 import { CityEvents } from './CityEvents.js';
 import { Crossings, streetClear } from './Crossings.js';
+import { TakeoverBlock } from './Takeover.js';
 
 const LENGTH = 48,
     BLOCKS = 5;
@@ -60,13 +61,14 @@ function streetLamp(batch, glows, side, z, withSignal) {
     glows.shape(face, 0xffcb75, bulb, 4.41, z + 0.15, 1.35, 1.13, 1);
     glows.shape(face, 0xe69c51, bulb - side * 0.64, 0.023, z, 4.1, 7.4, 1, -Math.PI / 2);
     if (withSignal) {
-        batch.box(0x5e645a, x - side * 1.3, 4.19, z, 2.65, 0.081, 0.09);
-        batch.box(0xc38c38, x - side * 2.52, 3.88, z, 0.37, 0.82, 0.32);
-        batch.box(0x323e39, x - side * 2.52, 3.88, z + 0.18, 0.28, 0.74, 0.035);
+        const signalX = x - side * 0.52;
+        batch.box(0x5e645a, x - side * 0.26, 4.19, z, 0.61, 0.081, 0.09);
+        batch.box(0xc38c38, signalX, 3.88, z, 0.37, 0.82, 0.32);
+        batch.box(0x323e39, signalX, 3.88, z + 0.18, 0.28, 0.74, 0.035);
         for (let i = 0; i < 3; i++)
             batch.oval(
                 [0xff7854, 0x8e753f, 0x416558][i],
-                x - side * 2.52,
+                signalX,
                 4.11 - i * 0.226,
                 z + 0.21,
                 0.092,
@@ -110,7 +112,9 @@ function subwayTrain(material) {
 
 function block(index, mats, cast) {
     let train = null;
+    let railway = null;
     const newsstands = [];
+    const takeover = new TakeoverBlock();
     const paving = new Batch();
     const group = new THREE.Group(),
         details = new Batch(),
@@ -144,7 +148,11 @@ function block(index, mats, cast) {
             const wallTile = localFacade
                 ? [0.001, (k % 2) * 0.5 + 0.001, 1 / 3 - 0.002, 0.498]
                 : [(tile % 3) / 3 + 0.001, 1 - (Math.floor(tile / 3) + 1) / 2 + 0.001, 1 / 3 - 0.002, 0.498];
-            (localFacade ? districtWalls : walls).shape(
+            const facade = localFacade ? districtWalls : walls;
+            const stage = 1 + (j * 2 + sideIndex + index + 4) % 6;
+            takeover.plots.push({ stage, side, z });
+            const facadeStart = facade.parts.length;
+            facade.shape(
                 cube,
                 0xffffff,
                 x,
@@ -158,6 +166,8 @@ function block(index, mats, cast) {
                 0,
                 wallTile
             );
+            takeover.replaceParts(facade, facadeStart, stage);
+            const detailStart = details.parts.length;
             if (k % 3 === 0) {
                 // Balconies and ladders project past the brick, visible in silhouette down the street.
                 for (let level = 0; level < 2; level++) {
@@ -200,6 +210,7 @@ function block(index, mats, cast) {
                 side * 0.2
             );
             details.box(awning, side * (wallX - 0.93), height * 0.22 - 0.15, z, 0.08, 0.22, depth * 0.74);
+            takeover.replaceParts(details, detailStart, stage);
             if (j === (sideIndex ? 0 : 1)) {
                 const az = z + 3.4,
                     ax = side * 6.65,
@@ -277,31 +288,35 @@ function block(index, mats, cast) {
         details.shape(pole, 0x445951, side * 6.15, 0.47, -8.2, 0.31, 0.86, 0.31);
         details.shape(pole, 0x343d39, side * 6.15, 0.907, -8.2, 0.27, 0.03, 0.27);
     }
-    // Riveted elevated railway at the cross street, with daylight between its girders.
-    if (index === 2 || index === 4) {
+    if (index === 3) {
+        railway = new THREE.Group();
+        const viaduct = new Batch();
         train = subwayTrain(mats.details);
-        group.add(train);
-        for (const z of [-2.2, -0.32]) {
-            details.box(0x365350, 0, 6.23, z, 35, 0.59, 0.18);
-            details.box(0x59716a, 0, 6.55, z, 35, 0.095, 0.26);
-            for (let x = -12; x <= 12; x += 1) details.box(0x73877b, x, 6.24, z + 0.12, 0.06, 0.46, 0.045);
-        }
-        for (let x = -14; x < 15; x += 0.87) details.box(0x575c50, x, 6.61, -1.26, 0.21, 0.17, 2.6);
+        train.position.y = 4;
+        viaduct.box(0x59716a, 0, 10.57, -1.26, 35, 0.15, 2.19);
+        for (const z of [-2.2, -0.32]) viaduct.box(0x365350, 0, 10.3, z, 35, 0.39, 0.18);
         for (const s of [-1, 1]) {
-            details.box(0x365350, s * 5.85, 3.04, -1.3, 0.25, 6.08, 0.55);
-            details.box(0x51695e, s * 5.4, 5.58, -1.3, 0.19, 1.5, 0.34, 0, 0, -s * 0.73);
+            viaduct.box(0x365350, s * 6.15, 5.06, -1.3, 0.31, 10.12, 0.65);
+            viaduct.box(0x51695e, s * 5.64, 9.47, -1.3, 0.23, 1.68, 0.47, 0, 0, -s * 0.73);
+            for (const y of [0.38, 4.9, 9.3])
+                viaduct.box(0x53746a, s * 6.15, y, -1.3, 0.44, 0.19, 0.75);
         }
+        railway.add(viaduct.mesh(mats.details), train);
+        group.add(railway);
     }
     const greenery = trees.mesh(mats.trees);
     greenery.castShadow = true;
-    const furniture = details.mesh(mats.details);
+    const furniture = takeover.bake(details, mats.details);
     furniture.receiveShadow = true;
-    group.add(paving.mesh(mats.paving), furniture, walls.mesh(mats.walls), signs.mesh(mats.signs), greenery);
+    group.add(paving.mesh(mats.paving), furniture, takeover.bake(walls, mats.walls), signs.mesh(mats.signs), greenery);
     const posters = ads.mesh(mats.ads);
-    const fronts = districtWalls.mesh(mats.district);
+    const fronts = takeover.bake(districtWalls, mats.district);
     group.add(posters, fronts, glows.mesh(mats.lamps));
     return {
         group,
+        takeover,
+        greenery,
+        railway,
         train,
         posters,
         newsstands,
@@ -335,6 +350,8 @@ export class World {
             details: new THREE.MeshLambertMaterial({ vertexColors: true })
         };
         this.blocks = Array.from({ length: BLOCKS }, (_, i) => block(i, mats, cast));
+        this.streetMaterials = mats;
+        this.takeoverWins = 0;
         this.blocks.forEach((b) => scene.add(b.group));
         this.landmarks = new Landmarks(scene, mats.details);
         this.crossings = new Crossings(scene);
@@ -370,11 +387,28 @@ export class World {
         return this.events?.currentEventLabel ?? '';
     }
 
+    setTakeover(wins) {
+        const stage = THREE.MathUtils.clamp(Math.trunc(wins), 0, 6);
+        if (this.takeoverWins === stage) return;
+        this.takeoverWins = stage;
+        this.blocks.forEach((b, i) => {
+            b.takeover.set(stage, b.group);
+            b.greenery.visible = stage < i + 2;
+        });
+        const amount = stage / 6;
+        const mats = this.streetMaterials;
+        mats.details.color.setRGB(1 - amount * 0.42, 1 - amount * 0.32, 1 - amount * 0.24);
+        mats.paving.color.setRGB(1 - amount * 0.39, 1 - amount * 0.32, 1 - amount * 0.25);
+        this.light.setTakeover(amount);
+        this.light.update(this.distance);
+    }
+
     reset(mode = 'day') {
         this.courseMode = mode;
         this.overtime = false;
         this.speed = courseSpeed(0, mode);
         this.distance = 0;
+        if (this.takeoverWins) this.setTakeover(0);
         this.trainTime = 0;
         this.landmarks.update(0);
         this.light.update(0);
@@ -382,7 +416,7 @@ export class World {
         this.events?.reset(mode, this.speed);
         this.blocks.forEach((b, i) => {
             b.group.position.z = 15 - i * LENGTH;
-            if (b.train) b.train.position.x = i === 2 ? -11 : 20;
+            if (b.railway) b.railway.visible = false;
             b.group.visible = this.blockVisible(b);
             this.setPosters(b, 0);
         });
@@ -435,9 +469,14 @@ export class World {
             if (b.group.position.z >= LENGTH + 15) {
                 b.group.position.z -= LENGTH * BLOCKS;
                 this.setPosters(b, districtAt(this.distance - b.group.position.z + LENGTH / 2));
+                if (b.railway) {
+                    // One El crossing at 370 m, then every 1,440 m, between the river and tunnel.
+                    const blockNumber = Math.round((this.distance - b.group.position.z + 15) / LENGTH);
+                    b.railway.visible = blockNumber % 30 === 8;
+                }
             }
             b.group.visible = this.blockVisible(b);
-            if (b.train) b.train.position.x = ((this.trainTime + (b === this.blocks[2] ? 20 : 52)) % 70) - 35;
+            if (b.railway?.visible) b.train.position.x = ((this.trainTime + 20) % 70) - 35;
             for (const person of b.residents) person.visible = b.group.position.z + person.position.z > -45;
         }
     }

@@ -122,6 +122,20 @@ function plaque(group, material, x, y, z, width, height) {
     group.add(sign);
 }
 
+function portalLettering(name) {
+    const map = texture(1024, 96, (ctx, w, h) => {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '700 76px Condensed, Arial';
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = '#384a46';
+        ctx.fillStyle = '#f8ecd0';
+        ctx.strokeText(name, w / 2, h / 2, w - 16);
+        ctx.fillText(name, w / 2, h / 2, w - 16);
+    });
+    return new THREE.MeshBasicMaterial({ map, alphaTest: 0.35, toneMapped: false });
+}
+
 function waterMaterial() {
     const map = texture(512, 256, (c, w, h) => {
         const noise = random(47052);
@@ -240,15 +254,12 @@ function steelTower(b, z) {
         b.box(dark, side * 6.8, 16.93, z, 1.6, 0.46, 1.8);
         b.box(blue, side * 6.8, 17.34, z, 0.8, 0.39, 1.1);
     }
-    for (const y of [9, 11, 14.5, 16.1]) b.box(blue, 0, y, z, 15.52, 0.31, 1.88);
-    for (let n = 0; n < 8; n++) {
-        const x = -6 + n * 1.5;
-        for (const [bottom, top] of [[9, 11], [14.5, 16.1]])
-            beam(b, light, x, n % 2 ? top : bottom, z + 0.87, x + 1.5, n % 2 ? bottom : top, z + 0.87, 0.103, true);
-    }
-    for (const s of sides) {
-        beam(b, dark, s * 5.9, 11.05, z, 0, 14.5, z, 0.19, true);
-        beam(b, dark, s * 5.9, 14.5, z, 0, 11.05, z, 0.19, true);
+    // The towers meet in one high lattice truss. The open span below frames the next gate.
+    for (const y of [14.3, 16.1]) b.box(blue, 0, y, z, 15.52, 0.31, 1.88);
+    for (let n = 0; n < 6; n++) {
+        const x = -6.75 + n * 2.25;
+        beam(b, light, x, n % 2 ? 16.1 : 14.3, z + 0.87,
+            x + 2.25, n % 2 ? 14.3 : 16.1, z + 0.87, 0.11, true);
     }
 }
 
@@ -289,7 +300,7 @@ function bridge(group, mats, steel) {
         }
     }
     const sign = mats.signs[steel ? 2 : 0];
-    plaque(group, sign, 0, steel ? 10 : 13.73, -18.83, 8.2, 0.97);
+    plaque(group, sign, steel ? 6.8 : -6.875, 5.2, -18.79, 3.24, 1.24);
     const height = steel ? 16.5 : 15.5;
     const cableY = d => {
         if (d < 20) return 1.45 + (height - 1.45) * (d / 20) ** 1.26;
@@ -387,6 +398,17 @@ function portal(b, group, sign, z, entrance, battery) {
     const trim = battery ? 0x8d6447 : 0x567a74;
     // The upper facade follows the vault opening. Its solid rear face reads from inside the bore.
     for (const side of sides) {
+        const rim = surface(17, 1, (u, v) => {
+            const a = u * Math.PI / 2;
+            return [side * Math.cos(a) * (5.95 + v * 0.49), 2.9 + Math.sin(a) * (5.1 + v * 0.49),
+                z + (entrance ? 0.26 : -0.21), u, v];
+        });
+        b.shape(rim, shadow, 0, 0, 0);
+        rim.dispose();
+        if (!entrance) {
+            b.box(shadow, side * 6.19, 1.45, z, 0.48, 2.9, 0.56);
+            continue;
+        }
         const cap = surface(14, 1, (u, v) => {
             const a = u * Math.PI / 2, x = side * Math.cos(a) * 5.95, y = 2.9 + Math.sin(a) * 5.1;
             return [x, y + (10.15 - y) * v, z, u, v];
@@ -402,18 +424,12 @@ function portal(b, group, sign, z, entrance, battery) {
         for (let i = 0; i < 5; i++)
             b.box(0x5a6966, side * 8.42, 7.79 - i * 0.28, z + 0.23, 1.66, 0.12, 0.11);
         b.box(pale, side * 8.14, 9.78, z - 0.33, 4.62, 0.37, 1.42);
-        const rim = surface(17, 1, (u, v) => {
-            const a = u * Math.PI / 2;
-            return [side * Math.cos(a) * (5.95 + v * 0.49), 2.9 + Math.sin(a) * (5.1 + v * 0.49),
-                z + (entrance ? 0.26 : -0.21), u, v];
-        });
-        b.shape(rim, shadow, 0, 0, 0);
-        rim.dispose();
     }
-    b.box(shadow, 0, 9.13, z - 0.13, 12.24, 1.57, 1.13);
+    if (!entrance) return;
     b.box(pale, 0, 10.03, z - 0.13, 12.89, 0.26, 1.45);
     b.box(trim, 0, 10.25, z - 0.16, 13.04, 0.15, 1.51);
-    if (entrance) plaque(group, sign, 0, 9.15, z + 0.45, 11.66, 1.31);
+    // Letters sit flush on the masonry above the bore; there is no signboard below the crown.
+    plaque(group, sign, 0, 9.52, z + 0.025, 9.6, 0.9);
 }
 
 function tunnel(group, mats, battery) {
@@ -464,8 +480,8 @@ export class Crossings {
             water: waterMaterial(), stone: stoneMaterial(),
             bridgeRoad: roadway(false), tunnelRoad: roadway(true),
             tiles: [tileMaterial(false), tileMaterial(true)],
-            signs: names.map((name, i) => labelMaterial([name.toUpperCase()],
-                ['#394c48', '#245551', '#344e60', '#624b39'][i], '#fff3ce', 1024, 120))
+            signs: names.map((name, i) => i % 2 ? portalLettering(name.toUpperCase())
+                : labelMaterial(name.toUpperCase().split(' '), i === 0 ? '#394c48' : '#344e60', '#fff3ce', 640, 240))
         };
         this.materials = mats;
         this.riverStart = { value: -BRIDGE };

@@ -15,29 +15,9 @@ const jade = 0x21695d;
 const stone = 0xc8bda8;
 const trim = 0xe1d7bc;
 
-// A phone's chase camera trails several metres behind the runner. Fade only overhead
-// geometry that has passed him, leaving the lanterns and the next lane decision in view.
-function clearPassedOverhangs(material) {
-    material.onBeforeCompile = shader => {
-        shader.vertexShader = 'varying vec2 overheadYZ;\n' + shader.vertexShader.replace(
-            '#include <begin_vertex>',
-            '#include <begin_vertex>\noverheadYZ = (modelMatrix * vec4(transformed, 1.0)).yz;'
-        );
-        shader.fragmentShader = 'varying vec2 overheadYZ;\n' + shader.fragmentShader.replace(
-            '#include <clipping_planes_fragment>',
-            `#include <clipping_planes_fragment>
-            if (overheadYZ.x > 3.2 && overheadYZ.y > 0.0) {
-                float threshold = fract(dot(floor(gl_FragCoord.xy), vec2(0.7549, 0.5698)));
-                if (overheadYZ.y >= 2.0 * threshold) discard;
-            }`
-        );
-    };
-    return material;
-}
-
 function sign(group, text, bg, ink, x, y, z, w, h, angle = 0) {
     const material = labelMaterial(text, bg, ink, 768, Math.round(768 * h / w));
-    const plate = new THREE.Mesh(face, clearPassedOverhangs(material));
+    const plate = new THREE.Mesh(face, material);
     plate.scale.set(w, h, 1);
     plate.position.set(x, y, z);
     plate.rotation.y = angle;
@@ -105,6 +85,11 @@ function tiledRoof(b, y, width, depth) {
 }
 
 function canal(b, group) {
+    // The gate opens into a courtyard beside the avenue. Its eaves and hanging
+    // lanterns stay on the sidewalk through a lane change or a close pursuit.
+    group.position.x = -7.15;
+    group.rotation.y = Math.PI * 0.48;
+    group.scale.setScalar(0.8);
     for (const side of [-1, 1]) {
         const x = side * 5.55;
         b.box(0x827b6e, x, 0.34, 0, 1.05, 0.68, 1.13);
@@ -112,7 +97,12 @@ function canal(b, group) {
         for (const y of [0.75, 4.9, 5.46]) b.shape(round, gilt, x, y, 0, 0.4, 0.11, 0.4);
         for (let i = 0; i < 3; i++)
             b.box(i % 2 ? jade : lacquer, x, 5.2 + i * 0.22, 0, 0.96 + i * 0.38, 0.21, 0.96 + i * 0.18);
-        for (const z of [-12, -25]) b.box(0x5d5450, side * 6, 2.9, z, 0.065, 5.8, 0.065);
+        b.box(bronze, side * 4.43, 4.94, 0.52, 0.047, 0.69, 0.047);
+        lantern(b, side * 4.43, 4.16, 0.52, 0.55);
+        const post = side * 10.6;
+        b.shape(round, lacquer, post, 2.67, 0.25, 0.12, 5.34, 0.12);
+        b.box(jade, post - side * 0.48, 5.32, 0.25, 1.19, 0.15, 0.19);
+        lantern(b, post - side * 0.95, 4.78, 0.25, 0.49);
     }
     b.box(lacquer, 0, 5.45, 0, 12.1, 0.57, 0.75);
     b.box(gilt, 0, 5.28, 0.4, 11.95, 0.073, 0.07);
@@ -121,17 +111,12 @@ function canal(b, group) {
     b.box(lacquer, 0, 7.13, 0, 6.8, 0.78, 1.05);
     tiledRoof(b, 7.62, 8.65, 2.36);
     sign(group, ['CANAL STREET'], '#1c514d', '#f7ce74', 0, 6.03, 0.4, 5.25, 0.82);
-    for (const z of [-12, -25]) {
-        for (let i = -4; i <= 4; i++) {
-            const x = i * 1.32,
-                y = 4.9 + i * i * 0.046;
-            b.box(0x645548, x, y + 0.49, z, 1.39, 0.032, 0.033, 0, 0, i * 0.068);
-            lantern(b, x, y, z, i % 2 ? 0.42 : 0.49);
-        }
-    }
 }
 
 function theatre(b, group) {
+    group.position.x = 7.25;
+    group.rotation.y = -Math.PI * 0.44;
+    group.scale.setScalar(0.82);
     const oxblood = 0x763d34;
     for (const side of [-1, 1]) {
         const x = side * 6.6;
@@ -170,6 +155,9 @@ function theatre(b, group) {
 }
 
 function cityHall(b, group) {
+    group.position.x = -7.3;
+    group.rotation.y = Math.PI * 0.47;
+    group.scale.setScalar(0.84);
     for (const side of [-1, 1]) {
         const x = side * 6.55;
         b.box(stone, x, 3, 0, 2.78, 6, 2.28);
@@ -208,12 +196,11 @@ function cityHall(b, group) {
 
 export class Landmarks {
     constructor(scene, material) {
-        const structureMaterial = clearPassedOverhangs(material.clone());
         this.groups = [canal, theatre, cityHall].map((build) => {
             const group = new THREE.Group(),
                 batch = new Batch();
             build(batch, group);
-            const structure = batch.mesh(structureMaterial);
+            const structure = batch.mesh(material);
             structure.receiveShadow = true;
             group.add(structure);
             scene.add(group);

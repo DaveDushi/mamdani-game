@@ -1,4 +1,5 @@
-import { RACE_METRES, RACE_TOP_SPEED, RIVALS } from './FamilyRace.js';
+import { RACE_TOP_SPEED, RIVALS, takeoverPercent } from './FamilyRace.js';
+import { raceDistance } from './RaceSchedule.js';
 
 const FINISH_HOLD_MS = 650;
 
@@ -12,7 +13,7 @@ const markup = `
             <h2 id="race-opponent"></h2>
         </header>
 
-        <div class="race-board" role="group" aria-label="Positions in the ${RACE_METRES} m sprint">
+        <div class="race-board" role="group" data-race="board">
             <div class="race-board-line">
                 <span class="race-gap" data-race="gap"></span>
                 <time data-race="time"></time>
@@ -27,7 +28,12 @@ const markup = `
                 <div class="race-track" aria-hidden="true"><i data-race="rival-fill"></i></div>
                 <span data-race="rival-metres"></span>
             </div>
-            <div class="race-finish" aria-hidden="true"><span>0 m</span><span>${RACE_METRES} m</span></div>
+            <div class="race-finish" aria-hidden="true"><span>0 m</span><span data-race="finish"></span></div>
+        </div>
+        <div class="race-takeover" role="status">
+            <div><strong data-race="takeover-title"></strong><b data-race="takeover-percent"></b></div>
+            <div class="takeover-track" aria-hidden="true"><i data-race="takeover-fill"></i></div>
+            <span data-race="takeover-result"></span>
         </div>
     </div>
 
@@ -43,9 +49,9 @@ const markup = `
                 <div class="race-boost-track" aria-hidden="true"><i data-race="boost-fill"></i></div>
             </div>
         </div>
-        <button class="race-button race-tap" type="button" aria-describedby="race-keys">Tap to sprint</button>
+        <button class="race-button race-tap" type="button" aria-label="Tap fast to sprint" aria-describedby="race-keys">Tap fast</button>
         <button class="race-button race-continue" type="button" hidden>Continue</button>
-        <span id="race-keys">Space or ↑</span>
+        <span id="race-keys">Press Space or ↑ repeatedly</span>
     </div>
 `;
 
@@ -131,8 +137,10 @@ export class RacePanel {
         clearTimeout(this.finishTimer);
         write(this.opponent, rival.name);
         write(this.nodes.number, `${rival.index + 1}/${RIVALS.length}`);
-        write(this.nodes.milepost, `${rival.at.toLocaleString()} m`);
-        write(this.nodes.level, `Race speed Lv. ${speedLevel}`);
+        write(this.nodes.milepost, `Street ${raceDistance(rival.at)}`);
+        write(this.nodes.level, `${rival.metres} m sprint · Lv. ${speedLevel}`);
+        write(this.nodes.finish, raceDistance(rival.metres));
+        this.nodes.board.setAttribute('aria-label', `Positions in the ${rival.metres} m sprint`);
         this.continueButton.disabled = false;
         this.setPhase('intro');
         this.element.hidden = false;
@@ -145,11 +153,17 @@ export class RacePanel {
     paint(race) {
         if (this.element.hidden) return;
         const { phase, countdown, elapsed, playerProgress, rivalProgress, speed } = race;
+        // The clock stands still at the tape and between countdown digits.
+        if (this.lastRace === race && this.lastTime === elapsed && this.lastCount === countdown && this.lastSpeed === speed) return;
+        this.lastRace = race;
+        this.lastTime = elapsed;
+        this.lastCount = countdown;
+        this.lastSpeed = speed;
         const wasDone = this.done;
         this.setPhase(phase);
         const { nodes } = this;
-        const playerMetres = playerProgress * RACE_METRES;
-        const rivalMetres = rivalProgress * RACE_METRES;
+        const playerMetres = race.distance;
+        const rivalMetres = rivalProgress * race.rival.metres;
         const gap = playerMetres - rivalMetres;
         const ahead = gap >= 0.1;
         const separated = Math.abs(gap) >= 0.1;
@@ -184,7 +198,15 @@ export class RacePanel {
                 break;
         }
         if (!wasDone && this.done) {
-            write(this.continueButton, phase === 'won' ? 'Continue' : 'Results');
+            const wins = race.rival.index + 1;
+            const champion = phase === 'won' && wins === RIVALS.length;
+            if (phase === 'won') {
+                write(nodes['takeover-title'], champion ? 'Communist takeover' : 'City takeover');
+                write(nodes['takeover-percent'], takeoverPercent(wins) + '%');
+                fill(nodes['takeover-fill'], wins / RIVALS.length);
+                write(nodes['takeover-result'], `${wins}/${RIVALS.length} beaten · ${elapsed.toFixed(2)} s`);
+            }
+            write(this.continueButton, champion ? 'Run Overtime' : phase === 'won' ? 'Back to street' : 'See results');
             this.continueButton.disabled = true;
             this.finishTimer = setTimeout(() => {
                 this.continueButton.disabled = false;

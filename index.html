@@ -23,7 +23,17 @@
         <link rel="stylesheet" href="./progression.css" />
         <link rel="stylesheet" href="./race-panel.css" />
         <link rel="stylesheet" href="./home.css" />
-
+        <style>
+            #race-schedule table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+            #race-schedule :is(th, td) { padding: 3px 0; text-align: left; }
+            #race-schedule :is(th, td):not(:first-child) { padding-left: 6px; text-align: right; white-space: nowrap; }
+            #shop-rivals tr { border-top: 1px solid #c4bba9; }
+            #shop-rivals th { font-weight: 500; }
+            #shop-rivals b { display: inline-block; }
+            @media (max-aspect-ratio: 4/5) {
+                #shop-screen .wardrobe:has(#training-panel:not([hidden]) #race-schedule[open]) { max-height: 80svh; }
+            }
+        </style>
     </head>
     <body>
         <svg class="symbols" xmlns="http://www.w3.org/2000/svg">
@@ -72,7 +82,7 @@
                 <div class="home-headline">
                     <div class="home-edition"><span>New York City</span><span>2026 edition</span></div>
                     <h1 id="game-title"><span>Mamdani</span> <strong>Run!</strong></h1>
-                    <p class="home-deck"><span>Dodge cabs. Race the Trumps.</span><br /> First family sprint at 1,000 m.</p>
+                    <p class="home-deck"><span>Dodge cabs. Grab stamps.</span><br /> Race the Trump family.</p>
                 </div>
                 <figure class="home-art">
                     <picture>
@@ -99,8 +109,8 @@
                         <span>Start Day Run</span><svg aria-hidden="true"><use href="#i-arrow" /></svg>
                     </button>
                     <div class="home-extras">
-                        <button type="button" id="shop-btn"><svg aria-hidden="true"><use href="#i-shirt" /></svg>Shop &amp; outfits</button>
-                        <button type="button" id="rankings-btn"><svg aria-hidden="true"><use href="#i-cup" /></svg>Rankings</button>
+                        <button type="button" id="shop-btn"><svg aria-hidden="true"><use href="#i-shirt" /></svg>Shop</button>
+                        <button type="button" id="rankings-btn" title="Season 2.3.1 rankings for Day Run and Night Shift"><svg aria-hidden="true"><use href="#i-cup" /></svg>Rankings</button>
                         <button type="button" id="instructions-btn"><svg aria-hidden="true"><use href="#i-game" /></svg>How to play</button>
                     </div>
                     <p class="load-status" role="status" id="load-status" hidden></p>
@@ -164,20 +174,23 @@
         <section id="pause-screen" class="overlay hidden">
             <div class="paper compact">
                 <p class="slug">Borough Arcade</p>
-                <h2>Run paused.</h2>
+                <h2>Paused</h2>
                 <p id="pause-print" hidden></p>
-                <button class="solid" id="resume-btn">Resume run</button
-                ><button class="plain" data-home>Back to menu</button>
+                <button class="solid" id="resume-btn">Resume</button
+                ><button class="plain" data-home>Menu</button>
             </div>
         </section>
-        <section id="game-over-screen" class="overlay hidden">
+        <section id="game-over-screen" class="overlay hidden" aria-labelledby="result-headline">
             <div class="paper results">
+                <header class="frontpage-mast">
+                    <b>The City Wire</b><span id="result-edition">Final edition</span>
+                </header>
                 <div class="result-story">
-                    <div class="frontpage-mast">
-                        <b>The City Wire</b><span id="result-edition">Final edition</span>
-                    </div>
-                    <div class="press-sketch" aria-hidden="true"></div>
-                    <h2 id="result-headline">Mayor caught.</h2>
+                    <h2 id="result-headline">Trump returns.</h2>
+                    <figure class="result-illustration">
+                        <img id="result-art" width="1050" height="700" loading="lazy" decoding="async"
+                            alt="Editorial illustration of Donald Trump waving at a New York race, with a United States flag behind him." />
+                    </figure>
                     <p id="result-copy"></p>
                     <p class="audit-line">The five-year plan lasted <b id="run-seconds">0 seconds</b>. Clean moves · <b id="final-moves">0</b></p>
                 </div>
@@ -187,77 +200,79 @@
                         <div><small>Collected</small><strong id="final-gross">0</strong></div>
                         <div><small>Stamp tax</small><strong id="final-tax">0</strong></div>
                     </div>
+                    <div class="action-row">
+                        <button class="solid" id="restart-btn">Run again</button>
+                        <button class="plain" data-home>Menu</button>
+                    </div>
+                    <p class="load-status" role="status" id="result-load-status" hidden></p>
                     <div class="bank-receipt">
                         <div><strong id="result-banked"></strong><span id="result-wallet"></span></div>
                         <p id="result-progress"></p>
                         <p id="result-family"></p>
                         <button id="play-night" class="text-btn" hidden>Play Night Shift →</button>
-                        <button id="result-shop" class="text-btn" type="button">Train sprint speed →</button>
+                        <button id="result-shop" class="text-btn" type="button">Sprint training →</button>
                     </div>
                     <p class="best-line">
                         <span id="result-best-label">Day Run best</span> <b id="pb-score">0 m</b> <span id="pb-rank-display"></span>
                     </p>
-                    <div class="action-row">
-                        <button class="solid" id="restart-btn">Run again</button
-                        ><button class="plain" data-home>Menu</button>
-                    </div>
                 </div>
                 <div id="day-board">
-                    <h3>Top revolutionaries</h3>
+                    <h3>Season 2.3.1 rankings</h3>
+                    <p>Day Run and Night Shift</p>
                     <div id="leaderboard-list" aria-live="polite"></div>
                     <button id="result-board-retry" class="text-btn" hidden>Retry</button>
-                    <button id="join-lb-btn" class="text-btn">Join the leaderboard</button>
+                    <button id="join-lb-btn" class="text-btn">Name your score</button>
                 </div>
             </div>
         </section>
         <section id="instructions-modal" class="overlay hidden" tabindex="-1">
             <div class="paper">
-                <p class="slug">Runner's manual</p>
                 <h2>How to play</h2>
                 <div class="manual">
-                    <p><b>Change lanes</b><span>Follow the cream chevrons through the gate. Use ← →, A / D, or swipe sideways. Only a gold ticket pays a stamp.</span></p>
-                    <p><b>Jump a hurdle</b><span>Yellow ↑ means jump over the hurdle. Press ↑, W or Space, or swipe up.</span></p>
-                    <p>
-                        <b>Slide under a beam</b><span>Cyan ↓ means slide under the beam. Press ↓ or S, or swipe down.</span>
-                    </p>
+                    <p><b>Change lanes</b><span>Swipe across<br />←/→ or A/D</span></p>
+                    <p><b>Jump</b><span>Swipe up<br />↑, W or Space</span></p>
+                    <p><b>Slide</b><span>Swipe down<br />↓ or S</span></p>
+                    <p><b>Pause</b><span>Tap pause<br />P or Esc</span></p>
                 </div>
                 <p>
-                    One hit brings Trump onto the street. Take another hit within five seconds and he catches
-                    you. Hit a bottle and “Haram!” reverses left/right and jump/slide for five seconds.
+                    Follow the painted lane. Jump cabs and low hurdles. Slide under beams, scaffolds and carts.
+                    Only the first gates have labels. Mid-height rails allow either move in the same lane.
                 </p>
                 <p>
-                    The rainbow flag grants seven seconds of invincibility and pulls in stamps. A keffiyeh
-                    shields you for five seconds. A mask clears traffic for three. Chain three clean dodges,
-                    jumps or slides within five seconds of each other for one bonus stamp.
+                    Two hits within 5 seconds and Trump catches you. A bottle reverses controls for 5 seconds (“Haram!”).
                 </p>
                 <p>
-                    For every 100 stamps collected, City Hall takes 90 and you keep 10.
-                    The same rate applies to the rest at the finish. Even one stamp adds 0.1 to your wallet.
-                    Bank 150 to unlock Night Shift.
+                    The rainbow draws in stamps and makes you invincible for 7 seconds. A keffiyeh shields for 5 seconds.
+                    A mask clears traffic for 3 seconds.
                 </p>
-                <p><b>Family races.</b> Reach 1,000 m to race Donald Jr. in a 100 m dash. Tap the sprint pad or press Space repeatedly.
-                    Each win sends you farther down the street toward the next rival. Losing ends the run and banks your stamps.
-                    Spend them on Race speed in Shop &amp; outfits. Beat all five children and Donald to reach Overtime.</p>
+                <p>
+                    <b>Stamps.</b> Grab tickets. Chain three clean moves less than 5 seconds apart for a bonus stamp.
+                    Bank 10% at the finish. Night Shift unlocks at 150 lifetime banked stamps, including those spent on training.
+                </p>
+                <p>
+                    <b>Family sprints.</b> On “Go!”, tap fast or press Space repeatedly. Beat the five kids in order, even offline.
+                    As the season record rises, their races get longer and harder. A loss ends the run.
+                </p>
+                <p>
+                    <b>Donald’s final.</b> After five wins, go past both 420 m and the live season record while online.
+                    Race Donald for 100 m. Each win changes one sixth of the city. Beat Donald for 100% takeover
+                    and endless Overtime at 10% higher speed. Day Run and Night Shift share the 2.3.1 rankings.
+                </p>
                 <button class="solid" data-home>Back to menu</button>
             </div>
         </section>
         <section id="story-modal" class="overlay hidden">
             <article class="paper">
-                <p class="slug">City wire &nbsp; / &nbsp; Political satire desk</p>
+                <p class="slug">City Wire · Satire desk</p>
                 <h2>The mayor is on foot.</h2>
                 <p>
-                    New York, 2026. Flatbush has a new bus lane. In our edition, the People's Committee for
-                    Faster Buses has spent all morning voting on what “faster” means.
+                    Flatbush has a new bus lane. The Committee for Faster Buses is still voting on what “faster” means.
                 </p>
                 <p>
-                    Our fictional mayor has endorsed every march on the calendar, including the protest
-                    against yesterday’s protest. The Pride caucus and the Free Palestine organizers both want
-                    the good megaphone.
+                    The mayor endorsed today’s protest against yesterday’s protest. The Pride caucus and the Free Palestine organizers both want the good megaphone.
                 </p>
                 <p>
-                    You're Mamdani. Trump wants the receipts for your five-year plan, and City Hall wants you
-                    across town in five minutes. Run. The Stamp Office keeps nine tenths of every haul.
-                    Your share goes toward a Night Shift pass.
+                    You’re Mamdani. Trump wants the receipts. Run. City Hall keeps 90% of your stamps. Your cut buys sprint training and counts toward Night Shift.
                 </p>
                 <button class="solid" id="close-story-btn" data-home>Back to menu</button>
                 <div class="credits">
@@ -273,10 +288,10 @@
                 <p id="pwa-prompt" class="install"></p>
             </article>
         </section>
-        <section id="rankings-screen" class="overlay hidden" aria-label="Day Run rankings">
+        <section id="rankings-screen" class="overlay hidden" aria-label="Season 2.3.1 rankings for Day Run and Night Shift">
             <div class="paper rankings-paper">
                 <div class="rankings-heading">
-                    <div><p class="slug">Day Run · Top 50</p><h2>Rankings</h2></div>
+                    <div><p class="slug">Season 2.3.1 · Top 50</p><h2>Rankings</h2><span>Day Run and Night Shift</span></div>
                     <button id="close-rankings" class="plain">Close</button>
                 </div>
                 <div id="rankings-list" aria-live="polite"></div>
@@ -299,14 +314,15 @@
             </div>
         </section>
         <section id="shop-screen" class="fitting hidden">
+            <p id="preview-status" role="status" hidden></p>
             <div class="paper wardrobe">
                 <h2>Campaign shop</h2>
                 <div class="shop-sections" role="group" aria-label="Shop section">
-                    <button id="show-training" type="button" aria-controls="training-panel" aria-pressed="true">Speed training</button>
+                    <button id="show-training" type="button" aria-controls="training-panel" aria-pressed="true">Sprint training</button>
                     <button id="show-outfits" type="button" aria-controls="outfits-panel" aria-pressed="false">Free outfits</button>
                 </div>
                 <div id="training-panel">
-                    <div class="training-heading"><h3>Sprint speed</h3><b id="speed-level"></b></div>
+                    <div class="training-heading"><h3>Family sprints</h3><b id="speed-level"></b></div>
                     <p id="speed-effect"></p>
                     <p id="shop-wallet"></p>
                     <button id="buy-speed" type="button" class="solid"></button>
@@ -314,12 +330,16 @@
                     <p id="shop-record"></p>
                     <details id="race-schedule">
                         <summary>Race schedule</summary>
-                        <p>Every run starts at the first checkpoint.</p>
-                        <ol id="shop-rivals"></ol>
+                        <p id="schedule-status" role="status"></p>
+                        <table aria-label="Family race schedule">
+                            <thead><tr><th scope="col">Rival</th><th scope="col">Street</th><th scope="col">Sprint</th></tr></thead>
+                            <tbody id="shop-rivals"></tbody>
+                        </table>
+                        <p>Beat all five kids in one run, even offline. Pass the target online to race Donald.</p>
                     </details>
                 </div>
                 <div id="outfits-panel" hidden>
-                    <p>Paid for by Soros.</p>
+                    <p>Five looks. Same speed.</p>
                     <div id="shop-items"></div>
                     <div class="turn-controls">
                         <button type="button" id="turn-left" aria-label="Turn model left">↶</button><span>Rotate model</span
@@ -331,12 +351,12 @@
         </section>
         <section id="registration-modal" class="overlay hidden">
             <form id="register-form" class="paper compact">
-                <h2>Join the board.</h2>
-                <label>Your name<input id="reg-name" maxlength="15" required /></label
+                <h2>Name your score</h2>
+                <label>Leaderboard name<input id="reg-name" maxlength="15" required /></label
                 ><label>Truth Social handle (optional)<input id="reg-social" maxlength="20" /></label>
                 <p id="reg-error" role="status"></p>
                 <div class="action-row">
-                    <button class="solid" id="submit-score-btn">Join</button
+                    <button class="solid" id="submit-score-btn">Save name</button
                     ><button type="button" class="plain" id="cancel-reg">Back</button>
                 </div>
             </form>

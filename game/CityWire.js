@@ -1,21 +1,21 @@
 export const editionLines = {
-    'Canal Street': 'City Hall calls this a listening tour. The mayor is doing 30.',
-    'Union Square': 'Two rival marches book the same megaphone.',
-    'City Hall': 'Budget hearing underway. Treasurer passes around a hat.'
+    'Canal Street': 'Listening tour hits 30 mph.',
+    'Union Square': 'Two marches, one mic.',
+    'City Hall': 'Budget vote. Pass the hat.'
 };
 
 export const raceDispatches = {
-    junior: 'Don Jr. inherits lane two. City Hall files an objection.',
-    ivanka: 'Ivanka has trademarked the finish line. Crossing it is still free.',
-    eric: 'Eric brings a golf cart. Officials make him run.',
-    tiffany: 'Tiffany reads the fine print. The mayor has been running for office hours.',
-    barron: 'Barron asks for a longer track. The budget office offers a shorter ruler.',
-    donald: 'Donald promises the biggest finish in history. It is still 100 metres.'
+    junior: 'Don Jr. inherits lane two.',
+    ivanka: 'Ivanka trademarks the finish line. Crossing is free.',
+    eric: 'Eric’s golf cart fails inspection.',
+    tiffany: 'Tiffany checks the rules. Running for office counts.',
+    barron: 'Barron wants more track. City Hall shrinks the ruler.',
+    donald: 'Trump promises the biggest 100 m.'
 };
 
 const receipts = {
     jumpGate: [
-        ['Red tape stops mayor in his tracks.', 'City Hall spent the ribbon-cutting budget on the ribbon.'],
+        ['Red tape stops mayor in his tracks.', 'City Hall budgeted for the finish line in year five.'],
         ['Mayor fails to clear a low bar.', 'The appointments committee has already voted to lower it.']
     ],
     slideGate: [
@@ -25,6 +25,10 @@ const receipts = {
     gateBlock: [
         ['City opens lane for future use.', 'The concrete is temporary. The committee that approved it is permanent.'],
         ['Mayor runs into his own road closure.', 'His office has asked the barricade to join the transition team.']
+    ],
+    railGate: [
+        ['Mayor trips at the ticket rail.', 'City Hall claims the landing as a completed infrastructure project.'],
+        ['Ticket rail beats the mayor.', 'City Hall has scheduled a ribbon-cutting for the replay.']
     ],
     taxi: [
         [
@@ -42,7 +46,7 @@ const receipts = {
         ['Rent freeze extends to construction crew.', 'They have been standing in the same spot since March.']
     ],
     halal: [
-        ['Free lunch comes with a catch.', 'The cart takes cash. The mayor offered a working group.'],
+        ['Free lunch comes with a catch.', 'The Free Stuff Committee is meeting to decide who pays.'],
         [
             'Lunch plan folds at the first cart.',
             'The vendor has declined an advisory seat in lieu of six dollars.'
@@ -60,12 +64,13 @@ const receipts = {
 
 export function frontPage(cause, edition) {
     const stories = receipts[cause] || receipts.protestor;
-    return stories[edition % stories.length];
+    const [news, detail] = stories[edition % stories.length];
+    return ['Trump returns.', news + ' ' + detail];
 }
 
 export const stuntLines = {
-    jump: ['Mayor clears the spending cap.', 'Red tape cleared. More red tape on order.', 'Mayor gets over budget hurdle. Budget still short.'],
-    cab: ['Cab fare successfully evaded.', 'Mayor takes public transit. Briefly, on the roof.', 'Yellow cab crosses picket line. Mayor crosses cab.'],
-    slide: ['Budget passes under the table.', 'For once, City Hall comes in under something.', 'Mayor lowers his position on street vendors.'],
-    sidestep: ['Mayor dodges a follow-up question.', 'Campaign pivots sharply on transportation.', 'Aide confirms the dodge was fully funded.']
+    jump: ['Mayor clears the spending cap.', 'Red tape cleared. More on order.', 'Mayor clears budget hurdle. Budget doesn’t.'],
+    cab: ['Cab fare evaded.', 'Mayor rides public transit. On the roof.', 'Cab crosses picket line. Mayor crosses cab.'],
+    slide: ['Budget passes under the table.', 'For once, City Hall comes in under something.', 'Mayor lowers his stance on vendors.'],
+    sidestep: ['Mayor dodges a follow-up question.', 'Campaign pivots on transit.', 'Aides say the dodge was funded.']
 };

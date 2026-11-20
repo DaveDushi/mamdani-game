@@ -1,0 +1,26 @@
+{
+    "name": "game-backend",
+    "account_id": "972f8c0c21865ac5fa34b14cfb73479e",
+    "main": "src/index.js",
+    "base_dir": "src",
+    "no_bundle": true,
+    "find_additional_modules": true,
+    "rules": [{ "type": "ESModule", "globs": ["**/*.js"], "fallthrough": true }],
+    "compatibility_date": "2025-11-21",
+    "keep_vars": true,
+    "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": { "enabled": true, "head_sampling_rate": 1, "persist": true, "invocation_logs": true },
+        "traces": { "enabled": false, "head_sampling_rate": 1, "persist": true }
+    },
+    "vars": { "CORS": "https://mamdanirun.cc" },
+    "d1_databases": [{
+        "binding": "game_d1",
+        "database_name": "game-d1",
+        "database_id": "c506cd7f-c95c-48a9-9db7-73182d5e42e0",
+        "migrations_dir": "migrations"
+    }],
+    "triggers": { "crons": ["0 0 L * *"] },
+    "routes": [{ "pattern": "api.mamdanirun.cc", "custom_domain": true }]
+}
