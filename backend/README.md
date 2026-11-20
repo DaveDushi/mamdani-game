@@ -14,6 +14,8 @@ The existing `game-backend` Worker serves `api.mamdanirun.cc`. Its original modu
 
 A qualifying distance must exceed both the current record and the opening benchmark in [season-rules.js](src/season-rules.js). D1 compares and publishes in one transaction. Retries of a winning attempt return the original qualification and the current global record. A runner whose earlier claim fell short can try again farther along the course.
 
+The iPhone uses `/ios/leaderboard`, `/ios/score`, `/ios/record/claim` and `/ios/delete` under the same season prefix. The reader returns scores only. Writes use a private device key in place of a public player ID. Deletion removes the device's season scores, race claims and player record in one transaction. The server retains a one-way hash to reject late score uploads. The Worker also serves the App Store's public `/privacy` and `/support` pages.
+
 ## Local verification and release
 
 Run `node --test backend/test/season.test.js` with Node 22.13 or later. Before running the full Worker locally or uploading a Worker version, restore the original private mail module into its ignored build path. This reads the deployed source and verifies the pinned SHA-256 checksum.
@@ -23,4 +25,4 @@ node backend/restore-legacy.mjs /path/to/wrangler/bin/wrangler.js
 wrangler versions upload --dry-run --config backend/wrangler.jsonc
 ```
 
-Apply the additive migration in `migrations/0001_season.sql` to `game-d1` before activating the Worker version. Upload with `wrangler versions upload --config backend/wrangler.jsonc --keep-vars`, verify the inherited bindings, then activate the uploaded version with `wrangler versions deploy`. Restoring the preceding Worker version rolls back the API while retaining season data. Version deployment preserves the custom domain and cron triggers.
+Apply the additive migrations to `game-d1` before activating the Worker version. Upload with `wrangler versions upload --config backend/wrangler.jsonc --keep-vars`, verify the inherited bindings, then activate the uploaded version with `wrangler versions deploy`. Restoring the preceding Worker version rolls back the API while retaining season data. Version deployment preserves the custom domain and cron triggers.

@@ -1,6 +1,4 @@
 import Capacitor
-import FirebaseAnalytics
-import FirebaseCore
 import StoreKit
 import UIKit
 
@@ -12,33 +10,12 @@ final class ArcadeViewController: CAPBridgeViewController {
 
 @objc(ArcadeServices)
 final class ArcadeServices: CAPPlugin, CAPBridgedPlugin {
-    private static var analyticsConfigured = false
     let identifier = "ArcadeServices"
     let jsName = "ArcadeServices"
     let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "logEvent", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "supportAvailability", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openSupport", returnType: CAPPluginReturnPromise)
     ]
-
-    static func configureAnalytics() {
-        guard let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
-              let options = FirebaseOptions(contentsOfFile: path),
-              options.bundleID == Bundle.main.bundleIdentifier else { return }
-        FirebaseApp.configure(options: options)
-        analyticsConfigured = true
-    }
-
-    @objc func logEvent(_ call: CAPPluginCall) {
-        let events = ["screen_view", "game_start", "game_end", "unlock_achievement", "bmc_click"]
-        guard let name = call.getString("name"), events.contains(name),
-              Self.analyticsConfigured else {
-            call.resolve(["recorded": false])
-            return
-        }
-        Analytics.logEvent(name, parameters: call.getObject("parameters") ?? [:])
-        call.resolve(["recorded": true])
-    }
 
     @objc func supportAvailability(_ call: CAPPluginCall) {
         Task {

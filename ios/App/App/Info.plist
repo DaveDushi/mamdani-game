@@ -6,12 +6,6 @@
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
-	<key>FirebaseAutomaticScreenReportingEnabled</key>
-	<false/>
-	<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS</key>
-	<false/>
-	<key>GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED</key>
-	<false/>
 	<key>CFBundleDisplayName</key>
 	<string>Mamdani Run</string>
 	<key>CFBundleExecutable</key>

@@ -18,6 +18,7 @@ function seasonRecord(score) {
 export class ApiClient {
     constructor(baseUrl) {
         this.native = Capacitor.isNativePlatform();
+        this.seasonPath = this.native ? seasonPath + '/ios' : seasonPath;
         const preview = !this.native && (import.meta.env?.DEV || localHosts.includes(globalThis.location?.hostname));
         this.baseUrl = baseUrl ?? (preview ? '/game-api' : live);
     }
@@ -64,7 +65,7 @@ export class ApiClient {
     }
 
     async getSeasonLeaderboard(limit = 50) {
-        return standings(await this.request(seasonPath + '/leaderboard?limit=' + limit, undefined, fresh));
+        return standings(await this.request(this.seasonPath + '/leaderboard?limit=' + limit, undefined, fresh));
     }
 
     async getSeasonRecord() {
@@ -73,7 +74,8 @@ export class ApiClient {
     }
 
     async claimSeasonRecord({ playerId, attemptId, score, mode }) {
-        const result = await this.request(seasonPath + '/record/claim', { playerId, attemptId, score, mode });
+        const player = this.native ? { key: playerId } : { playerId };
+        const result = await this.request(this.seasonPath + '/record/claim', { ...player, attemptId, score, mode });
         if (result?.ok !== true || typeof result.qualified !== 'boolean') return null;
         const record = seasonRecord(result.record);
         const previous = seasonRecord(result.previousRecord);
@@ -81,7 +83,12 @@ export class ApiClient {
     }
 
     async submitSeasonScore({ playerId, score, mode }) {
-        return await this.request(seasonPath + '/score', { playerId, score, mode }) ?? { ok: false };
+        const player = this.native ? { key: playerId } : { playerId };
+        return await this.request(this.seasonPath + '/score', { ...player, score, mode }) ?? { ok: false };
+    }
+
+    async deleteSeasonData(key) {
+        return await this.request(this.seasonPath + '/delete', { key }) ?? { ok: false };
     }
 
     async healthCheck() {

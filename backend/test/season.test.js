@@ -13,6 +13,7 @@ function fixture() {
         INSERT INTO players VALUES ('older', 'Old Ace', NULL), ('friend','Friend','arcade');
         INSERT INTO scores VALUES ('older',17454);`);
     sqlite.exec(readFileSync(new URL('../migrations/0001_season.sql', import.meta.url), 'utf8'));
+    sqlite.exec(readFileSync(new URL('../migrations/0002_deleted_ios_players.sql', import.meta.url), 'utf8'));
     const db = {
         prepare(sql) {
             const stmt = sqlite.prepare(sql);
@@ -43,6 +44,29 @@ function fixture() {
     return { sqlite, call, claim: (playerId, attemptId, score, mode = 'day') =>
         call('record/claim', { playerId, attemptId, score, mode }) };
 }
+
+test('iPhone rankings hide profile data and deletion removes only the key owner without restoring late scores', async () => {
+    const { call } = fixture();
+    const key = 'a'.repeat(64);
+    const otherKey = 'b'.repeat(64);
+    const score = OPENING_RECORD_METRES + 1;
+    await call('score', { playerId: 'friend', score: 100, mode: 'day' });
+    await call('ios/score', { key: otherKey, score: 200, mode: 'night' });
+    assert.equal((await call('ios/record/claim', { key, attemptId: 'final', score, mode: 'day' })).qualified, true);
+    assert.deepEqual((await call('ios/leaderboard')).entries, [{ score }, { score: 200 }, { score: 100 }]);
+    const [nativeEntry, , webEntry] = (await call('leaderboard')).entries;
+    assert.deepEqual(Object.keys(nativeEntry).sort(), ['created_at', 'name', 'score']);
+    assert.equal(webEntry.name, 'Friend');
+    assert.equal(webEntry.social, 'arcade');
+
+    assert.equal((await call('ios/delete', { key: 'friend' })).status, 400);
+    assert.deepEqual(await call('ios/delete', { key }), { status: 200, ok: true });
+    assert.deepEqual(await call('ios/delete', { key }), { status: 200, ok: true });
+    assert.equal((await call('ios/record/claim', { key, attemptId: 'final', score, mode: 'day' })).qualified, false);
+    await call('ios/score', { key, score, mode: 'day' });
+    assert.deepEqual((await call('ios/leaderboard')).entries, [{ score: 200 }, { score: 100 }]);
+    assert.equal((await call('record')).record, 200);
+});
 
 test('a fresh edition reads an empty board and preserves names, legacy scores and the opening floor', async () => {
     const { call, claim, sqlite } = fixture();

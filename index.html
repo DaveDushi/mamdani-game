@@ -127,7 +127,7 @@
                     <div class="key-guide"><span><kbd>A</kbd><kbd>D</kbd> Move</span><span><kbd>W</kbd> Jump</span><span><kbd>S</kbd> Slide</span></div>
                     <div class="touch-guide">Swipe to move, jump or slide</div>
                 </div>
-                <a class="home-coffee" data-support-link href="https://www.buymeacoffee.com/davedushi" target="_blank" rel="noopener noreferrer">
+                <a class="home-coffee" data-support-link href="https://www.buymeacoffee.com/davedushi" target="_blank" rel="noopener noreferrer" hidden>
                     Buy Dave a coffee
                 </a>
             </footer>
@@ -228,7 +228,8 @@
                 <section id="day-board" aria-labelledby="result-standings-heading">
                     <div class="standings-heading">
                         <h3 id="result-standings-heading">Rankings</h3>
-                        <button id="join-lb-btn" class="text-btn">Name your score</button>
+                        <button id="join-lb-btn" class="text-btn" hidden>Name your score</button>
+                        <button id="result-online-settings" class="text-btn" hidden>Online play and data</button>
                     </div>
                     <div class="standings-scope"><span>Day Run and Night Shift</span><span>Season 2.3.1 · Top 50</span></div>
                     <div id="leaderboard-list" class="standings-list" aria-live="polite"></div>
@@ -307,9 +308,12 @@
                         target="_blank"
                         rel="noopener"
                         id="bmc-wrapper"
-                        data-support-link
+                        data-support-link hidden
                         >Buy Dave a coffee</a
-                    ><button id="feedback-btn" class="text-btn">Send feedback</button>
+                    ><button id="feedback-btn" class="text-btn" hidden>Send feedback</button>
+                    <a href="https://api.mamdanirun.cc/privacy" target="_blank" rel="noopener">Privacy policy</a>
+                    <a href="https://api.mamdanirun.cc/support" target="_blank" rel="noopener">Support</a>
+                    <button id="privacy-btn" class="text-btn" hidden>Online play and data</button>
                 </div>
                 <p id="pwa-prompt" class="install"></p>
             </article>
@@ -375,6 +379,23 @@
                     <div id="shop-items"></div>
                 </div>
                 <button class="plain" id="close-shop-btn" data-home>Back to menu</button>
+            </div>
+        </section>
+        <section id="privacy-modal" class="overlay hidden">
+            <div class="paper compact">
+                <h2>Online play and data</h2>
+                <p>Turn on online play to post your scores and qualify for Donald’s final. The server receives your distance, run mode and a private random code. Only the score appears on the iPhone rankings.</p>
+                <label><input id="online-play" type="checkbox" /> Enable online play</label>
+                <p>Delete online data to remove your scores and race claims from the server. Your local progress stays on this device.</p>
+                <button id="delete-online-data" type="button" class="text-btn">Delete online data</button>
+                <div id="delete-online-confirmation" hidden>
+                    <p>This permanently removes your online scores and race claims.</p>
+                    <button id="confirm-delete-online-data" type="button" class="solid">Delete scores and race claims</button>
+                    <button id="cancel-delete-online-data" type="button" class="plain">Cancel</button>
+                </div>
+                <p id="privacy-status" role="status"></p>
+                <p><a href="https://api.mamdanirun.cc/privacy" target="_blank" rel="noopener">Privacy policy</a></p>
+                <button type="button" class="plain" data-home>Back to menu</button>
             </div>
         </section>
         <section id="registration-modal" class="overlay hidden">

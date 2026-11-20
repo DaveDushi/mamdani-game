@@ -8,8 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		A264C901A5EE4D1AB23F0001 /* ArcadeServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = A264C901A5EE4D1AB23F0002 /* ArcadeServices.swift */; };
-		A264C901A5EE4D1AB23F0004 /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = A264C901A5EE4D1AB23F0005 /* FirebaseAnalyticsCore */; };
-		A264C901A5EE4D1AB23F0006 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = A264C901A5EE4D1AB23F0007 /* FirebaseCore */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
@@ -42,8 +40,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */,
-				A264C901A5EE4D1AB23F0004 /* FirebaseAnalyticsCore in Frameworks */,
-				A264C901A5EE4D1AB23F0006 /* FirebaseCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -101,8 +97,6 @@
 			);
 			name = App;
 			packageProductDependencies = (
-				A264C901A5EE4D1AB23F0005 /* FirebaseAnalyticsCore */,
-				A264C901A5EE4D1AB23F0007 /* FirebaseCore */,
 				4D22ABE82AF431CB00220026 /* CapApp-SPM */,
 			);
 			productName = App;
@@ -135,7 +129,6 @@
 			);
 			mainGroup = 504EC2FB1FED79650016851F;
 			packageReferences = (
-				A264C901A5EE4D1AB23F0003 /* firebase-ios-sdk */,
 				D4C12C0A2AAA248700AAC8A2 /* XCLocalSwiftPackageReference "CapApp-SPM" */,
 			);
 			productRefGroup = 504EC3051FED79650016851F /* Products */;
@@ -311,7 +304,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -334,7 +327,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -381,25 +374,7 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		A264C901A5EE4D1AB23F0003 /* firebase-ios-sdk */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
-			requirement = {kind = exactVersion; version = 13.2.0; };
-		};
-/* End XCRemoteSwiftPackageReference section */
-
 /* Begin XCSwiftPackageProductDependency section */
-		A264C901A5EE4D1AB23F0005 /* FirebaseAnalyticsCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A264C901A5EE4D1AB23F0003 /* firebase-ios-sdk */;
-			productName = FirebaseAnalyticsCore;
-		};
-		A264C901A5EE4D1AB23F0007 /* FirebaseCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A264C901A5EE4D1AB23F0003 /* firebase-ios-sdk */;
-			productName = FirebaseCore;
-		};
 		4D22ABE82AF431CB00220026 /* CapApp-SPM */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = D4C12C0A2AAA248700AAC8A2 /* XCLocalSwiftPackageReference "CapApp-SPM" */;

@@ -84,7 +84,7 @@ test('season scores are isolated while profile and feedback posts use the establ
     ]);
 });
 
-test('Capacitor uses the same season routes and JSON request data', async t => {
+test('Capacitor reads the shared record and sends private profile operations over iPhone routes', async t => {
     const calls = t.mock.method(Capacitor, 'nativePromise', async (_plugin, _method, options) => ({
         status: 200,
         data: options.method === 'GET'
@@ -97,13 +97,16 @@ test('Capacitor uses the same season routes and JSON request data', async t => {
     assert.deepEqual(await api.claimSeasonRecord(claim), {
         qualified: true, previousRecord: null, record: { score: 1051 }
     });
+    assert.equal((await api.deleteSeasonData(claim.playerId)).ok, true);
     assert.deepEqual(calls.mock.calls.map(call => call.arguments.slice(0, 2)), [
-        ['CapacitorHttp', 'request'], ['CapacitorHttp', 'request']
+        ['CapacitorHttp', 'request'], ['CapacitorHttp', 'request'], ['CapacitorHttp', 'request']
     ]);
     assert.deepEqual(calls.mock.calls.map(({ arguments: [, , options] }) => [
         options.url, options.method, options.data, options.responseType
     ]), [
         [origin + '/seasons/2.3.1/record', 'GET', undefined, 'json'],
-        [origin + '/seasons/2.3.1/record/claim', 'POST', claim, 'json']
+        [origin + '/seasons/2.3.1/ios/record/claim', 'POST',
+            { key: 'player-1', attemptId: 'attempt-1', score: 1051, mode: 'night' }, 'json'],
+        [origin + '/seasons/2.3.1/ios/delete', 'POST', { key: 'player-1' }, 'json']
     ]);
 });

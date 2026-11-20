@@ -24,13 +24,21 @@ Use Node.js 22 or newer, then run `npm ci` and `npm run dev`. Use `npm run build
 
 On a Mac with Xcode 26 and an iOS Simulator runtime, run `npm ci`, `npm run ios:sync`, then `npm run ios:open`. Select the App scheme and an iPhone simulator and press Run. Run `npm run ios:sync` again after changing the game. To install on a physical iPhone, select your development team in Signing & Capabilities.
 
-The iPhone release is pending. The Capacitor app bundles the game, fonts, posters and models for offline play. Qualifying for Donald's final, viewing the season rankings and sending feedback require a connection. Runs pause when the app loses focus.
+The Capacitor app bundles the game, fonts, posters and models for offline play. The five family races are available offline. Enable online play from **City Wire → Online play and data** to post scores and qualify for Donald's final. Viewing the season rankings requires a connection. Runs pause when the app loses focus.
+
+### App Store submission
+
+1. On a Mac with Xcode 26 or later and the iOS 26 SDK or later, run `npm ci`, `npm run ios:sync`, and `npm run ios:open`. Select the distribution team for `cc.mamdanirun.game`. Test the release build on a physical iPhone, then archive and validate it from Xcode Organizer. The project is set to version 2.4.1, build 12.
+2. In App Store Connect, enter [the privacy policy](https://api.mamdanirun.cc/privacy) and [support URL](https://api.mamdanirun.cc/support), complete the age-rating questionnaire and upload gameplay screenshots. For App Privacy, review **User ID** for the pseudonymous game identifier and **Product Interaction** for online scores and race attempts. Both support app functionality, and the scores and race attempts are associated with the identifier. The iOS build uses no Firebase SDK, ads or tracking.
+3. In App Review notes, describe the game as unofficial fictional political satire. Explain that no sign-in is required, five family races can be played offline, and the results board or **City Wire → Online play and data** lets players opt into score posting and remove their server data. Donald's final requires five wins in one run and a distance above the live record. The optional Buy Me a Coffee link appears only on the U.S. storefront and provides no in-game reward.
+
+On device, open both policy and support links, play offline, opt in and post a score, check the rankings, and delete the online data. Verify in Xcode's archive that the required SDK privacy manifests are present. Test the support link with U.S. and non-U.S. storefronts. Earlier TestFlight scores used the web leaderboard profile and are outside the new device-key deletion flow. Testers can contact support about those entries.
 
 ## Analytics and creator support
 
 The published site uses GA4 web stream `G-M4V8F77Y5F`. It measures page visits, run starts and finishes, the Night Shift unlock and clicks on Dave’s coffee link. Run events carry the mode and gameplay totals. The leaderboard name, registration details and feedback text stay out of these events. Local web builds skip the production tag.
 
-The iPhone app forwards the same gameplay events and screen changes to Firebase Analytics through Capacitor. Collection stays inactive until the Firebase client configuration is available. To activate it, register `cc.mamdanirun.game` in the Firebase project linked to the intended Analytics property, add its `GoogleService-Info.plist` to the Xcode **App** target as a bundled resource and rebuild. The SDK uses the Analytics Core product without advertising-ID support. To verify a configured build, launch it with `-FIRDebugEnabled` and watch the iOS stream in DebugView. [Firebase Apple setup](https://firebase.google.com/docs/ios/setup) · [DebugView](https://firebase.google.com/docs/analytics/debugview)
+The iPhone app sends no analytics events. App Store Connect shows first-time downloads, redownloads and total downloads in Analytics. [Apple’s download metrics](https://developer.apple.com/help/app-store-connect-analytics/reference/metrics-definitions)
 
 The creator support button opens Dave’s Buy Me a Coffee page. It is available on the web and in the native app when StoreKit identifies the United States storefront. Support does not affect the wallet, outfits or gameplay.
 

@@ -3,7 +3,7 @@ import { setupPosters } from './game/Posters.js';
 import { frontPage } from './game/CityWire.js';
 import { RIVALS } from './game/FamilyRace.js';
 import { Shop } from './game/Shop.js';
-import { startAnalytics, track, trackScreen, setupSupportLinks } from './game/Analytics.js';
+import { startAnalytics, track, setupSupportLinks } from './game/Analytics.js';
 import { Sound } from './game/Sound.js';
 import { loadCast, loadMayor, loadOutfit } from './game/Cast.js';
 import { ApiClient } from './game/ApiClient.js';
@@ -25,11 +25,16 @@ const screenIds = [
     'shop-screen',
     'poster-room',
     'rankings-screen',
+    'privacy-modal',
     'registration-modal',
     'feedback-modal'
 ];
 const sound = new Sound(),
     api = new ApiClient();
+const native = api.native;
+const onlineKey = 'mamdani_ios_online';
+const scoreKey = 'mamdani_ios_score_key';
+const onlinePlay = () => !native || localStorage.getItem(onlineKey) === 'on';
 let run,
     fittingRoom,
     roomRequest,
@@ -59,7 +64,6 @@ function show(id, focus) {
     if (view !== id) {
         entryVersion++;
         clearStartButton();
-        trackScreen(id);
     }
     view = id;
     for (const key of screenIds) {
@@ -284,23 +288,24 @@ async function startRun(requested, button = $('start-btn')) {
     status.textContent = 'Loading street…';
     try {
         const ready = getStreet(ticket);
-        let openingRecord = api.getSeasonRecord();
+        const online = onlinePlay();
+        let openingRecord = online ? api.getSeasonRecord() : null;
         sound.unlock();
         const [street] = await Promise.all([ready, refreshWallet(), afterPaint()]);
         if (entryVersion !== ticket || !street) return;
         const attempt = {
             ...startAttempt(availableMode(requested ?? selectedMode(), wallet)),
-            playerId: playerId()
+            playerId: online ? playerId() : null
         };
         const attemptId = newId();
-        const recordProvider = {
+        const recordProvider = online ? {
             getRecord() {
                 const request = openingRecord ?? api.getSeasonRecord();
                 openingRecord = null;
                 return request;
             },
             claim: score => api.claimSeasonRecord({ playerId: attempt.playerId, attemptId, score, mode: attempt.mode })
-        };
+        } : undefined;
         activeAttempt = attempt;
         street.onEnd = (distance, gross, cause) => finish(attempt, distance, gross, cause);
         street.onRaceWin = count => recordFamilyWin(count).catch(() => { walletAvailable = false; });
@@ -355,7 +360,49 @@ afterPaint().then(() => {
 });
 $('story-btn').onclick = () => show('story-modal', 'close-story-btn');
 $('instructions-btn').onclick = () => show('instructions-modal', 'instructions-modal');
+$('feedback-btn').hidden = native;
 $('feedback-btn').onclick = () => show('feedback-modal', 'feedback-msg');
+$('privacy-btn').hidden = !native;
+$('result-online-settings').hidden = !native;
+for (const id of ['privacy-btn', 'result-online-settings']) {
+    $(id).onclick = () => {
+        $('online-play').checked = onlinePlay();
+        $('delete-online-confirmation').hidden = true;
+        $('delete-online-data').disabled = $('online-play').disabled || !localStorage.getItem(scoreKey);
+        show('privacy-modal', 'online-play');
+    };
+}
+$('online-play').onchange = event => {
+    localStorage.setItem(onlineKey, event.target.checked ? 'on' : 'off');
+    $('privacy-status').textContent = event.target.checked ? 'Online play enabled for your next run.' : 'Online play is off.';
+};
+$('delete-online-data').onclick = () => {
+    $('delete-online-confirmation').hidden = false;
+    $('confirm-delete-online-data').focus();
+};
+$('cancel-delete-online-data').onclick = () => {
+    $('delete-online-confirmation').hidden = true;
+    $('delete-online-data').focus();
+};
+$('confirm-delete-online-data').onclick = async () => {
+    const key = localStorage.getItem(scoreKey);
+    if (!key || $('online-play').disabled) return;
+    $('delete-online-confirmation').hidden = true;
+    localStorage.setItem(onlineKey, 'off');
+    $('online-play').checked = false;
+    $('online-play').disabled = true;
+    $('delete-online-data').disabled = true;
+    $('privacy-status').textContent = 'Deleting online data…';
+    const result = await api.deleteSeasonData(key);
+    if (result.ok) {
+        localStorage.removeItem(scoreKey);
+        $('privacy-status').textContent = 'Online data deleted. Online play is off.';
+    } else {
+        $('delete-online-data').disabled = false;
+        $('privacy-status').textContent = 'Online play is off. Could not confirm deletion. Try again when connected.';
+    }
+    $('online-play').disabled = false;
+};
 document.querySelectorAll('[data-home]').forEach((b) =>
     b.addEventListener('click', () => {
         home();
@@ -406,10 +453,12 @@ function newId() {
 }
 
 function playerId() {
-    let id = localStorage.getItem('mamdani_player_id');
+    const storageKey = native ? scoreKey : 'mamdani_player_id';
+    let id = localStorage.getItem(storageKey);
     if (!id) {
-        id = newId();
-        localStorage.setItem('mamdani_player_id', id);
+        id = native ? Array.from(crypto.getRandomValues(new Uint8Array(32)),
+            byte => byte.toString(16).padStart(2, '0')).join('') : newId();
+        localStorage.setItem(storageKey, id);
     }
     return id;
 }
@@ -498,7 +547,7 @@ async function finish(attempt, distance, gross, cause) {
     $('result-best-label').textContent = night ? 'Night Shift best on this device' : 'Day Run best on this device';
     $('pb-score').textContent = metres(night ? wallet.nightBest : best());
     $('pb-rank-display').textContent = '';
-    $('join-lb-btn').hidden = !!localStorage.getItem('mamdani_name');
+    $('join-lb-btn').hidden = native || !!localStorage.getItem('mamdani_name');
     show('game-over-screen', 'restart-btn');
     document.querySelector('.results').scrollTop = 0;
     loadBoard(version, result);
@@ -508,7 +557,7 @@ function settleScore(attempt, distance) {
     if (attempt.result) return attempt.result;
     if (attempt.mode === 'day') localStorage.setItem('mamdani_best_score', Math.max(best(), distance));
     const result = attempt.result = { playerId: attempt.playerId, mode: attempt.mode, distance };
-    postScore(result);
+    if (result.playerId) postScore(result);
     return result;
 }
 
@@ -548,15 +597,15 @@ function showStandings(list, entries) {
         row.insertCell().textContent = index + 1;
         const runner = row.insertCell();
         const name = document.createElement('bdi');
-        name.textContent = entry.name || 'Anonymous';
+        name.textContent = native ? 'Runner ' + (index + 1) : entry.name || 'Anonymous';
         runner.append(name);
-        if (localId && entry.player_id === localId) {
+        if (!native && localId && entry.player_id === localId) {
             const you = document.createElement('small');
             you.className = 'rank-owner';
             you.textContent = 'You';
             runner.append(you);
         }
-        if (entry.social) {
+        if (!native && entry.social) {
             const link = document.createElement('a');
             const handle = String(entry.social).replace(/^@/, '');
             link.textContent = '@' + handle;
@@ -600,6 +649,11 @@ async function loadBoard(version, result, retryScore = false) {
     const current = () => version === resultVersion && result === lastResult;
     const list = $('leaderboard-list');
     const retry = $('result-board-retry');
+    if (!result.playerId) {
+        list.textContent = 'Score saved on this device. Enable online play to post future runs.';
+        retry.hidden = true;
+        return;
+    }
     list.textContent = 'Updating season standings…';
     retry.hidden = true;
     const rank = await postScore(result, retryScore);

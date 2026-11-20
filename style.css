@@ -463,6 +463,7 @@ h1 strong {
 .credits {
     margin-top: 25px;
     justify-content: space-between;
+    flex-wrap: wrap;
     font-size: 14px;
 }
 .credits a,
@@ -494,7 +495,7 @@ h1 strong {
     font-weight: 700;
     margin: 13px 0;
 }
-.paper input,
+.paper input:not([type="checkbox"]),
 .paper textarea {
     display: block;
     width: 100%;
