@@ -18,7 +18,7 @@ for (const name of ['mayor', 'chaser', 'commuter', 'new-yorker']) {
 const io = new NodeIO().registerExtensions([EXTTextureWebP]);
 const apparel = await readFile(new URL('apparel.glb', models));
 for (const id of ['wearables', 'rebel', 'worker', 'activist', 'imam']) {
-    const edition = id === 'rebel' ? '232' : '231';
+    const edition = { rebel: '232', worker: '241' }[id] ?? '231';
     const outfits = new URL('outfits/' + edition + '/', models);
     await mkdir(outfits, { recursive: true });
     const document = await io.readBinary(apparel);

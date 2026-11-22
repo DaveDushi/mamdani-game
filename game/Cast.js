@@ -26,7 +26,7 @@ function loadModel(name) {
         loader ??= import('three/addons/loaders/GLTFLoader.js').then(({ GLTFLoader }) => new GLTFLoader());
         const parse = bytes => Promise.all([loader, bytes]).then(([parser, buffer]) => parser.parseAsync(buffer, base));
         const original = () => outfit ? loadModel('apparel')
-            : parse(modelBytes(name === 'apparel' ? 'apparel.glb?v=232' : name + '.glb'));
+            : parse(modelBytes(name === 'apparel' ? 'apparel.glb?v=241' : name + '.glb'));
         const asset = name !== 'apparel' && typeof DecompressionStream !== 'undefined' && Blob.prototype.stream
             ? parse(unpack(packed)).catch(original)
             : original();
@@ -36,7 +36,7 @@ function loadModel(name) {
 }
 
 export function loadOutfit(id) {
-    const edition = id === 'rebel' ? '232' : '231';
+    const edition = { rebel: '232', worker: '241' }[id] ?? '231';
     return id === 'default' ? null : loadModel('outfits/' + edition + '/' + id);
 }
 
