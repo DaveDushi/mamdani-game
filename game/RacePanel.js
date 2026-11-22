@@ -51,6 +51,11 @@ const markup = `
         <button class="race-button race-continue" type="button" hidden>Continue</button>
         <span id="race-keys">Press Space or Up repeatedly</span>
     </div>
+    <div class="race-tutorial" hidden>
+        <strong>How to race</strong>
+        <p id="race-instructions">When you see Go, tap the screen fast or press Space or Up repeatedly. Keep tapping to stay fast and beat your rival to the finish.</p>
+        <button class="race-button race-ready" type="button" aria-describedby="race-instructions">Ready</button>
+    </div>
 `;
 
 function write(element, text) {
@@ -62,7 +67,7 @@ function fill(element, fraction) {
 }
 
 export class RacePanel {
-    constructor(hud, onTap, onContinue) {
+    constructor(hud, onTap, onContinue, onReady) {
         this.hud = hud;
         this.onTap = onTap;
         this.onContinue = onContinue;
@@ -80,11 +85,13 @@ export class RacePanel {
         this.tapButton = this.element.querySelector('.race-tap');
         this.continueButton = this.element.querySelector('.race-continue');
         this.keyHint = this.element.querySelector('#race-keys');
+        this.tutorial = this.element.querySelector('.race-tutorial');
+        this.readyButton = this.element.querySelector('.race-ready');
         hud.append(this.element);
 
         // iPhone smart zoom can move the finish button offscreen during repeated sprint taps.
         const keepTrackInView = event => {
-            if (event.cancelable && !event.target.closest('.race-continue')) event.preventDefault();
+            if (event.cancelable && !event.target.closest('.race-continue, .race-ready')) event.preventDefault();
         };
         for (const type of ['touchstart', 'touchend']) {
             this.element.addEventListener(type, keepTrackInView, { passive: false });
@@ -99,6 +106,9 @@ export class RacePanel {
             if (!this.active || this.continueButton.hidden || this.continueButton.disabled) return;
             this.continueButton.disabled = true;
             this.onContinue();
+        });
+        this.readyButton.addEventListener('click', () => {
+            if (this.active && !this.tutorial.hidden) onReady();
         });
 
         window.addEventListener('keydown', event => this.keydown(event), { capture: true });
@@ -116,12 +126,13 @@ export class RacePanel {
 
     keydown(event) {
         const { code, target } = event;
-        if (target === this.continueButton && (code === 'Space' || code === 'Enter')) {
+        if ((target === this.continueButton || target === this.readyButton) && (code === 'Space' || code === 'Enter')) {
             if (this.pressedKeys.has(code) || event.repeat) event.preventDefault();
             return;
         }
         const raceKey = code === 'Space' || code === 'ArrowUp' || (code === 'Enter' && target === this.tapButton);
         if (!this.active || !raceKey || event.altKey || event.ctrlKey || event.metaKey) return;
+        if (this.element.dataset.phase === 'tutorial') return;
         if (target !== this.tapButton && target.closest?.('button, input, textarea, select, a, [contenteditable]')) return;
 
         event.preventDefault();
@@ -140,7 +151,6 @@ export class RacePanel {
         write(this.nodes.finish, raceDistance(rival.metres));
         this.nodes.board.setAttribute('aria-label', `Positions in the ${rival.metres} m sprint`);
         this.continueButton.disabled = false;
-        this.setPhase('intro');
         this.paint(race);
     }
 
@@ -150,7 +160,7 @@ export class RacePanel {
         this.hud.classList.add('is-racing');
         this.element.inert = false;
         this.paused = false;
-        this.tapButton.focus({ preventScroll: true });
+        this.focusControl();
     }
 
     paint(race, finishReady = false) {
@@ -160,7 +170,8 @@ export class RacePanel {
         }
         const { phase, countdown, elapsed, playerProgress, rivalProgress, speed } = race;
         // The clock stands still at the tape and between countdown digits.
-        if (this.lastRace === race && this.lastTime === elapsed && this.lastCount === countdown && this.lastSpeed === speed) return;
+        if (this.lastRace === race && this.element.dataset.phase === phase && this.lastTime === elapsed &&
+            this.lastCount === countdown && this.lastSpeed === speed) return;
         this.lastRace = race;
         this.lastTime = elapsed;
         this.lastCount = countdown;
@@ -174,7 +185,7 @@ export class RacePanel {
         const ahead = gap >= 0.1;
         const separated = Math.abs(gap) >= 0.1;
         const lead = separated ? `${ahead ? 'Ahead' : 'Behind'} by ${Math.abs(gap).toFixed(1)} m` : 'Tied';
-        write(nodes.gap, phase === 'intro' ? 'At the line' : lead);
+        write(nodes.gap, phase === 'intro' || phase === 'tutorial' ? 'At the line' : lead);
         nodes.gap.dataset.lead = !separated ? 'tied' : ahead ? 'ahead' : 'behind';
         const seconds = elapsed.toFixed(1);
         write(nodes.time, `${seconds} s`);
@@ -191,7 +202,7 @@ export class RacePanel {
         if (showSpeed) write(nodes['speed-value'], speed.toFixed(1));
         switch (phase) {
             case 'intro':
-                write(nodes.signal, `On your marks · ${countdown}`);
+                write(nodes.signal, `Racing in ${countdown}`);
                 break;
             case 'racing':
                 write(nodes.signal, 'Go!');
@@ -220,6 +231,7 @@ export class RacePanel {
     setPhase(phase) {
         if (phase === this.element.dataset.phase) return;
         this.element.dataset.phase = phase;
+        this.tutorial.hidden = phase !== 'tutorial';
         this.tapButton.setAttribute('aria-disabled', String(phase !== 'racing'));
         this.tapButton.hidden = this.keyHint.hidden = this.done;
         this.continueButton.hidden = !this.done;
@@ -234,7 +246,12 @@ export class RacePanel {
         if (this.paused === paused) return;
         this.paused = paused;
         this.element.inert = paused;
-        if (!paused && this.active) (this.done ? this.continueButton : this.tapButton).focus({ preventScroll: true });
+        if (!paused && this.active) this.focusControl();
+    }
+
+    focusControl() {
+        const button = this.done ? this.continueButton : this.tutorial.hidden ? this.tapButton : this.readyButton;
+        button.focus({ preventScroll: true });
     }
 
     hide() {

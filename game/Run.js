@@ -24,8 +24,12 @@ import { approachCopy, RaceApproach } from './RaceApproach.js';
 import { RacePanel } from './RacePanel.js';
 import { RaceStage } from './RaceStage.js';
 import { CITY_REVEAL, FINISH_HOLD, frameOpenBlock } from './RaceFinish.js';
+import { courseSpeed } from './Course.js';
 
 const STEP = 1 / 60;
+const RACE_WARNING_SECONDS = 2;
+const STREET_RECOVERY_SECONDS = 1;
+const RACE_TUTORIAL_KEY = 'mamdani_race_tutorial_seen';
 const pickups = {
     fastFreeBus: { title: 'Fast & Free', detail: 'Steer into barriers for up to 3 stamps', short: 'Bus ride' },
     kafiyeh: { title: 'Allah Akbar', detail: 'Keffiyeh · Collision shield', short: 'Keffiyeh shield' },
@@ -81,7 +85,12 @@ export class Run {
         this.racePanel = new RacePanel(document.getElementById('hud'), () => {
             if (this.mode !== 'playing' || !this.race?.tap()) return;
             this.sound.play('stride');
-        }, () => this.leaveRace());
+        }, () => this.leaveRace(), () => this.readyForRace());
+        try {
+            this.raceTutorialSeen = localStorage.getItem(RACE_TUTORIAL_KEY) === '1';
+        } catch {
+            this.raceTutorialSeen = false;
+        }
         this.raceApproach = new RaceApproach(document.getElementById('race-checkpoint'), this.scene);
         this.magnet = new THREE.Vector3();
         this.reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -253,6 +262,7 @@ export class Run {
         this.busRide.reset(this.player);
         this.race = null;
         this.upcomingRace = null;
+        this.raceWarning = null;
         this.raceStage?.stop();
         this.racePanel.hide();
         this.raceApproach.hide();
@@ -404,18 +414,39 @@ export class Run {
         }
     }
 
-    canStartRace() {
+    canStartRace(requireClearStreet = true) {
         const { player, world } = this;
         if (this.busRide?.active || this.parkRide?.active) return false;
         const laneX = (player.currentLane - 1) * 3;
         if (this.trump.isChasing || !player.isGrounded || player.slideTimer > 0 ||
             player.confusionTimer > 0 || Math.abs(player.mesh.position.x - laneX) > .35) return false;
-        if (this.familyWins === RIVALS.length - 1) return true;
-        // Children return to the same traffic after the heat.
+        if (!requireClearStreet || this.familyWins === RIVALS.length - 1) return true;
         const ahead = world.speed * .65;
         return !this.obstacleManager.obstacles.some(({ type, mesh }) =>
             type !== 'coin' && type !== 'cue' && mesh.position.z > -ahead && mesh.position.z < 2
         );
+    }
+
+    checkRaceEntry(rival, metres) {
+        const eligible = rival && this.preparedRivals.has(rival.id) && this.raceSchedule.canEnter(rival, metres);
+        if (this.raceWarning) {
+            const interrupted = this.trump.isChasing || this.busRide.active || this.parkRide.active;
+            if (eligible && this.raceWarning.rival === rival && !interrupted) {
+                if (this.elapsed >= this.raceWarning.startAt && this.canStartRace(false)) this.startRace(rival);
+                return;
+            }
+            this.raceWarning = null;
+            this.raceApproach.warn(null);
+        }
+        if (!eligible || !this.canStartRace()) return;
+        this.raceWarning = { rival, startAt: this.elapsed + RACE_WARNING_SECONDS };
+        this.raceApproach.warn(rival);
+    }
+
+    clearRaceChute() {
+        const { distance, speed, overtime } = this.world;
+        const recoverySpeed = courseSpeed(distance + speed * STREET_RECOVERY_SECONDS, this.runType) * (overtime ? 1.1 : 1);
+        this.obstacleManager.clearFinishChute(Math.max(speed, recoverySpeed) * STREET_RECOVERY_SECONDS + 6);
     }
 
     startRace(rival) {
@@ -423,16 +454,30 @@ export class Run {
         this.player.stumble.reset();
         this.player.iceTimer = 0;
         this.input.reset();
-        // Leave about 0.8 seconds of clear road at Overtime speed.
-        if (rival.index === RIVALS.length - 1) this.obstacleManager.clearFinishChute(this.world.speed * .9);
+        this.clearRaceChute();
+        this.raceWarning = null;
         this.raceApproach.hide();
-        this.race = this.upcomingRace?.rival === rival ? this.upcomingRace : new FamilyRace(rival, this.speedLevel);
+        this.race = this.upcomingRace?.rival === rival
+            ? this.upcomingRace : new FamilyRace(rival, this.speedLevel, !this.raceTutorialSeen);
         this.raceStage.start(this.race.rival);
         this.racePanel.show(this.race);
-        this.sound.play('count');
+        if (this.race.phase === 'intro') this.sound.play('count');
         // Give the introductory artwork a full first frame on phones that compile a new shader here.
         this.acc = 0;
         this.last = performance.now();
+    }
+
+    readyForRace() {
+        if (this.mode !== 'playing' || !this.race?.ready()) return;
+        this.raceTutorialSeen = true;
+        try {
+            localStorage.setItem(RACE_TUTORIAL_KEY, '1');
+        } catch {
+            // Keep the tutorial dismissed for this session when storage is unavailable.
+        }
+        this.racePanel.paint(this.race);
+        this.racePanel.focusControl();
+        this.sound.play('count');
     }
 
     prepareRace(rival) {
@@ -452,7 +497,7 @@ export class Run {
     raceStep(dt) {
         const race = this.race;
         const phase = race.phase;
-        if (phase === 'won' || phase === 'lost') return;
+        if (phase === 'tutorial' || phase === 'won' || phase === 'lost') return;
         const count = race.countdown;
         this.elapsed += dt;
         race.update(dt);
@@ -489,6 +534,7 @@ export class Run {
             if (this.familyWins === RIVALS.length - 1) this.prepareRace(this.raceSchedule.rivals[this.familyWins]);
         }
         this.bulletin(message, 'Race desk', true);
+        this.clearRaceChute();
         this.updateHud();
         this.pause();
         this.renderCourse(1);
@@ -497,6 +543,7 @@ export class Run {
 
     endRun(cause) {
         this.mode = 'ended';
+        this.raceApproach.warn(null);
         this.sound.music(false, true);
         this.onEnd(this.scoreManager.getDisplayScore(), this.scoreManager.grossStamps, cause);
     }
@@ -714,12 +761,12 @@ export class Run {
             this.prepareRace(next);
             if (!schedule.initialRecordPending && world.distance >= next.at - world.speed * 4.5) {
                 if (this.upcomingRace?.rival !== next) {
-                    this.upcomingRace = new FamilyRace(next, this.speedLevel);
+                    this.upcomingRace = new FamilyRace(next, this.speedLevel, !this.raceTutorialSeen);
                     this.racePanel.prepare(this.upcomingRace);
                 }
             }
-            if (schedule.canEnter(next, metres) && this.preparedRivals.has(next.id) && this.canStartRace()) this.startRace(next);
         }
+        this.checkRaceEntry(next, metres);
     }
     updateHeatwave(dt, onFoot) {
         const wasActive = this.heatwave.active;

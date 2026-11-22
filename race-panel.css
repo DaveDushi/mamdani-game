@@ -20,6 +20,23 @@
     z-index: 2;
 }
 
+.race-warning {
+    position: absolute;
+    z-index: 1;
+    inset-inline: 12px;
+    top: calc(max(12px, env(safe-area-inset-top)) + 62px);
+    width: fit-content;
+    max-width: calc(100% - 24px);
+    margin-inline: auto;
+    padding: 8px 14px;
+    border: 1px solid #59626a;
+    border-bottom: 3px solid var(--gold);
+    background: #14212c;
+    color: var(--gold);
+    text-align: center;
+    font: italic 900 clamp(18px, 4.5vw, 30px)/1.05 Condensed, Impact, sans-serif;
+}
+
 #race-checkpoint {
     display: flex;
     flex-wrap: wrap;
@@ -169,7 +186,7 @@
 }
 
 /* Lay out the upcoming scoreboard during its street announcement. */
-.race-panel[hidden][data-phase="intro"] {
+.race-panel[hidden]:is([data-phase="intro"], [data-phase="tutorial"]) {
     display: grid !important;
     visibility: hidden;
     pointer-events: none;
@@ -307,6 +324,34 @@
     padding: 8px 10px;
     background: #14212c;
     border: 1px solid var(--race-rule);
+}
+
+.race-panel[data-phase="tutorial"] :is(.race-board, .race-command) {
+    display: none;
+}
+
+.race-tutorial {
+    grid-row: 3;
+    justify-self: center;
+    width: min(410px, 100%);
+    padding: 12px;
+    border: 1px solid var(--race-rule);
+    border-top: 3px solid var(--gold);
+    background: #14212c;
+    font: 700 15px/1.35 Barlow, sans-serif;
+}
+
+.race-tutorial strong {
+    color: var(--gold);
+    font: italic 900 24px/1 Condensed, Impact, sans-serif;
+}
+
+.race-tutorial p {
+    margin: 6px 0 10px;
+}
+
+.race-ready {
+    width: 100%;
 }
 
 .race-call {

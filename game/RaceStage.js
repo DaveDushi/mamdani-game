@@ -455,7 +455,7 @@ export class RaceStage {
         const winnerLane = race.phase === 'won' ? 0 : race.phase === 'lost' ? 1 : -1;
         const done = winnerLane !== -1;
         if (done) this.finishTime += dt;
-        const intro = race.phase === 'intro';
+        const intro = race.phase === 'intro' || race.phase === 'tutorial';
         const lead = Math.max(p, r), gap = Math.abs(p - r) * COURSE;
         const focus = lead * COURSE - Math.min(gap * .46, 1.3);
         const close = 1 / (1 + gap * .28);

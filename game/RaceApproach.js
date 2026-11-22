@@ -69,6 +69,11 @@ export class RaceApproach {
         this.label = element.querySelector('[data-approach-label]');
         this.name = element.querySelector('[data-approach-name]');
         this.detail = element.querySelector('[data-approach-detail]');
+        this.warning = document.createElement('div');
+        this.warning.className = 'race-warning';
+        this.warning.setAttribute('role', 'status');
+        this.warning.hidden = true;
+        this.hud.append(this.warning);
         const home = this.hud.querySelector('.hud-lower');
         const footer = home.querySelector('.hud-foot');
         const pause = this.hud.querySelector('#pause-btn');
@@ -79,6 +84,11 @@ export class RaceApproach {
         };
         compact.addEventListener('change', dock);
         dock();
+    }
+
+    warn(rival) {
+        write(this.warning, rival ? `Get ready to race ${rival.name}` : '');
+        this.warning.hidden = !rival;
     }
 
     paint(state, chasing) {
@@ -106,6 +116,7 @@ export class RaceApproach {
     }
 
     hide() {
+        this.warn(null);
         this.element.hidden = true;
         this.hud.classList.remove('race-priority');
         if (this.checkIn) this.checkIn.group.visible = false;

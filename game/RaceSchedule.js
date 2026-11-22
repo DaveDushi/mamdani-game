@@ -23,7 +23,7 @@ export function familySchedule(score) {
             ...rival,
             at: final ? target + 1 : Math.round(openingCheckpoints[index] * scaling),
             metres,
-            countdown: metres < SPRINT_METRES ? 2 : 3,
+            countdown: 3,
             finish: LAUNCH_SECONDS + (rival.finish - LAUNCH_SECONDS) * metres / rival.metres / pressure,
             surge: rival.surge * (1 + .2 * growth)
         };

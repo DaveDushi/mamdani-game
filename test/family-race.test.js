@@ -20,11 +20,11 @@ function runRace(rival, level, tapsPerSecond) {
 
 test('opening races grow in length and keep the five children ahead of Donald', () => {
     assert.deepEqual(opening.map(({ id, at, metres, countdown }) => [id, at, metres, countdown]), [
-        ['junior', 650, 64, 2],
-        ['ivanka', 1670, 72, 2],
-        ['eric', 2975, 80, 2],
-        ['tiffany', 4650, 88, 2],
-        ['barron', 6650, 98, 2],
+        ['junior', 650, 64, 3],
+        ['ivanka', 1670, 72, 3],
+        ['eric', 2975, 80, 3],
+        ['tiffany', 4650, 88, 3],
+        ['barron', 6650, 98, 3],
         ['donald', 9001, 100, 3]
     ]);
     assert.deepEqual(opening.map(({ index }) => takeoverPercent(index + 1)), [17, 33, 50, 67, 83, 100]);
@@ -92,6 +92,23 @@ test('countdown taps add no speed and the race clock starts at go', () => {
     assert.ok(race.rivalProgress > 0);
     assert.equal(race.tap(), true);
     assert.ok(race.speed > 0);
+});
+
+test('the first race waits at the tutorial until the player is ready', () => {
+    const race = new FamilyRace(opening[0], 0, true);
+    race.update(30);
+    assert.equal(race.phase, 'tutorial');
+    assert.equal(race.elapsed, 0);
+    assert.equal(race.tap(), false);
+    assert.equal(race.ready(), true);
+    assert.equal(race.phase, 'intro');
+    assert.equal(race.countdown, 3);
+    race.update(1);
+    assert.equal(race.ready(), false);
+    assert.equal(race.countdown, 2);
+    race.update(2);
+    assert.equal(race.phase, 'racing');
+    assert.equal(race.tap(), true);
 });
 
 test('every rival wins without taps at every race speed level and heat length', () => {
