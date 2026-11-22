@@ -56,7 +56,7 @@ The shop sells permanent upgrades for after-tax stamps. Each power-up has three 
 
 ## Family races
 
-Each run starts with Donald Trump Jr., then Ivanka, Eric, Tiffany and Barron. All five race offline. They wait at 650, 1,670, 2,975, 4,650 and 6,650 m, and run 64, 72, 80, 88 and 98 m. These marks never move. Beating them pays 5, 8, 12, 16 and 20 gross stamps. Open Race schedule under Sprint training in the Shop to see them with each rival’s trick.
+Each run starts with Donald Trump Jr., then Ivanka, Eric, Tiffany and Barron. All five race offline. They wait at 1, 3.5, 7.5, 12.5 and 18.5 km, and run 64, 72, 80, 88 and 98 m. These marks never move. Beating them pays 5, 8, 12, 16 and 20 gross stamps. Open Race schedule under Sprint training in the Shop to see them with each rival’s trick.
 
 The street pauses for each sprint when the course is clear. Tap anywhere, or press Space or Up, as fast as you can. Holding the key counts once. You slow down between taps. Against Tiffany, Barron and Donald, the Left and Right arrows or A and D hit the side pads.
 

@@ -56,7 +56,7 @@ test('carriage gallops at the runner well above street pace, rings once and rese
     for (const speed of [30,60,93.5]) assert.ok(carriagePace(speed) >= speed*.5);
     for (const x of [-3,0,3]) for (const reduced of [false,true]) {
         const s=street(reduced), p=runner(x===0?3:0);
-        const spawn = () => s.add('horseCarriage',x,-155,1,{approachSpeed:93.5});
+        const spawn = () => s.add('horseCarriage',x,-153,1,{approachSpeed:93.5});
         const c=spawn();
         const start=c.carriage.position.z, spin=c.frontWheels.rotation.x, rear=c.backWheels.rotation.x;
         assert.equal(c.stencil.position.z,93.5*.95);

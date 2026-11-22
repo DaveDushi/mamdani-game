@@ -26,13 +26,13 @@ const patterns = [
 ];
 
 const tiers = [
-    { at: 0,     seconds: 1.36, move: .38, minimum: 1, maximum: 2 },
-    { at: 350,   seconds: 1.05, move: .55, minimum: 2, maximum: 3 },
-    { at: 1400,  seconds: .89, move: .63, minimum: 4, maximum: 6 },
-    { at: 3500,  seconds: .82, move: .74, minimum: 5, maximum: 8 },
-    { at: 8500,  seconds: .73, move: .84, minimum: 6, maximum: 10 },
-    { at: 22000, seconds: .66, move: .91, minimum: 8, maximum: 13 },
-    { at: 50000, seconds: .60, move: .96, minimum: 10, maximum: 16 }
+    { at: 0,     seconds: 1.14, move: .42, minimum: 2, maximum: 3 },
+    { at: 350,   seconds: .77, move: .58, minimum: 3, maximum: 5 },
+    { at: 1400,  seconds: .67, move: .66, minimum: 5, maximum: 7 },
+    { at: 3500,  seconds: .64, move: .75, minimum: 6, maximum: 9 },
+    { at: 8500,  seconds: .62, move: .84, minimum: 7, maximum: 11 },
+    { at: 22000, seconds: .60, move: .91, minimum: 8, maximum: 13 },
+    { at: 50000, seconds: .58, move: .96, minimum: 10, maximum: 16 }
 ];
 
 const longRun = [
@@ -107,7 +107,7 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
 
     function advance(seconds, jump) {
         // Leave time to land and take off again from either option in a fork.
-        if (previousJump && jump) seconds = Math.max(seconds, .99);
+        if (previousJump && jump) seconds = Math.max(seconds, .93);
         seconds = Math.max(seconds, hold);
         hold = .60;
         previousJump = jump;
@@ -122,6 +122,8 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
 
     function tag(event) {
         plainRow = !!event.lanes && !event.encounter && event.iceLane === undefined;
+        // Every lane a clean route may be in as it leaves this row.
+        if (event.lanes) event.path = [...previous];
         if (stretch) {
             event.stretch = stretch;
             stretch.until = Math.max(stretch.until, distance);
@@ -228,7 +230,7 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
         const cueStep = advance(seconds, false);
         const slots = [null, null, null];
         slots[iceLane] = 'rentIce';
-        if (blocked) slots[3 - iceLane - exitLane] = dressed(pick(street.blockers, random), random);
+        if (blocked || stretch.level > 1 && random() < .45) slots[3 - iceLane - exitLane] = dressed(pick(street.blockers, random), random);
         previous = [1, 0, 2];
         hold = 1.60;
         return tag({ distance, lanes: slots, iceLane, exitLane, cueStep });
@@ -246,6 +248,10 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
         const encounter = { id: 'horse-carriage', lane, approachSpeed };
         if (style === 'team') {
             slots[third] = 'horseCarriage';
+            previous = [exitLane];
+        } else if (style === 'horse' && random() < .65) {
+            // The way round is down one side only.
+            slots[third] = dressed(pick(street.blockers, random), random);
             previous = [exitLane];
         } else if (style === 'swerve') {
             const from = lanes.filter(other => Math.abs(other - lane) === 1);
@@ -281,13 +287,13 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
             previous = [1, 0, 2];
             previousJump = gate === 'jumpAll';
             const key = previousJump ? 'jumpGate' : 'slideGate';
-            return { distance, lanes: [key, key, key], gate, tutorial: true, cueStep,
+            return { distance, lanes: [key, key, key], gate, tutorial: true, cueStep, path: [...previous],
                 lesson: { cue: previousJump ? 'hopCue' : 'duckCue', lead } };
         }
         const exitLane = random() < .5 ? 0 : 2;
         const slots = [null, pick(['taxi', 'protest0', 'protest1', 'trashPile', 'scaffold'], random), null];
         previous = [exitLane, 2 - exitLane];
-        return { distance, lanes: slots, exitLane, cueStep, lesson: { cue: exitLane ? 'moveRightCue' : 'moveLeftCue', lead } };
+        return { distance, lanes: slots, exitLane, cueStep, path: [...previous], lesson: { cue: exitLane ? 'moveRightCue' : 'moveLeftCue', lead } };
     }
 
     const lessonGap = night ? 1.12 : 1.38;
@@ -298,22 +304,28 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
         yield openRow(lessonGap, .50, false, true);
         yield gateRow('slide', lessonGap, .22);
         yield openRow(lessonGap + random() * .22, .60);
-    } else {
+    } else if (firstRun) {
         // One idea per row and no walls: every lane of the hurdle and the beam is an answer.
-        const stamps = firstRun ? 7 : 4;
-        yield* stampTrail(firstRun ? 18 : 30, 50, 1, 1, stamps);
+        const stamps = 7;
+        yield* stampTrail(18, 50, 1, 1, stamps);
         yield lessonRow(70);
         yield* stampTrail(84, 112, previous[0], 1, stamps);
         yield lessonRow(130, 'jumpAll');
         yield* stampTrail(146, 170, 1, 1, stamps);
         yield lessonRow(184, 'slideAll');
-        if (firstRun) {
-            yield* stampTrail(198, 222, 1, 1, stamps);
-            distance = 208;
-        }
+        yield* stampTrail(198, 222, 1, 1, stamps);
+        distance = 208;
         yield openRow(lessonGap, .50, false, true);
         yield gateRow('jump', lessonGap, .22);
         yield gateRow('slide', lessonGap, .22);
+    } else {
+        // A runner who knows the moves meets a full street at once.
+        yield openRow(32 / courseSpeed(100, mode), .4);
+        for (let i = 0; i < 4; i++) yield openRow(1.28, .6, i === 3, i === 1);
+        yield gateRow('jump', 1.28, .22);
+        yield openRow(1.2, .55);
+        yield gateRow('slide', 1.24, .22);
+        yield openRow(1.2, .55, true);
     }
 
     let protectionIndex = Math.floor(random() * protections.length);
@@ -350,14 +362,14 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
     }
 
     function breakTime() {
-        return Math.max(1.06 - pressure * .05, tier.seconds + .18 - pressure * .02) + random() * Math.max(.15, .42 - pressure * .07);
+        return Math.max(.84 - pressure * .03, tier.seconds + .08 - pressure * .02) + random() * Math.max(.1, .22 - pressure * .03);
     }
 
     function* breather() {
         readPace();
         const speed = courseSpeed(distance + 100, mode);
         const lead = hold > 1 ? 1.2 : distance + Math.ceil(speed * .65) >= nextPickup ? .95 : .62;
-        const seconds = Math.max(lead + 1.02, 2.45 - effort / 9000) + random() * .25;
+        const seconds = Math.max(lead + .98, 1.85 - effort / 9000) + random() * .2;
         const from = distance + Math.ceil(speed * lead);
         const to = distance + Math.floor(speed * (seconds - .55));
         yield* pickup();
@@ -427,7 +439,7 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
     function chooseStunt(planned) {
         // More low runs at marathon pace keep the beat moving while the player lands.
         const options = previousJump && effort >= 50000 ? marathonLanding :
-            previousJump && effort >= 3500 ? afterJump : stunts;
+            previousJump && effort >= 800 ? afterJump : stunts;
         const mayFork = reachableLanes().length > 1;
         const allowed = options.filter(type => (repeated < 2 || type !== lastStunt) && (mayFork || type !== 'choice'));
         const gate = allowed.includes(planned) ? planned : pick(allowed, random);
@@ -439,9 +451,9 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
     function playBeat([beat, turn = move, timing], first) {
         const roll = random();
         const gap = timing ?? (roll < .36 ? -.06 - random() * .08 : roll < .86 ? -.04 + random() * .11 : .14 + random() * .18);
-        const recovery = distance < 450 ? 1.27 : first ? .72 : .60;
+        const recovery = distance < 450 ? 1.02 : first ? .70 : .60;
         const seconds = Math.max(recovery, tier.seconds + gap - pressure * .026);
-        const arrival = Math.max(1.05 - pressure * .02, seconds) + random() * Math.max(.08, .32 - pressure * .05);
+        const arrival = Math.max(.96 - pressure * .02, seconds) + random() * Math.max(.06, .16 - pressure * .02);
         switch (beat) {
             case 'dolly': return movingRow('delivery-dolly', arrival, move);
             case 'boom': return movingRow('signal-boom', arrival, move);

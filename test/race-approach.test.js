@@ -34,18 +34,18 @@ test('the heading and distance forecast a mark without promising exact entry', (
     const read = (metres, chasing = false, trackReady = true) =>
         approachCopy(schedule, next, metres, 40, chasing, trackReady);
     assert.deepEqual(read(0), {
-        tone: 'quiet', label: 'Next race', name: 'Donald Trump Jr.', detail: 'At 650 m'
+        tone: 'quiet', label: 'Next race', name: 'Donald Trump Jr.', detail: 'At 1 km'
     });
-    assert.deepEqual(read(335), {
+    assert.deepEqual(read(685), {
         tone: 'approach', label: 'Race ahead', name: 'Donald Trump Jr.', detail: '315 m to go'
     });
-    assert.equal(read(475).detail, '175 m to go');
-    assert.equal(read(651, true).detail, 'Clear the chase');
-    assert.equal(read(651, false, false).detail, 'Preparing the track');
+    assert.equal(read(825).detail, '175 m to go');
+    assert.equal(read(1001, true).detail, 'Clear the chase');
+    assert.equal(read(1001, false, false).detail, 'Preparing the track');
     schedule.returnedToStreet(0);
-    assert.equal(read(651).detail, 'After the street stretch');
-    schedule.elapsed = 18;
-    assert.equal(read(651).detail, 'Next clear stretch');
+    assert.equal(read(1001).detail, 'After the street stretch');
+    schedule.elapsed = 40;
+    assert.equal(read(1001).detail, 'Next clear stretch');
 });
 
 test('the children keep their marks while the record is still loading, and only Donald waits for it', () => {
@@ -106,5 +106,5 @@ test('the metres forecast for Donald uses this run\'s points rate, then stands s
     schedule.setTarget(20000);
     assert.ok(final.at > 13000);
     assert.equal(final.target, 20000);
-    assert.deepEqual(schedule.rivals.slice(0, 5).map(rival => rival.at), [650, 1670, 2975, 4650, 6650]);
+    assert.deepEqual(schedule.rivals.slice(0, 5).map(rival => rival.at), [1000, 3500, 7500, 12500, 18500]);
 });

@@ -122,7 +122,10 @@ export class PowerupManager {
             m.position.z += speed * dt;
             m.position.y = this.reducedMotion ? FLOAT : 1.15 + 0.095 * Math.sin(m.position.z * 0.27);
             pickup.pool.position.y = .045 - m.position.y;
-            pickup.halo.scale.setScalar(2 + .2 * breath);
+            // The glow ignores fog, so it grows out of the haze instead of popping on.
+            const near = Math.max(0, Math.min(1, (m.position.z + 190) / 80));
+            pickup.halo.visible = pickup.pool.visible = near > 0;
+            pickup.halo.scale.setScalar((2 + .2 * breath) * near);
             pickup.pool.scale.set(2.3 - .14 * breath, 1, 2.9 - .18 * breath);
             if (pickup.previousZ > 10) this.remove(i);
         }

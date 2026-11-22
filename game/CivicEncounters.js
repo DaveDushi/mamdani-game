@@ -4,6 +4,8 @@ import { horseCarriage, carriagePace, carriageAngle } from './HorseCarriage.js';
 // Hind pair, then fore pair, a beat apart on each side: a gallop rather than a trot.
 const gallopPhase = [2.5, 0, 3.1, .6];
 const GALLOP = 2 * Math.PI * 2.7;
+// The horse waits at the far end of its empty road, then bolts.
+const WAIT_SECONDS = 1.65, WAIT_METRES = 83;
 const BELL_FROM = -1.6, BELL_TO = -.8;
 const MERGE_FROM = -1.5, MERGE_TO = -.68;
 
@@ -40,6 +42,7 @@ export function configureCivic(obj, encounter, reducedMotion) {
     obj.backWheels ??= obj.carriage.getObjectByName('backWheels');
     obj.reducedMotion = reducedMotion;
     obj.pace = carriagePace(obj.approachSpeed);
+    obj.chargeAt = -Math.max(WAIT_SECONDS, WAIT_METRES / obj.approachSpeed);
     obj.mergeX = encounter?.fromLane === undefined ? 0 : (encounter.fromLane - 1) * 3 - obj.mesh.position.x;
     obj.merge.visible = obj.mergeX !== 0;
     obj.merge.position.set(obj.mergeX, 0, -3.4);
@@ -51,7 +54,7 @@ export function configureCivic(obj, encounter, reducedMotion) {
 }
 
 export function moveCarriage(obj) {
-    const t = obj.mesh.position.z / obj.approachSpeed;
+    const t = Math.max(obj.chargeAt, obj.mesh.position.z / obj.approachSpeed);
     const travel = t * obj.pace;
     const { carriage, legs, shins, horse, dust } = obj;
     carriage.position.z = travel;

@@ -14,7 +14,7 @@ test('the record moves only Donald and the game waits for the same floor as the 
     assert.equal(RECORD_FLOOR, FINAL_FLOOR_POINTS);
     const opening = familySchedule(null);
     assert.deepEqual(familySchedule(RECORD_FLOOR), opening);
-    assert.deepEqual(opening.map(rival => rival.at), [650, 1670, 2975, 4650, 6650, RECORD_FLOOR + 1]);
+    assert.deepEqual(opening.map(rival => rival.at), [1000, 3500, 7500, 12500, 18500, RECORD_FLOOR + 1]);
     const later = familySchedule(60000);
     assert.deepEqual(later.slice(0, 5), opening.slice(0, 5));
     assert.equal(later[5].at, 60001);
@@ -26,12 +26,12 @@ test('a slow first read never holds back the children', async () => {
     const initial = deferred();
     const schedule = new RaceSchedule({ getRecord: () => initial.promise });
     const read = schedule.update(0, 0, 0);
-    schedule.update(700, 0, 24);
-    assert.equal(schedule.canEnter(schedule.rivals[0], 700), true);
+    schedule.update(1050, 0, 24);
+    assert.equal(schedule.canEnter(schedule.rivals[0], 1050), true);
     initial.resolve({ score: 18000 });
     await read;
     assert.equal(schedule.target, 18000);
-    assert.equal(schedule.rivals[0].at, 650);
+    assert.equal(schedule.rivals[0].at, 1000);
 });
 
 test('a failed read retries until the live record arrives', async () => {
@@ -54,7 +54,7 @@ test('a run without a ticket keeps racing the children and never reaches the fin
     let claims = 0;
     const schedule = new RaceSchedule({ getRecord: async () => ({ score: null }), claim: async () => { claims++; return null; } });
     await schedule.update(0, 0, 0);
-    assert.equal(schedule.canEnter(schedule.rivals[4], 6650), true);
+    assert.equal(schedule.canEnter(schedule.rivals[4], 18500), true);
     for (let second = 0; second < 30; second++) await schedule.update(RECORD_FLOOR + 1 + second, 5, 100 + second);
     assert.equal(claims, 4);
     assert.equal(schedule.canEnter(schedule.rivals[5], 20000), false);
@@ -159,7 +159,7 @@ test('late record reads and claims from a stopped run cannot qualify or reschedu
     assert.equal(replay.canEnter(replay.rivals[5], 12900), false);
 });
 
-test('every child return reserves eighteen seconds of live street even after a late heat', async () => {
+test('every child return reserves forty seconds of live street even after a late heat', async () => {
     const schedule = new RaceSchedule({
         getRecord: async () => ({ score: null }),
         claim: async score => ({ qualified: true, previousRecord: null, record: { score } })
@@ -168,13 +168,13 @@ test('every child return reserves eighteen seconds of live street even after a l
     for (let wins = 1; wins <= 5; wins++) {
         const rival = schedule.rivals[wins];
         const score = rival.at + 100;
-        const returned = 15 * wins;
+        const returned = 45 * wins;
         schedule.returnedToStreet(returned);
         await schedule.update(score, wins, returned);
         if (wins === 5) assert.equal(schedule.qualified, true);
-        schedule.update(score, wins, returned + 17.99);
+        schedule.update(score, wins, returned + 39.99);
         assert.equal(schedule.canEnter(rival, score), false);
-        schedule.update(score, wins, returned + 18);
+        schedule.update(score, wins, returned + 40);
         assert.equal(schedule.canEnter(rival, score), true);
     }
 });

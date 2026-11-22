@@ -6,9 +6,12 @@ import { encounterModels } from './StreetEncounterArt.js';
 import { configureEncounter, encounterContact, moveEncounter } from './StreetEncounters.js';
 import { rentIceModel, touchesRentIce } from './RentIce.js';
 import { civicContact, civicGateKey, civicModels, configureCivic, moveCarriage } from './CivicEncounters.js';
+import { busyStreet } from './StreetFiller.js';
 import { fairClearance, stretchBounds, stretchModels } from './StretchArt.js';
 
-const MIN_LOOKAHEAD = 83;
+// Traffic is laid beyond the point where street fog closes, so none of it appears in view.
+const LOOKAHEAD = 235;
+const LOOKAHEAD_SECONDS = 3;
 const bounds = {
     taxi: [0.83, 1.28, 1.66],
     halal: [1.2, 3.05, 0.8],
@@ -43,6 +46,7 @@ export class ObstacleManager {
         this.pool = Object.fromEntries(Object.keys(this.models).map((key) => [key, []]));
         this.obstacles = [];
         this.previewRows = [];
+        this.laidRows = [];
         this.stretches = [];
     }
     add(key, x, z, height = 1.02, encounter = null) {
@@ -82,8 +86,9 @@ export class ObstacleManager {
     reset(mode = 'day', random = Math.random, isOvertime, firstRun = false) {
         for (let i = this.obstacles.length - 1; i >= 0; i--) this.remove(i);
         this.previousRunnerX = this.previousRunnerY = 0;
-        this.course = streetCourse(random, mode, isOvertime, firstRun);
+        this.course = busyStreet(streetCourse(random, mode, isOvertime, firstRun), mode);
         this.previewRows = [];
+        this.laidRows = [];
         this.stretches = [];
         this.nextRow = this.pullRow();
         this.fillCourse(0);
@@ -102,8 +107,8 @@ export class ObstacleManager {
     }
     peekRowsThrough(distance) {
         while ((this.previewRows.at(-1) ?? this.nextRow).distance < distance) this.previewRows.push(this.pullRow());
-        // Loose stamps leave the road open, so they never close a curb cut.
-        return [this.nextRow, ...this.previewRows].filter(row => !row.trail);
+        // Loose stamps and roadside traffic never close a curb cut.
+        return [...this.laidRows, this.nextRow, ...this.previewRows].filter(row => !row.trail && !row.fill);
     }
     markLane(x, z, row, cue = 'laneCue') {
         const leads = row.gate ? [4, 3] : [3, 2];
@@ -113,8 +118,9 @@ export class ObstacleManager {
         }
     }
     fillCourse(distance, speed = 0) {
-        // At marathon pace the old fixed horizon gave less than a second of warning.
-        const horizon = Math.max(MIN_LOOKAHEAD, speed * 1.65);
+        const horizon = Math.max(LOOKAHEAD, speed * LOOKAHEAD_SECONDS);
+        this.laidRows ??= [];
+        while (this.laidRows.length && this.laidRows[0].distance < distance) this.laidRows.shift();
         while (this.nextRow.distance <= distance + horizon) {
             const row = this.nextRow;
             const z = distance - row.distance;
@@ -122,7 +128,9 @@ export class ObstacleManager {
                 const cue = this.add(row.lesson.cue, 0, z + row.lesson.lead);
                 cue.cueLead = row.lesson.lead;
             }
-            if (row.trail) {
+            if (row.fill) {
+                for (const { lane, key } of row.fill) this.add(key, (lane - 1) * 3, z);
+            } else if (row.trail) {
                 row.trail.forEach((lane, i) => this.add('coin', (lane - 1) * 3, z - i * row.spacing));
             } else if (row.gate) {
                 const gate = { hit: false, lanes: row.lanes };
@@ -180,12 +188,16 @@ export class ObstacleManager {
                 const x = (row.pickupLane - 1) * 3;
                 this.powerups.spawnPowerup(x, z, row.pickup);
             }
+            this.laidRows.push(row);
             this.nextRow = this.previewRows.shift() ?? this.pullRow();
         }
     }
-    clear() {
-        for (let i = this.obstacles.length - 1; i >= 0; i--)
-            if (this.obstacles[i].type !== 'coin') this.remove(i);
+    // Sweeps the road the runner can reach. Traffic beyond `reach` metres stays.
+    clear(reach = Infinity) {
+        for (let i = this.obstacles.length - 1; i >= 0; i--) {
+            const { type, mesh } = this.obstacles[i];
+            if (type !== 'coin' && mesh.position.z > -reach) this.remove(i);
+        }
     }
     clearFinishChute(distance) {
         for (let i = this.obstacles.length - 1; i >= 0; i--) {

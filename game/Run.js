@@ -32,6 +32,7 @@ import { stretchLine } from './Stretches.js';
 const STEP = 1 / 60;
 const RACE_WARNING_SECONDS = 3;
 const RACE_DELAY_METRES = 150;
+const MASK_RUNOUT_SECONDS = 1.3;
 const STREET_RECOVERY_SECONDS = 1;
 const SLOW_FINISH = .35;
 const RACE_TUTORIAL_KEY = 'mamdani_race_tutorial_seen';
@@ -833,7 +834,7 @@ export class Run {
             impact();
             particles.spawnParticles(player.mesh.position, 14, 0xf0d997, 1.2);
         }
-        if (player.covidMaskTimer > 0) traffic.clear();
+        if (player.covidMaskTimer > 0) traffic.clear(world.speed * (player.covidMaskTimer + MASK_RUNOUT_SECONDS));
         if (player.hasRainbow) {
             for (let i = traffic.obstacles.length - 1; i >= 0; i--) {
                 const o = traffic.obstacles[i];

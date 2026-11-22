@@ -3,10 +3,11 @@ import { RIVALS } from './FamilyRace.js';
 // Donald waits past this many points, or past the live record once it is higher.
 export const RECORD_FLOOR = 12000;
 
-const checkpoints = [650, 1670, 2975, 4650, 6650];
+// Each road leg is longer than the last: about 35, 50, 65, 75 and 85 seconds by day.
+const checkpoints = [1000, 3500, 7500, 12500, 18500];
 const RETRY_SECONDS = 8;
 const REFRESH_SECONDS = 15;
-const STREET_RETURN_SECONDS = 18;
+const STREET_RETURN_SECONDS = 40;
 // The check-in boards stand on the street from here, so the forecast stops moving.
 const SETTLED_METRES = 220;
 const OVERSHOOT_METRES = 40;

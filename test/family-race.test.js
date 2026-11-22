@@ -65,11 +65,11 @@ test('the five children wait at fixed metres whatever the record, with fixed hea
     for (const record of [null, 200, 19500, 60000]) {
         const schedule = familySchedule(record);
         assert.deepEqual(schedule.slice(0, 5).map(({ id, at, metres, countdown }) => [id, at, metres, countdown]), [
-            ['junior', 650, 64, 3],
-            ['ivanka', 1670, 72, 3],
-            ['eric', 2975, 80, 3],
-            ['tiffany', 4650, 88, 3],
-            ['barron', 6650, 98, 3]
+            ['junior', 1000, 64, 3],
+            ['ivanka', 3500, 72, 3],
+            ['eric', 7500, 80, 3],
+            ['tiffany', 12500, 88, 3],
+            ['barron', 18500, 98, 3]
         ]);
         const last = schedule[5];
         assert.deepEqual([last.id, last.record, last.target, last.metres], ['donald', true, Math.max(12000, record ?? 0), 100]);
@@ -78,7 +78,7 @@ test('the five children wait at fixed metres whatever the record, with fixed hea
     assert.deepEqual(RIVALS.map(({ prize }) => prize), [5, 8, 12, 16, 20, 50]);
 });
 
-test('a clean opener gives progressively longer street legs and reaches Donald in about four minutes', async t => {
+test('every road leg is longer than the last, with real breathing room before each heat', async t => {
     for (const mode of ['day', 'night']) {
         const schedule = new RaceSchedule({
             getRecord: async () => ({ score: null }),
@@ -101,7 +101,7 @@ test('a clean opener gives progressively longer street legs and reaches Donald i
                 elapsed += 1 / 60;
                 const request = schedule.update(Math.floor(points), rival.index, elapsed, Math.floor(distance));
                 if (request) await request;
-                assert.ok(elapsed < 300, 'reached the next heat');
+                assert.ok(elapsed < 600, 'reached the next heat');
             }
             const streetTime = elapsed - streetStart;
             assert.ok(streetTime > 15, `${mode}: ${rival.name} at ${streetTime} s`);
@@ -116,9 +116,10 @@ test('a clean opener gives progressively longer street legs and reaches Donald i
         }
         const total = elapsed + resultAndReturnTime;
         const [first, ...later] = streetLegs;
-        assert.ok(first >= (mode === 'day' ? 20 : 15) && first <= 30);
-        assert.ok(later.every(seconds => seconds >= 18 - .1));
-        assert.ok(total >= 180 && total <= 280, `${mode} took ${total} seconds`);
+        assert.ok(first >= 28 && first <= 38, String(first));
+        assert.ok(later.every(seconds => seconds >= 40 - .1));
+        for (let i = 1; i < 5; i++) assert.ok(streetLegs[i] > streetLegs[i - 1] + 5, `${mode} ${streetLegs}`);
+        assert.ok(total >= 330 && total <= 480, `${mode} took ${total} seconds`);
         t.diagnostic(`${mode}: road legs ${streetLegs.map(seconds => seconds.toFixed(1)).join(', ')} s, ${total.toFixed(1)} s to Donald`);
     }
 });
