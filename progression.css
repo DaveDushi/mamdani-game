@@ -153,7 +153,6 @@
 }
 @media (max-aspect-ratio: 4/5) and (max-height: 535px) {
     #start-screen .home-headline { padding-block: 6px; }
-    #start-screen .home-edition, #start-screen .home-deck { display: none; }
     #start-screen .home-spread { grid-template-rows: auto minmax(76px, 1fr) auto; }
     #start-screen .deck { display: none; }
     #start-screen h1 { font-size: min(18vw, 11svh); }

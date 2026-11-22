@@ -86,6 +86,26 @@ test('a fresh edition reads an empty board and preserves names, legacy scores an
     assert.equal(sqlite.prepare('SELECT score FROM scores').get().score, 17454);
 });
 
+test('iPhone players can name an existing score, rename it and clear the name', async () => {
+    const { call } = fixture();
+    const key = 'c'.repeat(64);
+    await call('score', { playerId: 'friend', score: 100 });
+    await call('ios/score', { key, score: 200 });
+    assert.equal((await call('ios/profile', { key, name: 'x'.repeat(16) })).status, 400);
+    assert.equal((await call('ios/profile', { key, name: '  Night Owl  ' })).ok, true);
+    const [named, friend] = (await call('leaderboard')).entries;
+    assert.deepEqual(named, { name: 'Night Owl', score: 200, created_at: named.created_at });
+    assert.equal(friend.name, 'Friend');
+    assert.equal((await call('ios/profile', { key, name: 'Day Owl' })).ok, true);
+    assert.equal((await call('leaderboard')).entries[0].name, 'Day Owl');
+    assert.equal((await call('ios/profile', { key, name: '' })).ok, true);
+    assert.equal((await call('leaderboard')).entries[0].name, 'iPhone runner');
+    await call('ios/delete', { key });
+    assert.equal((await call('ios/profile', { key, name: 'Late save' })).status, 410);
+    await call('ios/score', { key, score: 300 });
+    assert.deepEqual((await call('leaderboard')).entries.map(entry => entry.name), ['Friend']);
+});
+
 test('simultaneous ties produce one winner, a loser can advance and a winning retry stays qualified', async () => {
     const { call, claim } = fixture();
     const claims = await Promise.all([claim('anonymousA','race-a',900), claim('anonymousB','race-b',900,'night')]);

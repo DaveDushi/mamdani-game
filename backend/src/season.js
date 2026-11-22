@@ -113,14 +113,14 @@ export async function seasonRequest(request, env) {
                     ORDER BY score DESC, created_at, player_id LIMIT ?2`).bind(SEASON, limit).all();
                 return reply({ entries: results });
             }
-            const { results } = await db.prepare(`SELECT s.player_id, COALESCE(NULLIF(TRIM(p.name), ''), 'Anonymous') AS name,
+            const { results } = await db.prepare(`SELECT s.player_id, NULLIF(TRIM(p.name), '') AS name,
                     CASE WHEN TRIM(p.name) != '' THEN p.social END AS social, s.score, s.created_at
                 FROM season_scores s JOIN players p USING (player_id)
                 WHERE s.season = ?1 AND s.score > 0
                 ORDER BY s.score DESC, s.created_at, s.player_id LIMIT ?2`).bind(SEASON, limit).all();
             return reply({ entries: results.map(entry => entry.player_id.startsWith('ios_')
-                ? { name: 'iPhone runner', score: entry.score, created_at: entry.created_at }
-                : entry) });
+                ? { name: entry.name ?? 'iPhone runner', score: entry.score, created_at: entry.created_at }
+                : { ...entry, name: entry.name ?? 'Anonymous' }) });
         }
         if (!ios && path === 'score') {
             const id = url.searchParams.get('playerId');
@@ -128,13 +128,25 @@ export async function seasonRequest(request, env) {
             return reply(scoreResult(await standing(db, id).first()));
         }
     }
-    if (request.method === 'POST' && (path === 'score' || path === 'record/claim' || (ios && path === 'delete'))) {
+    if (request.method === 'POST' && (path === 'score' || path === 'record/claim' ||
+        (ios && (path === 'delete' || path === 'profile')))) {
         const body = await request.json().catch(() => null);
         const id = ios ? await iosPlayerId(body?.key) : body?.playerId;
         if (!validId(id) || (!ios && id.startsWith('ios_'))) return reply({ error: 'Invalid player ID' }, 400);
         if (path === 'delete') {
             await deleteIosPlayer(db, id);
             return reply({ ok: true });
+        }
+        if (path === 'profile') {
+            const name = typeof body.name === 'string' ? body.name.trim() : null;
+            if (name === null || name.length > 15 || /[\p{Cc}\p{Cf}]/u.test(name)) {
+                return reply({ error: 'Invalid leaderboard name' }, 400);
+            }
+            const [, updated] = await db.batch([
+                ensurePlayer(db, id),
+                db.prepare('UPDATE players SET name = ?2 WHERE player_id = ?1 RETURNING 1').bind(id, name || null)
+            ]);
+            return updated.results.length ? reply({ ok: true }) : reply({ error: 'Profile deleted' }, 410);
         }
         if (!Number.isSafeInteger(body.score) || body.score < 0) {
             return reply({ error: 'A player ID and a nonnegative integer distance are required' }, 400);

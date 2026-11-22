@@ -12,39 +12,19 @@
     color: var(--print);
     background: var(--sheet);
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(min-content, 1fr) auto auto;
+    grid-template-rows: minmax(min-content, 1fr) auto auto;
+    padding-top: var(--home-top);
     overflow: auto;
 }
 
-.home-mast, .home-footer, .home-tools, .home-tools button, .home-brand,
-.home-extras, .home-extras button, .home-record, .home-coffee {
+.home-footer, .home-extras, .home-extras button, .home-record {
     display: flex;
     align-items: center;
 }
-.home-mast, .home-footer, .wire.home-wire {
+.home-footer, .wire.home-wire {
     padding-inline: var(--home-left) var(--home-right);
 }
-.home-mast {
-    padding-top: var(--home-top);
-    min-height: calc(clamp(48px, 7.4svh, 76px) + var(--home-top));
-    justify-content: space-between;
-    border-bottom: 2px solid var(--print);
-}
-.home-brand {
-    gap: .36em;
-    white-space: nowrap;
-    text-transform: uppercase;
-    font: var(--display);
-    font-size: clamp(23px, 2.15vw, 34px);
-    letter-spacing: -.025em;
-}
-.home-brand .speedmark {
-    --gold: var(--vermillion);
-    width: 1.03em;
-    height: .7em;
-}
-.home-tools { gap: clamp(8px, 2vw, 28px); }
-.home-tools button, .home-extras button, .home-coffee {
+.home-extras button {
     min-height: 44px;
     justify-content: center;
     gap: 7px;
@@ -53,7 +33,7 @@
     font-weight: 700;
     white-space: nowrap;
 }
-.home-tools button:hover, .home-extras button:hover { color: var(--vermillion); }
+.home-extras button:hover { color: var(--vermillion); }
 
 .home-spread {
     display: grid;
@@ -64,24 +44,6 @@
     margin-inline: var(--home-left) clamp(25px, 3.8vw, 68px);
 }
 .home-headline { grid-area: 2 / 1; }
-.home-edition {
-    display: flex;
-    justify-content: space-between;
-    gap: 1em;
-    align-items: center;
-    margin-bottom: clamp(13px, 2svh, 26px);
-    color: var(--muted-ink);
-    text-transform: uppercase;
-    font: 700 clamp(12px, .95vw, 15px)/1 Condensed, sans-serif;
-    letter-spacing: .13em;
-}
-.home-edition::after {
-    content: '';
-    order: 1;
-    flex: 1;
-    border-top: 1px solid #b2ad9f;
-}
-.home-edition span:last-child { order: 2; }
 #start-screen h1 {
     margin: 0;
     transform: none;
@@ -94,10 +56,6 @@
     color: var(--vermillion);
     font-size: 1.29em;
     line-height: .86;
-}
-.home-deck {
-    margin: clamp(13px, 2.5svh, 28px) 0 0;
-    font: italic clamp(18px, min(1.65vw, 3.2svh), 27px)/1.23 Georgia, serif;
 }
 .home-art {
     position: relative;
@@ -115,18 +73,6 @@
     height: 100%;
     object-fit: cover;
     object-position: 94% 38%;
-}
-.home-art figcaption {
-    position: absolute;
-    left: clamp(13px, 2.2vw, 39px);
-    bottom: clamp(12px, 2.6svh, 30px);
-    padding: .16em .4em .19em;
-    color: var(--sheet);
-    background: var(--print);
-    transform: rotate(-3deg);
-    text-transform: uppercase;
-    font: var(--display);
-    font-size: clamp(20px, 2.3vw, 38px);
 }
 
 .home-console.run-controls {
@@ -174,8 +120,12 @@
     font-size: clamp(26px, 2.5vw, 39px);
 }
 .home-console .play:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--print); }
-.home-extras { justify-content: space-between; gap: 5px; margin-top: 4px; }
-.home-extras button { padding-inline: 1px; }
+.home-extras { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.home-extras button { padding-inline: 3px; border: 1px solid #b2ad9f; }
+.home-extras button:hover { background: #e4dbc7; }
+#rankings-btn { background: var(--print); color: var(--sheet); border-color: var(--print); }
+#rankings-btn:hover { background: #354a57; }
+@media (max-width: 375px) { .home-extras svg { display: none; } }
 .home-console .load-status {
     z-index: 1;
     inset: auto 0 0;
@@ -183,6 +133,7 @@
     line-height: 1.4;
 }
 
+.wire.home-wire:not(:has(#move-save:not([hidden]))) { display: none; }
 .wire.home-wire {
     height: auto;
     min-height: clamp(46px, 6.8svh, 65px);
@@ -191,17 +142,6 @@
     background: var(--sheet);
     color: var(--print);
 }
-.home-wire #story-btn {
-    min-height: 44px;
-    gap: .22em;
-    background: transparent;
-    color: var(--vermillion);
-    padding: 0;
-    text-transform: none;
-    letter-spacing: -.055em;
-    font: bold italic clamp(21px, 2.4vw, 37px)/1 Georgia, serif;
-}
-.home-wire #story-btn:hover { text-decoration: underline; }
 .home-wire #move-save {
     min-height: 44px;
     padding: 4px 0;
@@ -214,14 +154,11 @@
     color: var(--vermillion);
     text-decoration: underline;
 }
-.wire.home-wire p {
-    padding-block: 6px;
-    font: 500 clamp(14px, 1.35vw, 21px)/1.2 Georgia, serif;
-}
 .home-footer {
     min-height: calc(clamp(44px, 5.8svh, 64px) + var(--home-bottom));
     padding-bottom: var(--home-bottom);
-    gap: clamp(10px, 2.3vw, 35px);
+    flex-wrap: wrap;
+    gap: 0 clamp(6px, 2vw, 24px);
     background: var(--print);
     color: var(--sheet);
     font-size: 14px;
@@ -229,75 +166,59 @@
 .home-record { gap: 7px; }
 .home-record svg { color: var(--gold); width: 17px; }
 .home-record b { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.home-inputs { margin-inline: auto; }
-.home-footer .key-guide kbd { border-color: #838b89; }
 .home-coffee {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     margin-left: auto;
-    color: var(--sheet);
+    color: inherit;
     text-decoration: underline;
     text-underline-offset: .2em;
-    text-decoration-color: #a4a79c;
+    white-space: nowrap;
 }
-.home-coffee:hover { color: var(--gold); text-decoration-color: currentColor; }
 #start-screen :is(button, a):focus-visible { outline-color: #0877a0; outline-offset: 1px; z-index: 2; }
-#start-screen .home-footer a:focus-visible { outline-color: var(--gold); outline-offset: -3px; }
+.home-footer #story-btn { min-height: 44px; margin-left: auto; padding: 0 4px; color: inherit; font-weight: 700; }
+#start-screen .home-footer :is(button, a):focus-visible { outline-color: var(--gold); outline-offset: -3px; }
 
 /* The phone cover follows a newspaper front page: headline, illustration, then play. */
 @media (max-aspect-ratio: 1/1), (max-width: 720px) and (min-height: 541px) {
     #start-screen { --gutter: clamp(15px, 5vw, 44px); }
-    .home-mast { min-height: calc(48px + var(--home-top)); }
-    .home-brand { font-size: clamp(22px, 5.3vw, 31px); }
-    .home-tools { gap: 6px; }
-    .home-tools button { font-size: 13px; }
     .home-spread {
         grid-template-columns: minmax(0, 1fr);
         grid-template-rows: auto minmax(112px, 1fr) auto;
     }
     .home-headline, .home-console { margin-inline: var(--home-left) var(--home-right); }
-    .home-headline { grid-area: 1 / 1; padding-block: clamp(9px, 1.9svh, 20px) clamp(10px, 1.8svh, 21px); }
-    .home-edition { font-size: 11px; margin-bottom: 7px; }
+    .home-headline { grid-area: 1 / 1; padding-block: clamp(15px, 2.7svh, 28px); }
     #start-screen h1 { white-space: nowrap; font-size: min(18.2vw, 12svh, 147px); line-height: .88; }
     #start-screen h1 span, #start-screen h1 strong { display: inline; font-size: 1em; line-height: inherit; }
-    .home-deck { margin-top: 6px; font-size: clamp(15px, 3.4vw, 21px); }
-    .home-deck br { display: none; }
     .home-art { grid-area: 2 / 1; border: solid var(--print); border-width: 1px 0; }
     .home-art img { object-position: 96% 32%; }
-    .home-art figcaption { left: var(--home-left); font-size: clamp(20px, 5.5vw, 30px); bottom: 11px; }
     .home-console.run-controls {
         grid-area: 3 / 1;
         max-width: none;
         margin-top: 0;
-        padding-block: clamp(10px, 2.15svh, 23px) 1px;
+        padding-block: clamp(14px, 2.5svh, 24px) 10px;
     }
     .home-modes .menu-wallet { margin-top: 5px; font-size: 13px; }
     .home-console .play { height: clamp(48px, 6.9svh, 66px); margin-top: clamp(8px, 1.6svh, 16px); font-size: clamp(27px, 6.8vw, 38px); }
-    .home-extras { justify-content: space-between; margin-top: 3px; }
+    .home-extras { margin-top: 6px; }
     .home-extras button { font-size: 14px; }
     .wire.home-wire { gap: clamp(10px, 3vw, 20px); min-height: 44px; }
-    .home-wire #story-btn { font-size: clamp(19px, 4.9vw, 29px); }
-    .wire.home-wire p { font-size: clamp(12px, 3.1vw, 17px); line-height: 1.18; }
-    .home-inputs { display: none; }
-    .home-coffee, .home-footer { font-size: 14px; }
 }
 
 /* The two portraits sit beside the controls when vertical space is scarce. */
 @media (min-aspect-ratio: 1/1) and (max-height: 540px) {
     #start-screen { --gutter: clamp(12px, 2.6vw, 30px); }
-    .home-mast { min-height: calc(46px + var(--home-top)); }
-    .home-brand { font-size: 22px; }
-    .home-tools { gap: 14px; }
-    .home-tools button, .home-extras button, .home-coffee, .home-footer { font-size: 13px; }
+    .home-extras button, .home-footer { font-size: 13px; }
     .home-spread {
         grid-template-columns: minmax(0, .96fr) minmax(0, 1.04fr);
         grid-template-rows: auto minmax(65px, 1fr);
     }
     .home-headline { grid-area: 1 / 1; margin: 0; padding: 7px 8px 6px var(--home-left); }
-    .home-edition, .home-deck { display: none; }
     #start-screen h1 { white-space: nowrap; font-size: min(9vw, 13.5svh, 80px); line-height: .9; }
     #start-screen h1 span, #start-screen h1 strong { display: inline; font-size: 1em; line-height: inherit; }
     .home-art { grid-area: 2 / 1; border: none; }
     .home-art img { object-position: center 48%; }
-    .home-art figcaption { display: none; }
     .home-console.run-controls {
         grid-area: 1 / 2 / -1;
         align-self: center;
@@ -308,24 +229,13 @@
     .home-modes .run-selector button { font-size: 16px; }
     .home-modes .menu-wallet { margin-top: 3px; font-size: 12px; }
     .home-console .play { height: 44px; margin-top: 5px; font-size: 25px; }
-    .home-extras { margin-top: 0; }
+    .home-extras { margin-top: 6px; }
     .home-extras svg { display: none; }
     .wire.home-wire { min-height: 44px; gap: 15px; }
-    .home-wire #story-btn { font-size: 22px; }
-    .wire.home-wire p { font-size: 13px; }
-}
-@media (max-width: 685px) {
-    .home-inputs { display: none; }
 }
 @media (max-width: 359px) {
-    .home-tools .sound-toggle { min-width: 44px; }
-    .home-tools .sound-toggle span { display: none; }
     .wire.home-wire {
         padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right));
         gap: 8px;
     }
-    .home-wire #story-btn { font-size: 18px; }
-}
-@media (max-width: 359px) and (max-height: 620px) {
-    .home-deck span { display: none; }
 }

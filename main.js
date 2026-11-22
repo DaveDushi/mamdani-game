@@ -61,28 +61,19 @@ const selectedMode = () => availableMode(localStorage.getItem(modeKey), wallet);
 const metres = (n) => Number(n).toLocaleString() + ' m';
 const stampCount = (n) => n.toLocaleString() + (n === 1 ? ' stamp' : ' stamps');
 const homeOverlay = new Set(['story-modal', 'instructions-modal', 'feedback-modal']);
-function show(id, focus) {
+function show(id, focus, behind) {
     if (view !== id) {
         entryVersion++;
         clearStartButton();
     }
     view = id;
     for (const key of screenIds) {
-        const visible = key === id || (key === 'start-screen' && homeOverlay.has(id));
+        const visible = key === id || key === behind || (key === 'start-screen' && homeOverlay.has(id));
         $(key).classList.toggle('hidden', !visible);
         $(key).inert = key !== id;
     }
     if (focus) $(focus)?.focus({ preventScroll: true });
 }
-const dispatches = [
-    'Mayor endorses today’s march. Aide sent ahead to find out what it’s for.',
-    'Committee for Faster Buses votes to meet again on foot.',
-    'Pride planning caucus schedules march against its own sponsor.',
-    'Free Palestine rally petitions City Hall for a free megaphone.',
-    'Party caucus sends question about condemning Hamas back to committee.',
-    'City Hall unveils free everything. Budget office requests a transfer.'
-];
-let dispatchIndex = 0;
 function paintMenu() {
     const mode = selectedMode();
     const unlocked = wallet.nightUnlocked;
@@ -125,7 +116,6 @@ window.addEventListener('storage', (event) => {
     if (view === 'start-screen' && event.key === modeKey) refreshWallet();
 });
 function home() {
-    document.querySelector('.wire p').textContent = dispatches[dispatchIndex++ % dispatches.length];
     if (run) run.stop();
     else fittingRoom?.close();
     activeAttempt = null;
@@ -398,6 +388,8 @@ $('confirm-delete-online-data').onclick = async () => {
     const result = await api.deleteSeasonData(key);
     if (result.ok) {
         localStorage.removeItem(scoreKey);
+        localStorage.removeItem('mamdani_name');
+        updateNameButtons();
         $('privacy-status').textContent = 'Online data deleted. Online play is off.';
     } else {
         $('delete-online-data').disabled = false;
@@ -435,7 +427,7 @@ window.addEventListener('keydown', (e) => {
         if (view === 'hud') pause();
         else if (view === 'pause-screen') resume();
         else if (view === 'rankings-screen') $('close-rankings').click();
-        else if (view === 'registration-modal') show('game-over-screen', 'join-lb-btn');
+        else if (view === 'registration-modal') $('cancel-reg').click();
         else if (view === 'game-over-screen') $('game-over-screen').querySelector('[data-home]').click();
         else if (view !== 'start-screen') home();
     } else if (e.code === 'KeyP' && (view === 'hud' || view === 'pause-screen')) {
@@ -490,9 +482,6 @@ function showResultArt(overtime) {
     art.src = src;
     if (previous) previous.replaceWith(art);
     else figure.prepend(art);
-    $('result-caption').textContent = overtime
-        ? 'Zohran Mamdani in New York after the 100% takeover.'
-        : 'Donald Trump waves to the crowd at the New York race.';
 }
 
 async function finish(attempt, distance, gross, cause) {
@@ -546,10 +535,11 @@ async function finish(attempt, distance, gross, cause) {
         ? familyLine + ' · Best ' + wallet.familyBest + '/' + RIVALS.length
         : familyLine;
     $('result-progress').parentElement.classList.toggle('just-unlocked', !!receipt?.unlocked);
-    $('result-best-label').textContent = night ? 'Night Shift best on this device' : 'Day Run best on this device';
+    $('result-best-label').textContent = night ? 'Night Shift best' : 'Day Run best';
     $('pb-score').textContent = metres(night ? wallet.nightBest : best());
     $('pb-rank-display').textContent = '';
-    $('join-lb-btn').hidden = native || !!localStorage.getItem('mamdani_name');
+    $('day-board').open = false;
+    $('result-details').open = false;
     show('game-over-screen', 'restart-btn');
     document.querySelector('.results').scrollTop = 0;
     loadBoard(version, result);
@@ -599,7 +589,7 @@ function showStandings(list, entries) {
         row.insertCell().textContent = index + 1;
         const runner = row.insertCell();
         const name = document.createElement('bdi');
-        name.textContent = native ? 'Runner ' + (index + 1) : entry.name || 'Anonymous';
+        name.textContent = entry.name || 'Anonymous';
         runner.append(name);
         if (!native && localId && entry.player_id === localId) {
             const you = document.createElement('small');
@@ -633,14 +623,14 @@ async function standings(list, retry, current) {
 }
 
 let standingsRequest = 0;
-function openRankings() {
+function openRankings(focus = 'close-rankings') {
     const request = ++standingsRequest;
-    show('rankings-screen', 'close-rankings');
+    show('rankings-screen', focus);
     $('rankings-list').scrollTop = 0;
     return standings($('rankings-list'), $('rankings-retry'), () => view === 'rankings-screen' && request === standingsRequest);
 }
-$('rankings-btn').onclick = openRankings;
-$('rankings-retry').onclick = openRankings;
+$('rankings-btn').onclick = () => openRankings();
+$('rankings-retry').onclick = () => openRankings();
 $('close-rankings').onclick = () => {
     home();
     $('rankings-btn').focus({ preventScroll: true });
@@ -652,8 +642,10 @@ async function loadBoard(version, result, retryScore = false) {
     const list = $('leaderboard-list');
     const retry = $('result-board-retry');
     if (!result.playerId) {
-        list.textContent = 'Score saved on this device. Enable online play to post future runs.';
-        retry.hidden = true;
+        $('pb-rank-display').textContent = onlinePlay()
+            ? 'Next run can appear in the rankings.'
+            : 'Score saved on this device.';
+        await standings(list, retry, current);
         return;
     }
     list.textContent = 'Updating season standings…';
@@ -664,6 +656,7 @@ async function loadBoard(version, result, retryScore = false) {
     const entries = await standings(list, retry, current);
     if (!current()) return;
     if (!rank.ok) {
+        $('day-board').open = true;
         retry.hidden = false;
         return;
     }
@@ -672,32 +665,67 @@ async function loadBoard(version, result, retryScore = false) {
     $('pb-rank-display').textContent = position > 0 ? 'Season rank #' + position : '';
 }
 $('result-board-retry').onclick = () => loadBoard(++resultVersion, lastResult, true);
-$('join-lb-btn').onclick = () => show('registration-modal', 'reg-name');
-$('cancel-reg').onclick = () => show('game-over-screen', 'join-lb-btn');
+let nameReturn;
+function updateNameButtons() {
+    const label = localStorage.getItem('mamdani_name') ? 'Edit name' : 'Join leaderboard';
+    $('rankings-name-btn').textContent = label;
+    $('join-lb-btn').textContent = label;
+}
+function openNameEditor(button) {
+    nameReturn = { screen: view, button };
+    const name = localStorage.getItem('mamdani_name') || '';
+    const enableOnline = !onlinePlay();
+    const postCurrentRun = native && view === 'game-over-screen' && !lastResult?.playerId;
+    $('reg-name').value = name;
+    $('reg-name').required = !native || !name;
+    $('reg-social').value = native ? '' : localStorage.getItem('mamdani_social') || '';
+    $('reg-social-label').hidden = native;
+    $('reg-social-label').open = !native && !!$('reg-social').value;
+    $('reg-help').textContent = 'Your nickname appears in the public rankings.'
+        + (native && name ? ' Leave it blank to appear as “iPhone runner”.' : '')
+        + (postCurrentRun ? ' Saving posts this run.' : '')
+        + (enableOnline ? ' Saving turns on online play.' : '');
+    $('reg-error').textContent = '';
+    $('submit-score-btn').textContent = postCurrentRun ? 'Save and post run' : enableOnline ? 'Save and enable online play' : 'Save name';
+    show('registration-modal', 'reg-name', nameReturn.screen);
+}
+function closeNameEditor() {
+    if (nameReturn.screen === 'rankings-screen') return openRankings(nameReturn.button);
+    show('game-over-screen', nameReturn.button);
+    return loadBoard(++resultVersion, lastResult);
+}
+updateNameButtons();
+$('rankings-name-btn').onclick = () => openNameEditor('rankings-name-btn');
+$('join-lb-btn').onclick = () => openNameEditor('join-lb-btn');
+$('cancel-reg').onclick = closeNameEditor;
 $('register-form').onsubmit = async (e) => {
     e.preventDefault();
     const button = $('submit-score-btn');
     if (button.disabled) return;
     const name = $('reg-name').value.trim(),
         social = $('reg-social').value.trim();
-    if (!name) {
-        $('reg-error').textContent = 'Enter a leaderboard name.';
+    if ((!name && $('reg-name').required) || /[\p{Cc}\p{Cf}]/u.test(name)) {
+        $('reg-error').textContent = 'Enter a display nickname up to 15 characters.';
         return;
     }
-    const version = resultVersion;
     button.disabled = true;
-    const result = await api.register(lastResult?.playerId ?? playerId(), name, social, installed());
+    $('cancel-reg').disabled = true;
+    $('reg-error').textContent = 'Saving…';
+    const runResult = nameReturn.screen === 'game-over-screen' ? lastResult : null;
+    const id = runResult?.playerId ?? playerId();
+    const result = await api.register(id, name, social, installed());
     button.disabled = false;
+    $('cancel-reg').disabled = false;
     if (result.ok || result.updated) {
-        localStorage.setItem('mamdani_name', name);
-        if (social) localStorage.setItem('mamdani_social', social);
+        if (name) localStorage.setItem('mamdani_name', name);
+        else localStorage.removeItem('mamdani_name');
+        if (native) {
+            localStorage.setItem(onlineKey, 'on');
+            if (runResult && !runResult.playerId) runResult.playerId = id;
+        } else if (social) localStorage.setItem('mamdani_social', social);
         else localStorage.removeItem('mamdani_social');
-        if (view === 'registration-modal' && version === resultVersion) {
-            show('game-over-screen', 'restart-btn');
-            $('join-lb-btn').hidden = true;
-            $('restart-btn').scrollIntoView({ block: 'nearest' });
-            loadBoard(++resultVersion, lastResult);
-        }
+        updateNameButtons();
+        closeNameEditor();
     } else $('reg-error').textContent = 'Couldn’t save your name. Try again.';
 };
 $('feedback-form').onsubmit = async (e) => {

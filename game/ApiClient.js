@@ -49,6 +49,9 @@ export class ApiClient {
     }
 
     async register(playerId, name, social, isPwa = false) {
+        if (this.native) {
+            return await this.request(this.seasonPath + '/profile', { key: playerId, name }) ?? { ok: false };
+        }
         return await this.request('/register', { playerId, name, social, isPwa }) ?? { ok: false };
     }
 
@@ -65,7 +68,7 @@ export class ApiClient {
     }
 
     async getSeasonLeaderboard(limit = 50) {
-        return standings(await this.request(this.seasonPath + '/leaderboard?limit=' + limit, undefined, fresh));
+        return standings(await this.request(seasonPath + '/leaderboard?limit=' + limit, undefined, fresh));
     }
 
     async getSeasonRecord() {

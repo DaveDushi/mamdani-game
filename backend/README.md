@@ -14,7 +14,7 @@ The `game-backend` Worker serves `api.mamdanirun.com`. Existing clients can use 
 
 A qualifying distance must exceed both the current record and the opening benchmark in [season-rules.js](src/season-rules.js). D1 compares and publishes in one transaction. Retries of a winning attempt return the original qualification and the current global record. A runner whose earlier claim fell short can try again farther along the course.
 
-The iPhone uses `/ios/leaderboard`, `/ios/score`, `/ios/record/claim` and `/ios/delete` under the same season prefix. The reader returns scores only. Writes use a private device key in place of a public player ID. Deletion removes the device's season scores, race claims and player record in one transaction. The server retains a one-way hash to reject late score uploads. The Worker also serves the App Store's public `/privacy` and `/support` pages.
+The web and iPhone games read the same global board at `/leaderboard`. A score submitted from the iPhone displays the player's optional nickname or iPhone runner. Older iPhone builds use the score-only `/ios/leaderboard` reader. The iPhone uses a private device key for `/ios/score`, `/ios/record/claim`, `/ios/delete` and `/ios/profile`. POST `/ios/profile` with `{key,name}` to set a nickname of up to 15 characters or clear it with an empty name. Deletion removes the device's season scores, race claims and player record in one transaction. The server retains a one-way hash to reject late writes. The Worker also serves the App Store's public `/privacy` and `/support` pages.
 
 ## Local verification and release
 

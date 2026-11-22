@@ -99,8 +99,9 @@ test('Capacitor reads the shared record and sends private profile operations ove
         qualified: true, previousRecord: null, record: { score: 1051 }
     });
     assert.equal((await api.deleteSeasonData(claim.playerId)).ok, true);
+    assert.equal((await api.register(claim.playerId, 'Night Owl', '@not-sent')).ok, true);
     assert.deepEqual(calls.mock.calls.map(call => call.arguments.slice(0, 2)), [
-        ['CapacitorHttp', 'request'], ['CapacitorHttp', 'request'], ['CapacitorHttp', 'request']
+        ['CapacitorHttp', 'request'], ['CapacitorHttp', 'request'], ['CapacitorHttp', 'request'], ['CapacitorHttp', 'request']
     ]);
     assert.deepEqual(calls.mock.calls.map(({ arguments: [, , options] }) => [
         options.url, options.method, options.data, options.responseType
@@ -108,6 +109,17 @@ test('Capacitor reads the shared record and sends private profile operations ove
         [publishedApi + '/seasons/2.3.1/record', 'GET', undefined, 'json'],
         [publishedApi + '/seasons/2.3.1/ios/record/claim', 'POST',
             { key: 'player-1', attemptId: 'attempt-1', score: 1051, mode: 'night' }, 'json'],
-        [publishedApi + '/seasons/2.3.1/ios/delete', 'POST', { key: 'player-1' }, 'json']
+        [publishedApi + '/seasons/2.3.1/ios/delete', 'POST', { key: 'player-1' }, 'json'],
+        [publishedApi + '/seasons/2.3.1/ios/profile', 'POST', { key: 'player-1', name: 'Night Owl' }, 'json']
     ]);
+});
+
+test('iPhone reads the same named global leaderboard as the web game', async t => {
+    const entries = [{ name: 'Runner Ace', score: 1250 }, { name: 'iPhone runner', score: 1200 }];
+    const calls = t.mock.method(Capacitor, 'nativePromise', async (_plugin, _method, { url }) => ({
+        status: 200,
+        data: { entries: url.includes('/ios/') ? entries.map(({ score }) => ({ score })) : entries }
+    }));
+    assert.deepEqual(await new ApiClient().getSeasonLeaderboard(), entries);
+    assert.equal(calls.mock.calls[0].arguments[2].url, publishedApi + '/seasons/2.3.1/leaderboard?limit=50');
 });

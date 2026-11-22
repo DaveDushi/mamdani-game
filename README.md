@@ -26,7 +26,7 @@ Use Node.js 22 or newer, then run `npm ci` and `npm run dev`. Use `npm run build
 
 On a Mac with Xcode 26 and an iOS Simulator runtime, run `npm ci`, `npm run ios:sync`, then `npm run ios:open`. Select the App scheme and an iPhone simulator and press Run. Run `npm run ios:sync` again after changing the game. To install on a physical iPhone, select your development team in Signing & Capabilities.
 
-The Capacitor app bundles the game, fonts, posters and models for offline play. The five family races are available offline. Enable online play from **City Wire → Online play and data** to post scores and qualify for Donald's final. Viewing the season rankings requires a connection. Runs pause when the app loses focus.
+The Capacitor app bundles the game, fonts, posters and models for offline play. The five family races are available offline. Enable online play from **City Wire → Online play and data** to post scores and qualify for Donald's final. Choose **Join leaderboard** in Rankings or after a run to publish an optional nickname and enable online play. After a run, **Save and post run** also submits that distance. Viewing the season rankings requires a connection. Runs pause when the app loses focus.
 
 ### App Store submission
 
