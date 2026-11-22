@@ -131,6 +131,10 @@ export class Sound {
     }
     play(cue) {
         if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;
+        if (cue === 'starterPistol') {
+            this.starterPistol();
+            return;
+        }
         for (const [hz, duration, delay] of cues[cue] || []) {
             const start = this.ctx.currentTime + delay,
                 osc = this.ctx.createOscillator(),
@@ -153,5 +157,36 @@ export class Sound {
                 vol.disconnect();
             };
         }
+    }
+
+    starterPistol() {
+        const { ctx } = this;
+        const start = ctx.currentTime;
+        if (!this.pistolNoise) {
+            this.pistolNoise = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * .28), ctx.sampleRate);
+            const samples = this.pistolNoise.getChannelData(0);
+            for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+        }
+
+        const source = ctx.createBufferSource();
+        source.buffer = this.pistolNoise;
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(8500, start);
+        filter.frequency.exponentialRampToValueAtTime(450, start + .12);
+
+        const volume = ctx.createGain();
+        volume.gain.setValueAtTime(.001, start);
+        volume.gain.linearRampToValueAtTime(.38, start + .003);
+        volume.gain.exponentialRampToValueAtTime(.022, start + .055);
+        volume.gain.exponentialRampToValueAtTime(.001, start + .26);
+
+        source.connect(filter).connect(volume).connect(ctx.destination);
+        source.start(start);
+        source.onended = () => {
+            source.disconnect();
+            filter.disconnect();
+            volume.disconnect();
+        };
     }
 }

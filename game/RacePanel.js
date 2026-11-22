@@ -51,10 +51,16 @@ const markup = `
         <button class="race-button race-continue" type="button" hidden>Continue</button>
         <span id="race-keys">Press Space or Up repeatedly</span>
     </div>
+    <div class="race-start" data-race="start" role="status" aria-atomic="true" hidden>
+        <span data-race="start-rival"></span>
+        <strong data-race="start-digit"></strong>
+    </div>
     <div class="race-tutorial" hidden>
-        <strong>How to race</strong>
-        <p id="race-instructions">When you see Go, tap the screen fast or press Space or Up repeatedly. Keep tapping to stay fast and beat your rival to the finish.</p>
-        <button class="race-button race-ready" type="button" aria-describedby="race-instructions">Ready</button>
+        <div id="race-instructions" data-race="instructions">
+            <strong>How to race</strong>
+            <p>When you see Go, tap the screen fast or press Space or Up repeatedly. Keep tapping to stay fast and beat your rival to the finish.</p>
+        </div>
+        <button class="race-button race-ready" type="button">Start race</button>
     </div>
 `;
 
@@ -132,7 +138,7 @@ export class RacePanel {
         }
         const raceKey = code === 'Space' || code === 'ArrowUp' || (code === 'Enter' && target === this.tapButton);
         if (!this.active || !raceKey || event.altKey || event.ctrlKey || event.metaKey) return;
-        if (this.element.dataset.phase === 'tutorial') return;
+        if (this.element.dataset.phase === 'ready') return;
         if (target !== this.tapButton && target.closest?.('button, input, textarea, select, a, [contenteditable]')) return;
 
         event.preventDefault();
@@ -142,9 +148,13 @@ export class RacePanel {
         this.tap();
     }
 
-    prepare(race) {
+    prepare(race, showInstructions) {
         const { rival, speedLevel } = race;
         write(this.opponent, rival.name);
+        write(this.nodes['start-rival'], `Racing ${rival.name}`);
+        this.nodes.instructions.hidden = !showInstructions;
+        if (showInstructions) this.readyButton.setAttribute('aria-describedby', 'race-instructions');
+        else this.readyButton.removeAttribute('aria-describedby');
         write(this.nodes.number, `${rival.index + 1}/${RIVALS.length}`);
         write(this.nodes.milepost, `Street ${raceDistance(rival.at)}`);
         write(this.nodes.level, `${rival.metres} m sprint · Lv. ${speedLevel}`);
@@ -154,8 +164,8 @@ export class RacePanel {
         this.paint(race);
     }
 
-    show(race) {
-        if (this.lastRace !== race) this.prepare(race);
+    show(race, showInstructions) {
+        if (this.lastRace !== race) this.prepare(race, showInstructions);
         this.element.hidden = false;
         this.hud.classList.add('is-racing');
         this.element.inert = false;
@@ -185,7 +195,7 @@ export class RacePanel {
         const ahead = gap >= 0.1;
         const separated = Math.abs(gap) >= 0.1;
         const lead = separated ? `${ahead ? 'Ahead' : 'Behind'} by ${Math.abs(gap).toFixed(1)} m` : 'Tied';
-        write(nodes.gap, phase === 'intro' || phase === 'tutorial' ? 'At the line' : lead);
+        write(nodes.gap, phase === 'intro' || phase === 'ready' ? 'At the line' : lead);
         nodes.gap.dataset.lead = !separated ? 'tied' : ahead ? 'ahead' : 'behind';
         const seconds = elapsed.toFixed(1);
         write(nodes.time, `${seconds} s`);
@@ -196,17 +206,26 @@ export class RacePanel {
         fill(nodes['rival-fill'], rivalProgress);
         fill(nodes['boost-fill'], speed / RACE_TOP_SPEED);
 
-        const showSpeed = phase === 'racing' && elapsed >= 0.65;
+        const showGo = phase === 'racing' && elapsed < 0.7;
+        const startDigit = phase === 'intro' ? String(countdown) : showGo ? 'GO!' : '';
+        const overlay = nodes.start;
+        overlay.hidden = !startDigit;
+        overlay.dataset.go = String(showGo);
+        if (nodes['start-digit'].textContent !== startDigit) {
+            write(nodes['start-digit'], startDigit);
+            if (startDigit && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                nodes['start-digit'].animate(
+                    [{ transform: 'scale(1.18)', opacity: .65 }, { transform: 'scale(1)', opacity: 1 }],
+                    { duration: 200, easing: 'ease-out' }
+                );
+            }
+        }
+
+        const showSpeed = phase === 'racing';
         nodes.speed.hidden = !showSpeed;
-        nodes.signal.classList.toggle('race-signal-announcement', showSpeed);
+        nodes.signal.hidden = !this.done;
         if (showSpeed) write(nodes['speed-value'], speed.toFixed(1));
         switch (phase) {
-            case 'intro':
-                write(nodes.signal, `Racing in ${countdown}`);
-                break;
-            case 'racing':
-                write(nodes.signal, 'Go!');
-                break;
             case 'won':
                 write(nodes.signal, 'You win');
                 break;
@@ -231,7 +250,7 @@ export class RacePanel {
     setPhase(phase) {
         if (phase === this.element.dataset.phase) return;
         this.element.dataset.phase = phase;
-        this.tutorial.hidden = phase !== 'tutorial';
+        this.tutorial.hidden = phase !== 'ready';
         this.tapButton.setAttribute('aria-disabled', String(phase !== 'racing'));
         this.tapButton.hidden = this.keyHint.hidden = this.done;
         this.continueButton.hidden = !this.done;

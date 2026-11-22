@@ -27,7 +27,7 @@ import { CITY_REVEAL, FINISH_HOLD, frameOpenBlock } from './RaceFinish.js';
 import { courseSpeed } from './Course.js';
 
 const STEP = 1 / 60;
-const RACE_WARNING_SECONDS = 2;
+const RACE_WARNING_SECONDS = 3;
 const STREET_RECOVERY_SECONDS = 1;
 const RACE_TUTORIAL_KEY = 'mamdani_race_tutorial_seen';
 const pickups = {
@@ -458,10 +458,9 @@ export class Run {
         this.raceWarning = null;
         this.raceApproach.hide();
         this.race = this.upcomingRace?.rival === rival
-            ? this.upcomingRace : new FamilyRace(rival, this.speedLevel, !this.raceTutorialSeen);
+            ? this.upcomingRace : new FamilyRace(rival, this.speedLevel, true);
         this.raceStage.start(this.race.rival);
-        this.racePanel.show(this.race);
-        if (this.race.phase === 'intro') this.sound.play('count');
+        this.racePanel.show(this.race, !this.raceTutorialSeen);
         // Give the introductory artwork a full first frame on phones that compile a new shader here.
         this.acc = 0;
         this.last = performance.now();
@@ -469,11 +468,13 @@ export class Run {
 
     readyForRace() {
         if (this.mode !== 'playing' || !this.race?.ready()) return;
-        this.raceTutorialSeen = true;
-        try {
-            localStorage.setItem(RACE_TUTORIAL_KEY, '1');
-        } catch {
-            // Keep the tutorial dismissed for this session when storage is unavailable.
+        if (!this.raceTutorialSeen) {
+            this.raceTutorialSeen = true;
+            try {
+                localStorage.setItem(RACE_TUTORIAL_KEY, '1');
+            } catch {
+                // Keep the tutorial dismissed for this session when storage is unavailable.
+            }
         }
         this.racePanel.paint(this.race);
         this.racePanel.focusControl();
@@ -497,7 +498,7 @@ export class Run {
     raceStep(dt) {
         const race = this.race;
         const phase = race.phase;
-        if (phase === 'tutorial' || phase === 'won' || phase === 'lost') return;
+        if (phase === 'ready' || phase === 'won' || phase === 'lost') return;
         const count = race.countdown;
         this.elapsed += dt;
         race.update(dt);
@@ -513,7 +514,7 @@ export class Run {
                 this.onRaceLoss?.(this.scoreManager.grossStamps, this.scoreManager.getDisplayScore());
                 this.sound.play('end');
             } else {
-                this.sound.play('go');
+                this.sound.play('starterPistol');
             }
         } else if (race.countdown !== count) this.sound.play('count');
     }
@@ -761,8 +762,8 @@ export class Run {
             this.prepareRace(next);
             if (!schedule.initialRecordPending && world.distance >= next.at - world.speed * 4.5) {
                 if (this.upcomingRace?.rival !== next) {
-                    this.upcomingRace = new FamilyRace(next, this.speedLevel, !this.raceTutorialSeen);
-                    this.racePanel.prepare(this.upcomingRace);
+                    this.upcomingRace = new FamilyRace(next, this.speedLevel, true);
+                    this.racePanel.prepare(this.upcomingRace, !this.raceTutorialSeen);
                 }
             }
         }

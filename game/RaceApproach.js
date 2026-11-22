@@ -72,8 +72,10 @@ export class RaceApproach {
         this.warning = document.createElement('div');
         this.warning.className = 'race-warning';
         this.warning.setAttribute('role', 'status');
+        this.warning.innerHTML = '<span>Race incoming</span><strong></strong>';
+        this.warningRival = this.warning.querySelector('strong');
         this.warning.hidden = true;
-        this.hud.append(this.warning);
+        this.hud.querySelector('.hud-calls').prepend(this.warning);
         const home = this.hud.querySelector('.hud-lower');
         const footer = home.querySelector('.hud-foot');
         const pause = this.hud.querySelector('#pause-btn');
@@ -87,7 +89,7 @@ export class RaceApproach {
     }
 
     warn(rival) {
-        write(this.warning, rival ? `Get ready to race ${rival.name}` : '');
+        if (rival) write(this.warningRival, rival.name);
         this.warning.hidden = !rival;
     }
 

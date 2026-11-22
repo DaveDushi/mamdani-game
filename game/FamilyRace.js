@@ -27,10 +27,10 @@ export function raceSpeedBonus(level) {
 }
 
 export class FamilyRace {
-    constructor(rival, speedLevel = 0, showTutorial = false) {
+    constructor(rival, speedLevel = 0, waitForReady = false) {
         this.rival = rival;
         this.speedLevel = speedLevel;
-        this.phase = showTutorial ? 'tutorial' : 'intro';
+        this.phase = waitForReady ? 'ready' : 'intro';
         this.readyTime = rival.countdown;
         this.elapsed = 0;
         this.speed = 0;
@@ -47,7 +47,7 @@ export class FamilyRace {
     }
 
     ready() {
-        if (this.phase !== 'tutorial') return false;
+        if (this.phase !== 'ready') return false;
         this.phase = 'intro';
         return true;
     }

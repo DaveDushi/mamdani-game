@@ -97,7 +97,7 @@ test('countdown taps add no speed and the race clock starts at go', () => {
 test('the first race waits at the tutorial until the player is ready', () => {
     const race = new FamilyRace(opening[0], 0, true);
     race.update(30);
-    assert.equal(race.phase, 'tutorial');
+    assert.equal(race.phase, 'ready');
     assert.equal(race.elapsed, 0);
     assert.equal(race.tap(), false);
     assert.equal(race.ready(), true);
