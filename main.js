@@ -304,8 +304,8 @@ async function startRun(requested, button = $('start-btn')) {
         activeAttempt = attempt;
         street.onEnd = (distance, gross, cause) => finish(attempt, distance, gross, cause);
         street.onRaceWin = count => recordFamilyWin(count).catch(() => { walletAvailable = false; });
-        // Bank at the tape even if the player leaves before opening Results.
-        street.onRaceLoss = (gross, distance) => {
+        // Bank when the run ends, even if the player leaves during the celebration.
+        street.onDefeat = (gross, distance) => {
             settleScore(attempt, distance);
             attempt.bank(gross, distance).catch(() => { walletAvailable = false; });
         };

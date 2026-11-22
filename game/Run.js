@@ -23,7 +23,7 @@ import { RaceSchedule } from './RaceSchedule.js';
 import { approachCopy, RaceApproach } from './RaceApproach.js';
 import { RacePanel } from './RacePanel.js';
 import { RaceStage } from './RaceStage.js';
-import { CITY_REVEAL, FINISH_HOLD, frameOpenBlock } from './RaceFinish.js';
+import { CITY_REVEAL, DANCE_HOLD, FINISH_HOLD, RACE_RUNOUT, frameOpenBlock } from './RaceFinish.js';
 import { courseSpeed } from './Course.js';
 
 const STEP = 1 / 60;
@@ -81,7 +81,8 @@ export class Run {
         this.parkRide = new CentralPark(this);
         this.scoreManager = new ScoreManager();
         this.particles = new ParticleSystem(this.scene);
-        this.input = new Input(canvas, () => this.mode === 'playing' && !this.race);
+        this.input = new Input(canvas, () => this.mode === 'playing' && !this.race && !this.capture);
+        this.captureBanner = document.getElementById('capture-banner');
         this.racePanel = new RacePanel(document.getElementById('hud'), () => {
             if (this.mode !== 'playing' || !this.race?.tap()) return;
             this.sound.play('stride');
@@ -161,7 +162,7 @@ export class Run {
         this.camera.fov = this.baseFov;
         this.camera.updateProjectionMatrix();
         if (this.mode === 'playing' || this.mode === 'paused' || this.mode === 'countdown') {
-            this.renderCourse(this.race ? 0 : 1);
+            this.renderCourse(this.race || this.capture ? 0 : 1);
         }
     }
 
@@ -258,6 +259,13 @@ export class Run {
     }
 
     stop() {
+        if (this.capture) {
+            this.trump.reset();
+            this.player.mesh.visible = this.capture.playerVisible;
+            this.player.shadow.visible = this.capture.shadowVisible;
+            this.capture = null;
+            this.captureBanner.hidden = true;
+        }
         this.parkRide.reset();
         this.busRide.reset(this.player);
         this.race = null;
@@ -312,7 +320,7 @@ export class Run {
         this.frameId = requestAnimationFrame(this.countFrame);
     }
     beginMotion() {
-        this.sound.music(true);
+        if (!this.capture) this.sound.music(true);
         this.mode = 'playing';
         if (this.race) this.racePanel.setPaused(false);
         this.input.reset();
@@ -511,7 +519,7 @@ export class Run {
                 this.sound.play('victory');
                 impact(true);
             } else if (race.phase === 'lost') {
-                this.onRaceLoss?.(this.scoreManager.grossStamps, this.scoreManager.getDisplayScore());
+                this.onDefeat?.(this.scoreManager.grossStamps, this.scoreManager.getDisplayScore());
                 this.sound.play('end');
             } else {
                 this.sound.play('starterPistol');
@@ -549,10 +557,36 @@ export class Run {
         this.onEnd(this.scoreManager.getDisplayScore(), this.scoreManager.grossStamps, cause);
     }
 
+    startCapture(cause) {
+        this.capture = {
+            cause,
+            elapsed: 0,
+            playerVisible: this.player.mesh.visible,
+            shadowVisible: this.player.shadow.visible
+        };
+        this.player.mesh.visible = this.player.shadow.visible = false;
+        this.captureBanner.hidden = false;
+        this.input.reset();
+        this.sound.music(false, true);
+        this.onDefeat?.(this.scoreManager.grossStamps, this.scoreManager.getDisplayScore());
+    }
+
     renderCourse(dt) {
-        if (this.race) {
+        if (this.capture) {
+            const capture = this.capture;
+            const { x, z } = this.trump.mesh.position;
+            const halfWidth = this.camera.aspect * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
+            this.camera.position.set(x, 1.5, z + Math.max(3.35, 1.05 / halfWidth));
+            this.camera.lookAt(x, 1.16, z);
+            this.trump.celebrate(capture.elapsed, this.reduce);
+            this.renderer.render(this.scene, this.camera);
+            capture.elapsed += dt;
+            if (capture.elapsed >= (this.reduce ? FINISH_HOLD : DANCE_HOLD)) this.endRun(capture.cause);
+        } else if (this.race) {
             const finale = this.world.overtime && this.race.phase === 'won';
-            const ready = this.raceStage.finishTime >= (finale ? CITY_REVEAL : FINISH_HOLD);
+            const hold = finale ? CITY_REVEAL : this.race.phase === 'lost' && !this.reduce
+                ? RACE_RUNOUT + DANCE_HOLD : FINISH_HOLD;
+            const ready = this.raceStage.finishTime >= hold;
             if (this.race.phase === 'lost' && ready && this.mode === 'playing') {
                 this.leaveRace();
                 return;
@@ -576,6 +610,7 @@ export class Run {
     }
 
     step(dt) {
+        if (this.capture) return;
         if (this.race) {
             this.raceStep(dt);
             return;
@@ -696,7 +731,8 @@ export class Run {
             if (hit === 'wall' || trump.isChasing) {
                 this.sound.play('end');
                 impact(true);
-                this.endRun(hit);
+                if (trump.isChasing) this.startCapture(hit);
+                else this.endRun(hit);
                 return;
             }
             trump.startChase(player.mesh.position.x);

@@ -1,6 +1,7 @@
 import { RunnerModel } from './RunnerModel.js';
 import { groundShadow } from './Player.js';
 import { Batch } from './Geometry.js';
+import { VictoryDance } from './RaceFinish.js';
 
 const PURSUIT_SECONDS = 5;
 
@@ -19,15 +20,17 @@ export class Trump {
             papers.box(0xdbbd73, x, -0.197, 0.071, 0.033, 0.047, 0.014);
         }
         papers.box(0x72432d, 0, -0.024, 0, 0.2, 0.023, 0.028);
-        const briefcase = papers.mesh();
-        briefcase.castShadow = true;
-        this.rig.sockets.LeftHand.add(briefcase);
+        this.briefcase = papers.mesh();
+        this.briefcase.castShadow = true;
+        this.rig.sockets.LeftHand.add(this.briefcase);
         scene.add(this.mesh);
         this.shadow = groundShadow(scene, 1.45, 2);
         this.reset();
     }
 
     reset() {
+        this.dance?.reset();
+        this.briefcase.visible = true;
         this.isChasing = false;
         this.chaseTimer = 0;
         this.exitTime = 0;
@@ -35,6 +38,16 @@ export class Trump {
         this.shoulder = 1;
         this.mesh.visible = this.shadow.visible = false;
         this.mesh.position.set(0, 0, 4);
+    }
+
+    celebrate(seconds, reducedMotion) {
+        if (!this.dance?.active) {
+            this.mesh.rotation.y = Math.PI;
+            this.briefcase.visible = false;
+            this.rig.pose(0, 0, 0, 0, true);
+            this.dance ??= new VictoryDance(this.rig.figure);
+        }
+        this.dance.play(seconds, reducedMotion);
     }
 
     startChase(x) {

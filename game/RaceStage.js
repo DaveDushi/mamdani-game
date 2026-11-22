@@ -3,7 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneRig } from 'three/addons/utils/SkeletonUtils.js';
 import { Batch } from './Geometry.js';
 import { groundShadow } from './Player.js';
-import { WinnerPose } from './RaceFinish.js';
+import { RACE_RUNOUT, VictoryDance, WinnerPose } from './RaceFinish.js';
 import { movementClip } from './Locomotion.js';
 import { grandstands } from './RaceCrowd.js';
 
@@ -451,10 +451,14 @@ export class RaceStage {
         if (!this.active) return;
         const { x: w, y: h } = renderer.getSize(this.viewport);
         const aspect = w / h, portrait = aspect < .82;
-        const p = race.playerProgress, r = race.rivalProgress;
-        const winnerLane = race.phase === 'won' ? 0 : race.phase === 'lost' ? 1 : -1;
+        const lost = race.phase === 'lost';
+        const winnerLane = race.phase === 'won' ? 0 : lost ? 1 : -1;
         const done = winnerLane !== -1;
         if (done) this.finishTime += dt;
+        const runout = lost && !reducedMotion ? Math.min(this.finishTime, RACE_RUNOUT) : 0;
+        const coast = runout * (1 - runout / (2 * RACE_RUNOUT));
+        const p = race.playerProgress + coast * race.speed / race.rival.metres;
+        const r = race.rivalProgress + coast / race.rival.finish;
         const intro = race.phase === 'intro' || race.phase === 'ready';
         const lead = Math.max(p, r), gap = Math.abs(p - r) * COURSE;
         const focus = lead * COURSE - Math.min(gap * .46, 1.3);
@@ -472,30 +476,33 @@ export class RaceStage {
         const angle = Math.max((portrait ? .08 : .20) * courseAngle, finishAngle) * close;
         const sin = Math.sin(angle), cos = Math.cos(angle);
         const leaderX = reducedMotion ? 0 : .40 * THREE.MathUtils.clamp((r - p) * COURSE, -1, 1);
-        const aimX = (portrait ? 0 : -.20 * courseAngle) + finishFrame * leaderX;
+        const closeup = lost && !reducedMotion ? THREE.MathUtils.smoothstep(this.finishTime, .22, .94) : 0;
+        const aimX = THREE.MathUtils.lerp((portrait ? 0 : -.20 * courseAngle) + finishFrame * leaderX, .86, closeup);
         const halfFov = Math.tan(THREE.MathUtils.degToRad(fov / 2));
         const viewWidth = halfFov * aspect * .88;
         const clearance = .48 + .57 * finishFrame;
         const shortPortrait = portrait ? THREE.MathUtils.clamp((780 - h) / 212, 0, 1) : 0;
         const base = portrait ? Math.max(6.45, 4.5 / aspect) + 3.3 * shortPortrait : (h < 500 ? 6.9 : 6.1);
         // Reserve the strip below the standings for the winner's hands and Donald's raised case.
-        const dist = Math.max(base + (portrait ? 0 : 3.1) * finishFrame,
+        const wideDist = Math.max(base + (portrait ? 0 : 3.1) * finishFrame,
             laneDistance(-.86 - aimX, p * COURSE - focus, sin, cos, clearance, viewWidth),
             laneDistance(.86 - aimX, r * COURSE - focus, sin, cos, clearance, viewWidth));
-        camera.position.set(aimX + dist * sin, portrait ? 1.70 : 1.53, focus + dist * cos);
+        const dist = THREE.MathUtils.lerp(wideDist, Math.max(5.5, .98 / viewWidth), closeup);
+        const aimZ = THREE.MathUtils.lerp(focus, r * COURSE, closeup);
+        camera.position.set(aimX + dist * sin, portrait ? 1.70 : 1.53, aimZ + dist * cos);
         // Leave the countdown clear above the flags and a full stride below the athletes.
         const lift = reducedMotion ? (portrait ? .65 : .40) :
             ((portrait || h < 500 ? .65 : .27) + .46 * shortPortrait) * (1 - courseAngle) +
             (portrait ? .50 * shortPortrait : .18) * finishFrame;
-        camera.lookAt(aimX, (h < 500 ? .98 : 1.02) + lift, focus);
+        camera.lookAt(aimX, (h < 500 ? .98 : 1.02) + lift, aimZ);
         // The distant skyline tracks the broadcast camera; the near rail and spectators have true parallax.
         const far = 100, viewHeight = 2 * far * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
         const backH = Math.max(viewHeight * .75, viewHeight * aspect / 2.7);
         this.back.scale.set(backH * 3.0, backH, 1);
         this.back.position.set(-backH * .14, viewHeight * .21, -far);
-        this.sun.position.set(-3.1, 6.5, focus + 3.6);
-        this.sun.target.position.set(0, 0, focus);
-        if (!done && dt > 0) this.idle += Math.min(.1, dt);
+        this.sun.position.set(-3.1, 6.5, aimZ + 3.6);
+        this.sun.target.position.set(0, 0, aimZ);
+        if ((!done || lost) && dt > 0) this.idle += Math.min(.1, dt);
         this.crowd.clock.value = reducedMotion ? 0 : this.crowd.clock.value + Math.min(dt, .1);
         for (let i = 0; i < 2; i++) {
             const athlete = i ? this.rival : this.player;
@@ -503,9 +510,19 @@ export class RaceStage {
             if (!athlete) continue;
             const z = progress * COURSE;
             athlete.root.position.set(lane, 0, z);
-            const waiting = intro || (!i && race.speed < .3);
-            if (!athlete.finish.active) athlete.pose(z, dt, waiting, this.idle + .7 * i, i ? .36 : .09);
-            if (i === winnerLane) athlete.finish.lift(this.finishTime, reducedMotion);
+            const waiting = intro || lost || (!i && race.speed < .3);
+            const dancing = i === winnerLane && lost && (reducedMotion || this.finishTime >= RACE_RUNOUT);
+            if (dancing) {
+                if (!athlete.dance?.active) {
+                    athlete.running = 0;
+                    athlete.pose(z, 0, true, this.idle + .7 * i, i ? .36 : .09);
+                    athlete.dance ??= new VictoryDance(athlete.figure);
+                }
+                athlete.dance.play(Math.max(0, this.finishTime - RACE_RUNOUT), reducedMotion);
+            } else {
+                if (!athlete.finish.active) athlete.pose(z, dt, waiting, this.idle + .7 * i, i ? .36 : .09);
+                if (i === winnerLane) athlete.finish.lift(this.finishTime, reducedMotion);
+            }
             this.shadows[i].position.set(lane - .035, .018, z - .04);
         }
         this.updateRibbon(lead, done, reducedMotion);
@@ -515,6 +532,7 @@ export class RaceStage {
     stop() {
         this.player.finish.reset();
         this.rival?.finish.reset();
+        this.rival?.dance?.reset();
         if (this.rival) this.rival.root.removeFromParent();
         this.rival = null;
         this.active = null;
