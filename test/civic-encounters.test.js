@@ -23,20 +23,21 @@ function runner(x = 0) {
 
 test('a candidate consumes the course RNG only when it fills a free slot', () => {
     let draws = 0;
-    const select = createCivicSchedule(() => { draws++; return .5; });
-    for (let m=0; m<2700; m++) assert.equal(select(m), null);
+    const select = createCivicSchedule(() => { draws++; return .5; }, 500);
+    for (let m=0; m<500; m++) assert.equal(select(m), null);
     assert.equal(draws, 0);
-    assert.equal(select(2700), 'horse-carriage');
-    assert.equal(select(2700), null);
+    assert.equal(select(500), 'horse-carriage');
+    assert.equal(select(500), null);
+    assert.equal(select(1775), 'horse-carriage');
     assert.equal(select(4150), 'protest-line');
     assert.equal(select(4150), null);
-    assert.equal(draws, 2);
+    assert.equal(draws, 3);
 });
 
-test('carriage moves down the signed lane, rings once and resets both wheel axles in the pool', () => {
+test('carriage gallops toward the runner, rings once and resets both wheel axles in the pool', () => {
     for (const x of [-3,0,3]) for (const reduced of [false,true]) {
         const s=street(reduced), p=runner(x===0?3:0);
-        const spawn = () => s.add('horseCarriage',x,-155,'route',1,{approachSpeed:93.5});
+        const spawn = () => s.add('horseCarriage',x,-155,1,{approachSpeed:93.5});
         const c=spawn();
         const start=c.carriage.position.z, spin=c.frontWheels.rotation.x, rear=c.backWheels.rotation.x;
         assert.equal(c.stencil.position.z,93.5*.69);
@@ -52,7 +53,7 @@ test('carriage moves down the signed lane, rings once and resets both wheel axle
             assert.equal(s.lastStunt,null);
         }
         assert.equal(rings,1);
-        assert.ok(c.carriage.position.z>start+4);
+        assert.ok(c.carriage.position.z>start+12);
         assert.equal(c.frontWheels.rotation.x===spin,reduced);
         assert.equal(c.backWheels.rotation.x===rear,reduced);
         assert.equal(spawn(),c);
@@ -73,7 +74,7 @@ test('standing, jumping and ducking produce the advertised contact across phone 
             const s=street(), p=runner(x), awards=[], hits=[];
             p.mesh.position.y=y;
             p.slideTimer=duck?.40:0;
-            s.add(key,0,-.37*speed,'route',1,{approachSpeed:speed});
+            s.add(key,0,-.37*speed,1,{approachSpeed:speed});
             for(let tick=1; tick/hz<.64; tick++) {
                 s.update(1/hz,speed,speed*tick/hz);
                 const outcome=s.checkCollisions(p);
@@ -103,6 +104,7 @@ test('both shifts reserve complete protest pairs and introduce and vary the civi
             const carriage=lanes.filter(r=>r.encounter?.id==='horse-carriage');
             const tapes=lanes.filter(r=>r.encounter?.beat==='tape');
             assert.ok(carriage.length>=5 && tapes.length>=5);
+            assert.ok(carriage[0].distance < 675);
             for(const r of carriage) {
                 const occupied=r.lanes.indexOf('horseCarriage');
                 assert.equal(Math.abs(occupied-r.exitLane),1);
@@ -156,8 +158,8 @@ test('late mirrored police lines clear with real lane, duck and jump timing at b
             p.currentLane=firstLane;
             p.mesh.position.x=(firstLane-1)*3;
             let distance=tape.distance-speed*1.35;
-            s.add('policeTape',p.mesh.position.x,distance-tape.distance,'route',1,tape.encounter);
-            s.add('fallenPlacard',(secondLane-1)*3,distance-placard.distance,'route',1,placard.encounter);
+            s.add('policeTape',p.mesh.position.x,distance-tape.distance,1,tape.encounter);
+            s.add('fallenPlacard',(secondLane-1)*3,distance-placard.distance,1,placard.encounter);
             let ducked=false, jumped=false;
             while (distance < placard.distance+speed*.9) {
                 const keys=new Set();

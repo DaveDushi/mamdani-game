@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { labelMaterial } from './Geometry.js';
-import { roadPickup } from './PickupArt.js';
+import { foodStampSize, roadPickup } from './PickupArt.js';
 import { halalCart, sidewalkShed, signHolder, yellowCab } from './StreetHazards.js';
 
 export function pedestrian(cast, index) {
@@ -11,7 +11,7 @@ export function pedestrian(cast, index) {
 
 function stamp() {
     return new THREE.Mesh(
-        new THREE.BoxGeometry(0.79, 0.49, 0.075),
+        new THREE.BoxGeometry(foodStampSize.width, foodStampSize.height, 0.075),
         labelMaterial(['NYC', 'FOOD STAMP'], '#f6d77f', '#613d24', 256, 144)
     );
 }

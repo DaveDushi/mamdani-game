@@ -1,12 +1,12 @@
 // Called only at a free course slot. Teaching, ice and paired rows own their
 // reserved space before the course asks for another encounter.
-export function createCivicSchedule(random) {
-    let carriageAt = 2700;
+export function createCivicSchedule(random, carriageAt) {
     let protestAt = 4150;
     return function select(distance) {
         if (distance < Math.min(carriageAt, protestAt)) return null;
         if (carriageAt <= protestAt) {
-            carriageAt = distance + 3600 + Math.floor(random() * 4600);
+            const early = distance < 1500;
+            carriageAt = distance + (early ? 950 : 2600) + Math.floor(random() * (early ? 650 : 3600));
             protestAt = Math.max(protestAt, distance + 1000);
             return 'horse-carriage';
         }

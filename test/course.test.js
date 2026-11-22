@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { Group, MeshStandardMaterial, Scene, Vector3 } from 'three';
+import { Box3, Group, MeshStandardMaterial, Scene, Vector3 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { courseSpeed, streetCourse } from '../game/Course.js';
 import { ObstacleManager } from '../game/ObstacleManager.js';
@@ -23,6 +23,24 @@ test('both courses introduce an actual compulsory stunt after the opening', () =
         assert.equal(first?.gate, 'jump', mode);
         assert.ok(first.distance < (mode === 'day' ? 190 : 120), mode);
         assert.equal(first.exitLane, undefined);
+    }
+});
+
+test('both shifts mix bottles and recurring moving hazards into the first 1,200 metres', () => {
+    for (const mode of ['day', 'night']) {
+        let bottles = 0;
+        let runsWithRepeat = 0;
+        for (let seed = 1; seed <= 64; seed++) {
+            const early = layout(seed, 50, mode).filter(row => row.distance <= 1200);
+            const bottleRows = early.filter(row => row.lanes?.includes('alcohol'));
+            assert.ok(bottleRows[0]?.distance <= 200, `${mode}, seed ${seed}`);
+            assert.ok(bottleRows.every(row => row.lanes[row.exitLane] !== 'alcohol'));
+            bottles += bottleRows.length;
+            const crews = early.filter(row => ['delivery-dolly', 'signal-boom'].includes(row.encounter?.id));
+            if (crews.length > 2) runsWithRepeat++;
+        }
+        assert.ok(bottles / 64 >= 3, mode);
+        assert.ok(runsWithRepeat >= 48, mode);
     }
 });
 
@@ -249,11 +267,16 @@ test('both moving hazards get a standalone introduction and later link to anothe
                 const [delivery, signal] = encounters;
                 assert.equal(delivery.encounter.id, 'delivery-dolly');
                 assert.equal(signal.encounter.id, 'signal-boom');
-                assert.ok(delivery.distance >= 1050 && signal.distance <= 2650);
+                assert.ok(delivery.distance < 500 && signal.distance < 600);
                 for (const row of [delivery, signal]) {
                     const i = rows.indexOf(row);
                     assert.equal(rows[i - 1].gate ?? rows[i - 1].encounter, undefined);
-                    assert.equal(rows[i + 1].gate ?? rows[i + 1].encounter, undefined);
+                    const next = rows[i + 1];
+                    assert.equal(next.gate, undefined);
+                    if (next.encounter) {
+                        assert.equal(next.encounter.id, 'horse-carriage');
+                        assert.ok((next.distance - row.distance) / next.encounter.approachSpeed >= 1.5);
+                    }
                 }
                 const late = encounters.filter(row => row.distance > 15000 && row !== rows.at(-1));
                 assert.ok(late.filter(row => row.encounter.id === 'signal-boom').length >= 10);
@@ -378,17 +401,26 @@ test('even collecting every scheduled protection leaves most of the run exposed'
     }
 });
 
-test('three alternating wearable opportunities precede each rare bus at the normal spacing', () => {
+test('the second pickup is a bus, and one or two rotating wearables separate each later bus', () => {
     for (const mode of ['day', 'night']) {
         const firstPickups = new Set();
         for (let seed = 1; seed <= 64; seed++) {
             const pickups = layout(seed, 500, mode).filter(row => row.pickup);
-            const cycle = pickups.slice(0, 3).map(row => row.pickup);
+            const wearables = pickups.filter(row => row.pickup !== 'fastFreeBus');
+            const cycle = wearables.slice(0, 3).map(row => row.pickup);
             firstPickups.add(cycle[0]);
             assert.deepEqual([...cycle].sort(), ['covidMask', 'kafiyeh', 'rainbow']);
+            assert.ok(wearables.every((row, index) => row.pickup === cycle[index % 3]));
+            assert.equal(pickups[1].pickup, 'fastFreeBus');
+            assert.ok(pickups[1].distance < (mode === 'night' ? 2350 : 1300));
+            let lastBus = 1;
             for (const [i, pickup] of pickups.entries()) {
-                assert.equal(pickup.pickup, i % 4 === 3 ? 'fastFreeBus' : cycle[i % 4]);
-                if (i > 0) assert.ok(pickup.distance - pickups[i - 1].distance >= (mode === 'night' ? 1650 : 1200));
+                if (i <= 1) continue;
+                if (pickup.pickup === 'fastFreeBus') {
+                    assert.ok(i - lastBus === 2 || i - lastBus === 3);
+                    lastBus = i;
+                }
+                assert.ok(pickup.distance - pickups[i - 1].distance >= (mode === 'night' ? 1650 : 1200));
             }
         }
         assert.equal(firstPickups.size, 3);
@@ -445,10 +477,9 @@ test('all generated pieces are pooled and painted lane cues lead to one collecti
                         const objects = traffic.obstacles.filter(obj => at(obj, x, row.distance - lead * row.cueStep));
                         assert.ok(objects.some(obj => obj.key === cue && obj.type === 'cue'));
                         assert.ok(objects.every(obj => obj.type !== 'cue' || obj.key === cue));
-                        assert.ok(objects.every(obj => obj.type !== 'coin' || obj.mesh.material !== traffic.stampMaterials.route));
+                        assert.ok(objects.every(obj => obj.type !== 'coin'));
                     }
-                    const stamps = traffic.obstacles.filter(obj => obj.type === 'coin' &&
-                        obj.mesh.material === traffic.stampMaterials.route && at(obj, x, row.distance - lead));
+                    const stamps = traffic.obstacles.filter(obj => obj.type === 'coin' && at(obj, x, row.distance - lead));
                     assert.equal(stamps.length, 1);
                     assert.equal(stamps[0].height, height);
                 }
@@ -494,26 +525,24 @@ test('even the fastest Overtime gates enter the scene at least 1.55 seconds ahea
     }
 });
 
-test('both pickup escorts collect as stamps and pooled escorts return to the route style', () => {
-    const seed = 9;
+test('road power-ups spawn alone in the marked lane and fit the food stamp dimensions', () => {
     const traffic = createTraffic();
-    traffic.reset('day', seededRandom(seed));
-    const pickup = layout(seed, 100).find(row => row.pickup === 'kafiyeh');
-    const viewDistance = pickup.distance - 20;
-    traffic.fillCourse(viewDistance);
-    const escorts = traffic.obstacles.filter(({ type, mesh }) =>
-        type === 'coin' && mesh.material === traffic.stampMaterials.kafiyeh
-    );
-    assert.deepEqual(escorts.map(({ mesh }) => [mesh.position.x, viewDistance - mesh.position.z]), [
-        [(pickup.pickupLane - 1) * 3, pickup.distance - 5],
-        [(pickup.pickupLane - 1) * 3, pickup.distance + 5]
-    ]);
-    for (const escort of escorts) {
-        escort.mesh.position.set(0, 1.02, 0);
-        assert.equal(traffic.checkCollisions({ mesh: new Group() }), 'coin');
-        traffic.add('coin', 0, -8);
-        assert.equal(traffic.obstacles.at(-1), escort);
-        assert.equal(escort.mesh.material, traffic.stampMaterials.route);
+    const stamp = new Box3().setFromObject(traffic.models.coin, true).getSize(new Vector3());
+    for (const type of traffic.powerups.types) {
+        traffic.course = [{ distance: Infinity }].values();
+        traffic.nextRow = { distance: 100, pickupLane: 2, pickup: type };
+        traffic.fillCourse(80);
+        assert.equal(traffic.obstacles.length, 0);
+        assert.equal(traffic.powerups.powerups.length, 1);
+        const [{ mesh }] = traffic.powerups.powerups;
+        assert.equal(mesh.position.x, 3);
+        assert.equal(mesh.position.z, -20);
+        assert.equal(mesh.children.length, 1);
+        assert.equal(mesh.children[0].isMesh, true);
+        const size = new Box3().setFromObject(mesh, true).getSize(new Vector3());
+        const scale = Math.max(size.x / stamp.x, size.y / stamp.y);
+        assert.ok(Math.abs(scale - 1) < 1e-6, type);
+        traffic.powerups.reset();
     }
 });
 
@@ -720,7 +749,7 @@ function courseTrial(seed, mode, { at = 0, size = 36, strategy = 'jumpChoice', d
             traffic.update(dt, world.speed, world.distance);
             const hit = traffic.checkCollisions(player);
             if (hit && hit !== 'coin') strikes.push({ distance, time, hit });
-            if (hit === 'coin' && traffic.pool.coin.at(-1).mesh.material === traffic.stampMaterials.route) stamps++;
+            if (hit === 'coin') stamps++;
             if (traffic.lastStunt && (row.gate || row.encounter)) {
                 const type = target === boom ? 'signal-boom' : row.gate ?? 'paired-gate';
                 cleared.add(type + ':' + traffic.lastStunt);

@@ -106,8 +106,8 @@ test('the carriage moves aside while its road paint stays put; broken tape leave
     const {ride,player} = fixture();
     const traffic = Object.assign(Object.create(ObstacleManager.prototype),{scene:new Scene(),
         models:civicModels(),pool:{horseCarriage:[],policeTape:[]},obstacles:[]});
-    const horse = traffic.add('horseCarriage',0,-12,'route',1,{approachSpeed:60});
-    const tape = traffic.add('policeTape',0,-3,'route',1,{approachSpeed:60});
+    const horse = traffic.add('horseCarriage',0,-12,1,{approachSpeed:60});
+    const tape = traffic.add('policeTape',0,-3,1,{approachSpeed:60});
     for (let i=0;i<36;i++) {
         assert.equal(ride.drive(1/60,traffic,player,60,true), i ? 0 : 1);
     }
@@ -117,8 +117,8 @@ test('the carriage moves aside while its road paint stays put; broken tape leave
     assert.equal(tape.mesh.children.some(part => part !== tape.march && part.visible),false);
     assert.ok(traffic.obstacles.includes(horse) && traffic.obstacles.includes(tape));
     traffic.clear();
-    assert.equal(traffic.add('policeTape',3,-70,'route',1,{approachSpeed:60}),tape);
+    assert.equal(traffic.add('policeTape',3,-70,1,{approachSpeed:60}),tape);
     assert.equal(tape.mesh.children.every(part => part.visible),true);
-    assert.equal(traffic.add('horseCarriage',3,-70,'route',1,{approachSpeed:60}),horse);
+    assert.equal(traffic.add('horseCarriage',3,-70,1,{approachSpeed:60}),horse);
     assert.equal(horse.stencil.position.x,0);
 });

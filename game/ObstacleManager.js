@@ -1,6 +1,5 @@
 import { streetProps } from './StreetProps.js';
 import { streetCourse } from './Course.js';
-import { labelMaterial } from './Geometry.js';
 import { wallContact } from './StreetWall.js';
 import { courseCueModels, railClearance, railInnerFoot, skillGateBounds, skillGateModels, slideClearance } from './SkillGates.js';
 import { encounterModels } from './StreetEncounterArt.js';
@@ -9,12 +8,6 @@ import { rentIceModel, touchesRentIce } from './RentIce.js';
 import { civicContact, civicGateKey, civicModels, configureCivic, moveCarriage } from './CivicEncounters.js';
 
 const MIN_LOOKAHEAD = 83;
-const escortStampColors = {
-    kafiyeh: ['#e9f5f7', '#233b45'],
-    covidMask: ['#a1ecf0', '#174952'],
-    rainbow: ['#ffb6e6', '#632755']
-};
-
 const bounds = {
     taxi: [0.83, 1.28, 1.66],
     halal: [1.2, 3.05, 0.8],
@@ -37,11 +30,6 @@ export class ObstacleManager {
         this.powerups = powerups;
         this.reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
         this.models = { ...streetProps(cast), ...skillGateModels(), ...courseCueModels(), ...encounterModels(), ...civicModels(), rentIce: rentIceModel() };
-        this.stampMaterials = { route: this.models.coin.material };
-        for (const [key, [paper, ink]] of Object.entries(escortStampColors)) {
-            this.stampMaterials[key] = labelMaterial(['NYC', 'FOOD STAMP'], paper, ink, 256, 144);
-        }
-        this.stampMaterials.fastFreeBus = this.stampMaterials.covidMask;
         for (const [key, g] of Object.entries(this.models)) {
             if (key !== 'coin' && key !== 'rentIce' && !key.endsWith('Cue'))
                 g.traverse((part) => {
@@ -52,14 +40,13 @@ export class ObstacleManager {
         this.obstacles = [];
         this.previewRows = [];
     }
-    add(key, x, z, stampStyle = 'route', height = 1.02, encounter = null) {
+    add(key, x, z, height = 1.02, encounter = null) {
         const obj = this.pool[key].pop() || {
             mesh: this.models[key].clone(),
             key,
             type: key === 'marchBarrier' ? 'gateBlock' : key.startsWith('protest') ? 'protestor' : key.endsWith('Cue') ? 'cue' : key,
             civic: key === 'policeTape' || key === 'fallenPlacard' || key === 'horseCarriage'
         };
-        if (key === 'coin') obj.mesh.material = this.stampMaterials[stampStyle];
         obj.mesh.position.set(x, key === 'coin' ? height : 0, z);
         obj.mesh.rotation.y = 0;
         obj.height = height;
@@ -121,7 +108,7 @@ export class ObstacleManager {
                 row.lanes.forEach((key, lane) => {
                     const x = (lane - 1) * 3;
                     const model = key !== 'gateBlock' && row.streetProp ? row.streetProp : civicGateKey(key, row.encounter);
-                    const obstacle = this.add(model, x, z, 'route', 1.02, row.encounter);
+                    const obstacle = this.add(model, x, z, 1.02, row.encounter);
                     obstacle.gate = gate;
                     if (key === 'gateBlock') return;
                     const jump = key === 'jumpGate';
@@ -131,11 +118,11 @@ export class ObstacleManager {
                     this.markLane(x, z, row, cue);
                     if (key === 'railGate') {
                         // One ticket on the rail is reachable above or below the bar.
-                        const stamp = this.add('coin', x, z + 0.35, 'route', 1.31);
+                        const stamp = this.add('coin', x, z + 0.35, 1.31);
                         stamp.stampReach = 0.58;
                         stamp.gate = gate;
                     } else {
-                        this.add('coin', x, z, 'route', jump ? 2.42 : 0.55);
+                        this.add('coin', x, z, jump ? 2.42 : 0.55);
                     }
                 });
             } else if (row.lanes) {
@@ -143,24 +130,24 @@ export class ObstacleManager {
                 row.lanes.forEach((key, lane) => {
                     if (!key || (open && lane === row.exitLane)) return;
                     const x = (lane - 1) * 3;
-                    const obstacle = this.add(key, x, z, 'route', 1.02, row.encounter);
+                    const obstacle = this.add(key, x, z, 1.02, row.encounter);
                     if (lane === row.bonusLane) {
                         const jump = key === 'taxi';
                         const height = jump ? 2.42 : .55;
                         this.markLane(x, z, row, jump ? 'jumpCue' : 'slideCue');
-                        this.add('coin', x, z + row.cueStep, 'route', height);
+                        this.add('coin', x, z + row.cueStep, height);
                         obstacle.gate = { hit: false, lanes: row.lanes };
-                        this.add('coin', x, z, 'route', height).gate = obstacle.gate;
+                        this.add('coin', x, z, height).gate = obstacle.gate;
                     } else if (key === 'signalBoom' && lane === row.actionLane) {
                         const jump = row.encounter.position === 'low';
                         this.markLane(x, z, row, jump ? 'jumpCue' : 'slideCue');
-                        this.add('coin', x, z, 'route', jump ? 2.42 : .54);
+                        this.add('coin', x, z, jump ? 2.42 : .54);
                     } else if (lane === row.exitLane) {
                         const jump = key === 'jumpGate';
                         const guide = obstacle.mesh.getObjectByName('tutorialSign');
                         if (guide) guide.visible = false;
                         this.markLane(x, z, row, jump ? 'jumpCue' : 'slideCue');
-                        this.add('coin', x, z, 'route', jump ? 2.42 : .55);
+                        this.add('coin', x, z, jump ? 2.42 : .55);
                     }
                 });
                 if (open) {
@@ -170,9 +157,7 @@ export class ObstacleManager {
                 }
             } else {
                 const x = (row.pickupLane - 1) * 3;
-                this.add('coin', x, z + 5, row.pickup);
                 this.powerups.spawnPowerup(x, z, row.pickup);
-                this.add('coin', x, z - 5, row.pickup);
             }
             this.nextRow = this.previewRows.shift() ?? this.course.next().value;
         }

@@ -1,6 +1,8 @@
 import { policeTape, fallenPlacard, marchBarrier, tapePost, tapeBottom, placardTop } from './CivicSigns.js';
 import { horseCarriage, carriagePace, carriageAngle } from './HorseCarriage.js';
 
+const gallopPhase = [0, 2.4, .6, 1.8];
+
 export function civicModels() {
     return { horseCarriage: horseCarriage(), policeTape: policeTape(), fallenPlacard: fallenPlacard(), marchBarrier: marchBarrier() };
 }
@@ -40,9 +42,10 @@ export function moveCarriage(obj) {
     obj.carriage.position.z = travel;
     obj.frontWheels.rotation.x = obj.reducedMotion ? 0 : travel / .41;
     obj.backWheels.rotation.x = obj.reducedMotion ? 0 : travel / .59;
-    const swing = obj.reducedMotion ? .035 : .22 * Math.sin(t * 8.4);
-    for (let i=0; i<4; i++) obj.legs[i].rotation.x = (i<2 ? 1 : -1) * swing;
-    if (!obj.bellRang && t >= -1.20 && t < -.60) {
+    for (let i = 0; i < obj.legs.length; i++) {
+        obj.legs[i].rotation.x = obj.reducedMotion ? .035 : .48 * Math.sin(travel * 1.65 + gallopPhase[i]);
+    }
+    if (!obj.bellRang && t >= -1.33 && t < -.65) {
         obj.bellRang = true;
         return true;
     }

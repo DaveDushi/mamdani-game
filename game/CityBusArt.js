@@ -1,4 +1,3 @@
-import { Group } from 'three';
 import { StreetMesh, tile } from './StreetHazardMesh.js';
 
 const white = 0xf4f0da, blue = 0x1762a4, deep = 0x103451;
@@ -82,13 +81,4 @@ export function cityBusModel() {
     const bus = m.finish();
     bus.castShadow = true;
     return bus;
-}
-export function busPickup(bus) {
-    const model = bus.clone();
-    model.rotation.y = -.57;
-    model.scale.setScalar(.46);
-    model.position.set(.19,-.59,.29);
-    const root = new Group();
-    root.add(model);
-    return root;
 }

@@ -25,9 +25,10 @@ const openings = [
 ];
 
 const protections = ['rainbow', 'kafiyeh', 'covidMask'];
+const streetTraffic = ['taxi', 'halal', 'scaffold', 'protest'];
 const trafficPairs = [
     ['taxi', 'scaffold'], ['protest', 'halal'], ['taxi', 'protest'],
-    ['halal', 'taxi'], ['scaffold', 'protest'], ['taxi', 'alcohol']
+    ['halal', 'taxi'], ['scaffold', 'protest'], ['scaffold', 'halal']
 ];
 const lanes = [0, 1, 2];
 const stunts = ['jump', 'slide', 'rail', 'choice'];
@@ -39,7 +40,7 @@ const linkedCrews = [
     ['signal-boom', 'delivery-dolly'],
     ['signal-boom', 'signal-boom']
 ];
-const firstEncounterAt = [1050, 2050];
+const firstEncounterAt = { day: [290, 430], night: [215, 350] };
 const lateTurnPatterns = [.42, .64, .88];
 
 // Beats specify a gate, lane-change probability (0 holds, 1 turns) and timing offset in seconds.
@@ -56,8 +57,8 @@ const patterns = [
 ];
 
 const tiers = [
-    { at: 0,     seconds: 1.36, move: .25, minimum: 1, maximum: 2 },
-    { at: 450,   seconds: 1.05, move: .48, minimum: 2, maximum: 3 },
+    { at: 0,     seconds: 1.36, move: .38, minimum: 1, maximum: 2 },
+    { at: 350,   seconds: 1.05, move: .55, minimum: 2, maximum: 3 },
     { at: 1400,  seconds: .89, move: .63, minimum: 4, maximum: 6 },
     { at: 3500,  seconds: .82, move: .74, minimum: 5, maximum: 8 },
     { at: 8500,  seconds: .73, move: .84, minimum: 6, maximum: 10 },
@@ -112,7 +113,8 @@ function streetRow(distance, slots, cueStep, random) {
 
 export function* streetCourse(random = Math.random, mode = 'day', isOvertime = () => false) {
     const night = mode === 'night';
-    const selectCivic = createCivicSchedule(random);
+    const selectCivic = createCivicSchedule(random, night ? 425 : 500);
+    const introductions = night ? firstEncounterAt.night : firstEncounterAt.day;
     let distance = 0;
     let previous = [1];
     let previousJump = false;
@@ -141,17 +143,21 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
         return lanes.filter(lane => previous.every(last => Math.abs(last - lane) <= 1));
     }
 
-    function row(gate, seconds, move, bonusRoute = false) {
+    function row(gate, seconds, move, bonusRoute = false, bottle = false) {
         const reachable = reachableLanes();
         const lane = nextLane(previous[0], reachable, move, random);
         previous = [lane];
         if (!gate) {
-            const slots = [...pick(trafficPairs, random)];
+            const slots = bottle || random() < .36 ? ['alcohol', pick(streetTraffic, random)] : [...pick(trafficPairs, random)];
             if (random() < 0.5) slots.reverse();
             slots.splice(lane, 0, EXIT);
             const sideLanes = reachable.filter(other => Math.abs(lane - other) === 1);
             const bonusLane = bonusRoute && sideLanes.length ? pick(sideLanes, random) : undefined;
             if (bonusLane !== undefined) {
+                if (slots[bonusLane] === 'alcohol') {
+                    const blockedLane = lanes.find(other => other !== lane && other !== bonusLane);
+                    slots[blockedLane] = 'alcohol';
+                }
                 slots[bonusLane] = pick(['taxi', 'halal', 'scaffold'], random);
                 previous.push(bonusLane);
             }
@@ -185,7 +191,7 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
         const slots = [null, null, null];
         slots[otherLane] = dolly ? 'deliveryDolly' : 'signalBoom';
         if (fork) slots[exitLane] = position === 'low' ? 'slideGate' : 'jumpGate';
-        slots[blockedLane] = pick(['taxi', 'halal', 'scaffold'], random);
+        slots[blockedLane] = pick(['taxi', 'halal', 'scaffold', 'alcohol'], random);
         previous = dolly ? [exitLane] : [exitLane, otherLane];
         const encounter = dolly
             ? { id, fromLane: exitLane, toLane: otherLane, approachSpeed }
@@ -229,13 +235,18 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
         yield row(null, 42 / courseSpeed(100, mode), 0.5);
         yield row(null, 1.05, 0.6);
     }
-    for (const gate of ['jump', null, 'slide', null, 'choice', 'rail']) {
-        yield row(gate, night ? 1.12 : 1.38, gate ? 0.22 : 0.5);
-    }
+    const lessonGap = night ? 1.12 : 1.38;
+    yield row('jump', lessonGap, .22);
+    yield row(null, lessonGap, .50, false, true);
+    yield row('slide', lessonGap, .22);
+    yield row(null, lessonGap + random() * .22, .60);
+    yield row('choice', lessonGap, .34);
+    yield row('rail', lessonGap, .34);
 
     let protectionIndex = Math.floor(random() * protections.length);
-    let opportunities = 0;
-    let nextProtection = night ? 820 : 300;
+    let wearablesUntilBus = 1;
+    let firstPickup = true;
+    let nextPickup = night ? 820 : 300;
     let tierIndex = 0;
     let introduced = 0;
     let nextIce = 2900;
@@ -252,11 +263,15 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
         const move = effort >= 8500 ? pick(lateTurnPatterns, random) : tier.move;
         const speed = courseSpeed(distance + 100, mode);
         const pickupDistance = distance + Math.ceil(speed * 0.65);
-        if (pickupDistance >= nextProtection) {
-            // Recover in the lane just cleared. A wearable never calls for an extra lane change.
-            const pickup = ++opportunities % 4 === 0 ? 'fastFreeBus' : protections[protectionIndex++ % protections.length];
+        if (pickupDistance >= nextPickup) {
+            const bus = wearablesUntilBus === 0;
+            const pickup = bus ? 'fastFreeBus' : protections[protectionIndex++ % protections.length];
             yield { distance: pickupDistance, pickupLane: previous[0], pickup };
-            nextProtection = pickupDistance + Math.max(night ? 1650 : 1200, Math.ceil(speed * (night ? 34 : 29)));
+            wearablesUntilBus = bus ? (random() < .6 ? 1 : 2) : wearablesUntilBus - 1;
+            const spacing = firstPickup ? (night ? 850 : 650)
+                : Math.max(night ? 1650 : 1200, Math.ceil(speed * (night ? 40 : 35)));
+            nextPickup = pickupDistance + spacing;
+            firstPickup = false;
         }
         const breakTime = Math.max(1.06, tier.seconds + .22) + random() * .52;
         const taught = introduced === movingEncounters.length;
@@ -278,15 +293,15 @@ export function* streetCourse(random = Math.random, mode = 'day', isOvertime = (
             continue;
         }
 
-        if (introduced < movingEncounters.length && distance >= firstEncounterAt[introduced]) {
+        if (!taught && distance >= introductions[introduced]) {
             yield movingRow(movingEncounters[introduced++], 1.65, move, overtime);
             continue;
         }
 
         const length = tier.minimum + Math.floor(random() * (tier.maximum - tier.minimum + 1));
-        const linkChance = effort >= 22000 ? .82 : effort >= 5500 ? .5 : 0;
+        const linkChance = effort >= 22000 ? .82 : taught && distance >= 450 ? .54 : 0;
         const firstLink = ice || carriage ? 1 : 0;
-        const linked = random() < linkChance;
+        const linked = length > firstLink && random() < linkChance;
         const crews = linked && distance >= 30000 && random() < .74 ? pick(linkedCrews, random) : null;
         const separation = crews ? 2 + Math.floor(random() * 2) : 0;
         const linkedAt = linked ? firstLink + Math.floor(random() * (length - firstLink - separation)) : -1;

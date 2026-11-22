@@ -1,17 +1,17 @@
 import * as THREE from 'three';
-import { roadPickup } from './PickupArt.js';
-import { busPickup, cityBusModel } from './CityBusArt.js';
+import { foodStampSize, roadPickup } from './PickupArt.js';
+import { cityBusModel } from './CityBusArt.js';
 
-function markedPickup(model, atlas, column) {
-    const map = atlas.clone();
-    // Each 96 px cell has its pictogram and colored side bars between rows 12 and 62.
-    map.repeat.set(1 / 3, 50 / 96);
-    map.offset.set(column / 3, 34 / 96);
-    const marker = new THREE.Sprite(new THREE.SpriteMaterial({ map, toneMapped: false, depthWrite: false, fog: false }));
-    marker.position.y = 2.32;
-    marker.scale.set(1.05, 1.05 * map.repeat.y, 1);
+function stampSizedPickup(model, angle = 0) {
+    model.rotation.y = angle;
+    model.castShadow = false;
+    const bounds = new THREE.Box3().setFromObject(model, true);
+    const size = bounds.getSize(new THREE.Vector3());
+    const scale = Math.min(foodStampSize.width / size.x, foodStampSize.height / size.y);
+    model.scale.setScalar(scale);
+    bounds.getCenter(model.position).multiplyScalar(-scale);
     const group = new THREE.Group();
-    group.add(model, marker);
+    group.add(model);
     return group;
 }
 
@@ -34,14 +34,14 @@ function crossedPickup(pickup, fromX, fromY, to) {
 }
 
 export class PowerupManager {
-    constructor(scene, markers = new THREE.Texture()) {
+    constructor(scene) {
         this.scene = scene;
         this.busModel = cityBusModel();
         this.models = {
-            fastFreeBus: busPickup(this.busModel),
-            rainbow: markedPickup(roadPickup('rainbow'), markers, 0),
-            kafiyeh: markedPickup(roadPickup('kafiyeh'), markers, 1),
-            covidMask: markedPickup(roadPickup('covidMask'), markers, 2)
+            fastFreeBus: stampSizedPickup(this.busModel.clone(), -.94),
+            rainbow: stampSizedPickup(roadPickup('rainbow')),
+            kafiyeh: stampSizedPickup(roadPickup('kafiyeh')),
+            covidMask: stampSizedPickup(roadPickup('covidMask'))
         };
         this.types = Object.keys(this.models);
         this.pool = Object.fromEntries(this.types.map((type) => [type, []]));
@@ -60,7 +60,6 @@ export class PowerupManager {
         const pickup = this.pool[type].pop() || { mesh: this.models[type].clone(), type };
         pickup.mesh.position.set(lane, 1.14, z);
         pickup.previousZ = z;
-        pickup.mesh.rotation.set(0, 0, 0);
         this.scene.add(pickup.mesh);
         this.powerups.push(pickup);
     }
@@ -70,8 +69,6 @@ export class PowerupManager {
             const m = pickup.mesh;
             pickup.previousZ = m.position.z;
             m.position.z += speed * dt;
-            m.rotation.y = 0.36 * Math.sin(m.position.z * 0.16);
-            m.rotation.z = 0.07 * Math.sin(m.position.z * 0.22);
             m.position.y = 1.15 + 0.095 * Math.sin(m.position.z * 0.27);
             if (pickup.previousZ > 10) this.remove(i);
         }

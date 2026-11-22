@@ -342,6 +342,8 @@ const builders = { rainbow: flagGeometry, kafiyeh: scarfGeometry, covidMask: mas
 const geometryCache = new Map(),
     materialCache = new Map();
 
+export const foodStampSize = { width: .79, height: .49 };
+
 export function roadPickup(type) {
     if (!geometryCache.has(type)) geometryCache.set(type, builders[type]());
     const finish = type === 'alcohol' ? 'glass' : 'cloth';

@@ -1,6 +1,6 @@
 # Mamdani Run game rules
 
-Run through three lanes of New York traffic. Short white dashes mark the open lanes. The food stamp sits at the gate, above a jump or under a beam. Colored stamps flank a rare power-up. Swipe left or right to change lanes, up to jump, or down to slide. The arrow keys and WASD also work. Space jumps. Tap pause, press P or press Escape to pause. Resume gives you a three-second countdown with the street and all effect timers frozen.
+Run through three lanes of New York traffic. Short white dashes mark the open lanes. The food stamp sits at the gate, above a jump or under a beam. Pick up a mask, keffiyeh, rainbow, or miniature bus to activate its power. Swipe left or right to change lanes, up to jump, or down to slide. The arrow keys and WASD also work. Space jumps. Tap pause, press P or press Escape to pause. Resume gives you a three-second countdown with the street and all effect timers frozen.
 
 | Encounter | How to play it |
 | --- | --- |
@@ -11,7 +11,7 @@ Run through three lanes of New York traffic. Short white dashes mark the open la
 | Ticket rail | Jump over it or slide underneath in the same lane. Either move can earn the stamp. |
 | STREET CLOSED wall | Change lanes. An unprotected head-on hit ends the run. Clipping its outer edge costs one hit. |
 | Delivery dolly | Watch the load roll across the street. Change into the lane it leaves open. |
-| Horse-drawn carriage | Listen for the bell or look for the road marking. Move out of the carriage lane. |
+| Horse-drawn carriage | The horse gallops toward you. Listen for the bell or look for the road marking, then leave its lane. |
 | Protest tape and placard | Duck under the police tape, then jump over the fallen sign. The first pair shares a lane. Later the sign may land in the next lane. |
 | Signal boom | Jump the low bar or slide under the raised bar. The other marked lane can have its own hurdle or overhead beam at later forks. |
 | Freeze the Rent ice | Jump the blue patch or switch to a dry lane. Grounded contact locks steering for half a second. You can still jump or slide. |

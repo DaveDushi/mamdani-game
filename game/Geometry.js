@@ -112,7 +112,7 @@ const artLoader = new THREE.ImageLoader();
 const artUrl = name => (import.meta.env?.BASE_URL ?? './') + 'art/' + name + '.webp';
 
 export function preloadStreetArt() {
-    for (const name of ['asphalt', 'facades', 'districts', 'skyline', 'pavement', 'posters', 'locust', 'blue-hour', 'pickup-markers', 'street-hazards']) {
+    for (const name of ['asphalt', 'facades', 'districts', 'skyline', 'pavement', 'posters', 'locust', 'blue-hour', 'street-hazards']) {
         artTexture(name);
     }
 }

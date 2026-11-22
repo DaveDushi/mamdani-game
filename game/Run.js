@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { artLoads, artTexture } from './Geometry.js';
+import { artLoads } from './Geometry.js';
 import { Wardrobe, createRenderer, sizeRenderer } from './Wardrobe.js';
 import { impact } from './Native.js';
 import { World } from './World.js';
@@ -75,7 +75,7 @@ export class Run {
         this.player.mesh.add(this.pickupRing);
         this.trump = new Trump(this.scene, cast.chaser);
         this.wardrobe = fittingRoom ?? new Wardrobe(this.renderer, this.player);
-        this.powerupManager = new PowerupManager(this.scene, artTexture('pickup-markers'));
+        this.powerupManager = new PowerupManager(this.scene);
         this.busRide = new BusRide(this.scene, this.powerupManager.busModel);
         this.obstacleManager = new ObstacleManager(this.scene, this.powerupManager, cast);
         this.parkRide = new CentralPark(this);

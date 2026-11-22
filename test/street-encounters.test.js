@@ -17,7 +17,7 @@ function runner(x, y = 0, duck = false) {
 function load(street, key, speed, z, high = false) {
     const info = key === 'deliveryDolly' ? { id:'delivery-dolly', fromLane:0, toLane:1, approachSpeed:speed }
         : { id:'signal-boom', lane:1, position:high?'high':'low', approachSpeed:speed };
-    return street.add(key,0,z,'route',1.02,info);
+    return street.add(key,0,z,1.02,info);
 }
 
 test('the load rolls into its painted bay and the working boom locks before contact', () => {
@@ -99,12 +99,12 @@ test('a recycled cart or boom starts from the new lane, position, and warning ph
     const b=load(s,'signalBoom',80,0,true);
     a.stunt='sidestep';b.passed=true;
     s.clear();
-    assert.equal(s.add('deliveryDolly',3,-160,'route',1,{fromLane:1,toLane:2,approachSpeed:80}),a);
+    assert.equal(s.add('deliveryDolly',3,-160,1,{fromLane:1,toLane:2,approachSpeed:80}),a);
     assert.equal(a.mesh.position.x,0);
     assert.equal(a.bay.position.x,3);
     assert.ok(Math.abs(a.farCaster.rotation.z)===0);
     assert.equal(a.stunt,null);
-    assert.equal(s.add('signalBoom',3,-160,'route',1,{lane:2,position:'low',approachSpeed:80}),b);
+    assert.equal(s.add('signalBoom',3,-160,1,{lane:2,position:'low',approachSpeed:80}),b);
     assert.equal(b.bottom,boomLow);
     assert.ok(b.boom.rotation.z>.6);
     assert.equal(b.passed,false);

@@ -2,7 +2,7 @@ import { Group } from 'three';
 import { CivicSigns, roadStencil } from './CivicSigns.js';
 import { StreetMesh, tile } from './StreetHazardMesh.js';
 
-export const carriagePace = 3.3, carriageAngle = .19;
+export const carriagePace = 8, carriageAngle = .19;
 const bay = 0x98522e, chestnut = 0xaf6840, mane = 0x352820, harness = 0x3e3030;
 const ivory = 0xf5e1bc, wine = 0x782d40, brass = 0xd4a34f, iron = 0x333742;
 
