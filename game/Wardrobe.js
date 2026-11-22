@@ -61,15 +61,18 @@ export class Wardrobe {
         this.time = 0;
         this.frame = 0;
         this.active = false;
+        this.preview = document.getElementById('outfit-preview');
         this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
         this.tick = this.tick.bind(this);
         this.resize = this.resize.bind(this);
+        this.previewObserver = new ResizeObserver(this.resize);
     }
 
     open() {
         if (this.active) return;
         this.active = true;
         window.addEventListener('resize', this.resize);
+        this.previewObserver.observe(this.preview);
         this.time = 1.7;
         this.turn = Math.PI + 0.21;
         this.scene.add(this.player.mesh, this.player.shadow);
@@ -80,17 +83,22 @@ export class Wardrobe {
     resize() {
         if (!this.active) return;
         sizeRenderer(this.renderer);
-        const w = innerWidth,
-            h = innerHeight,
-            portrait = w / h < 0.8;
-        const panel = document.querySelector('.wardrobe').getBoundingClientRect();
-        const blocked = portrait ? Math.min(0.46, (panel.height + 32) / h) : 0;
-        const z = 3.87 / (1 - blocked),
-            x = portrait ? 0 : -0.65;
-        this.camera.aspect = w / h;
-        this.camera.updateProjectionMatrix();
-        this.camera.position.set(x, 1.37, z);
-        this.camera.lookAt(x, 1.02 - blocked * z * 0.285, 0);
+        const w = innerWidth;
+        const h = innerHeight;
+        const portrait = matchMedia('(max-aspect-ratio: 4/5)').matches;
+        const x = portrait ? 0 : -0.65;
+        if (portrait) {
+            const { left, top, width, height } = this.preview.getBoundingClientRect();
+            if (width <= 0 || height <= 0) return;
+            const inset = Math.min(8, height / 8);
+            // Fit the character inside the preview while drawing the backdrop across the canvas.
+            this.camera.setViewOffset(width, height - 2 * inset, -left, -(top + inset), w, h);
+        } else {
+            this.camera.aspect = w / h;
+            this.camera.clearViewOffset();
+        }
+        this.camera.position.set(x, 1.37, 3.87);
+        this.camera.lookAt(x, 1.02, 0);
         this.render();
     }
     rotate(amount) {
@@ -117,6 +125,7 @@ export class Wardrobe {
         this.active = false;
         cancelAnimationFrame(this.frame);
         window.removeEventListener('resize', this.resize);
+        this.previewObserver.disconnect();
         this.scene.remove(this.player.mesh, this.player.shadow);
         city?.add(this.player.mesh, this.player.shadow);
     }
