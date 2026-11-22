@@ -69,3 +69,40 @@ test('passing the dock in the left lane or driving a bus stays on the street', (
     ride.update(run);
     assert.equal(boards(), 0);
 });
+
+test('a gate cleared without a scrape pays style once, and a clipped barrier or a masked rider earns none', () => {
+    for (const [clip, masked, expected] of [[false, false, 1], [true, false, 0], [false, true, 0]]) {
+        const { run, ride, plan } = fixture();
+        ride.update(run);
+        run.input.pressed.clear();
+        run.world.distance = plan.entry + .5;
+        ride.update(run);
+        ride.nextGate = ride.lastLane = 0;
+        ride.steered = false;
+        const gate = plan.gates[0], group = ride.art.gates[0];
+        run.player.covidMaskTimer = masked ? 2 : 0;
+        const barrier = group.children[0].position.x, stamp = group.children[2].position.x;
+        run.player.mesh.position.x = group.position.x + (clip ? barrier : stamp);
+        run.player.currentLane = 2;
+        let cleared = 0;
+        for (let z = -2; z < 1.2; z += .2) {
+            run.world.distance = gate.at + z;
+            ride.contact(run);
+            cleared += ride.gateCleared;
+        }
+        assert.equal(cleared, expected);
+        assert.equal(ride.nextGate, 1);
+    }
+});
+
+test('a dawdling runner keeps the dock, and an unqualified Donald final never closes it', () => {
+    const { run, ride } = fixture();
+    run.trump = { isChasing: true, hot: false };
+    run.familyWins = 5;
+    run.raceSchedule = { qualified: false, rivals: [0, 1, 2, 3, 4, 5].map(index => ({ index, at: 10 })) };
+    ride.update(run);
+    assert.equal(ride.armed, true);
+    run.raceSchedule.qualified = true;
+    ride.update(run);
+    assert.equal(ride.armed, false);
+});

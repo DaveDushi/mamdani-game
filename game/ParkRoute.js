@@ -11,6 +11,19 @@ export const touchesPark = (from, to) => {
     return from < start + PARK_LENGTH && to >= start;
 };
 
+const cutWindows = [[22, 104, .70], [225, 311, .98]];
+
+// The gap the street should leave before its next row while a curb cut is still possible.
+export function curbCutWindow(distance, speed) {
+    const start = parkStart(distance);
+    for (const [from, to, seconds] of cutWindows) {
+        const gap = seconds + 6.5 / speed;
+        if (distance < start + from - 12 - speed * 1.2 || distance + gap * speed > start + to + speed * .2) continue;
+        return { id: start + from, seconds: gap, near: distance >= start + from - 12 };
+    }
+    return null;
+}
+
 // Put both curb cuts between actual generated rows. On re-entry the next
 // outside-lane action needs time for a second swipe as well as the action.
 function opening(rows, min, max, speed, merging) {

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Box3, Group, Raycaster, Vector3 } from 'three';
 import { halalCart, sidewalkShed, signHolder, yellowCab } from '../game/StreetHazards.js';
+import { fairClearance, stretchBounds, stretchModels } from '../game/StretchArt.js';
 import { courseCueModels, railClearance, railInnerFoot, skillGateBounds, skillGateModels, slideClearance } from '../game/SkillGates.js';
 
 const gates = skillGateModels();
@@ -72,3 +73,31 @@ test('street furniture leaves the crouch path open and the cab roof light clears
     }
 });
 
+test('the stretch props fill their collision boxes, and lesson paint lies flat', () => {
+    const context = { fillRect() {}, strokeRect() {}, fillText() {}, measureText: () => ({ width: 100 }) };
+    globalThis.document = { createElement: () => ({ getContext: () => context }) };
+    let models;
+    try {
+        models = stretchModels();
+    } finally {
+        delete globalThis.document;
+    }
+    for (const [key, [w, top, d]] of Object.entries(stretchBounds)) {
+        const box = new Box3().setFromObject(models[key], true);
+        assert.ok(box.max.y <= top + .005 && box.max.y > top - .08, key + box.max.y);
+        assert.ok(box.max.x <= w + .06 && box.max.x > w - .12 && box.min.x >= -w - .06, key + box.max.x);
+        assert.ok(box.max.z <= d + .06 && box.min.z >= -d - .06, key);
+    }
+    for (const x of [-1.1, -.6, 0, .6, 1.1]) {
+        assert.ok(!blocks(models.fairBanner, x, fairClearance - .01));
+        assert.ok(blocks(models.fairBanner, x, 1.6));
+        assert.ok(!blocks(models.trashPile, x, 1.01));
+        assert.ok(blocks(models.trashPile, x, .3));
+    }
+    for (const key of ['moveLeftCue', 'moveRightCue', 'hopCue', 'duckCue']) {
+        const box = new Box3().setFromObject(models[key], true);
+        assert.ok(box.min.y > 0 && box.max.y < .05, key);
+    }
+    assert.ok(new Box3().setFromObject(models.moveLeftCue, true).min.x < -1.1);
+    assert.ok(new Box3().setFromObject(models.moveRightCue, true).max.x > 1.1);
+});

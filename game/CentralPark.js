@@ -3,6 +3,7 @@ import { ParkArt, parkBike } from './ParkArt.js';
 import { bikeLaneX, parkRoute, parkStart, PARK_LENGTH, pathBend, pathWidth } from './ParkRoute.js';
 import { movementClip } from './Locomotion.js';
 import { APPROACH_SECONDS } from './RaceApproach.js';
+import { RIVALS } from './FamilyRace.js';
 
 export class CentralPark {
     constructor(run) {
@@ -31,7 +32,7 @@ export class CentralPark {
         this.start = this.plan = null;
         this.lastAt = 0;
         this.art.ground.visible = this.art.route.visible = false;
-        this.armed = this.offered = false;
+        this.armed = this.offered = this.gateCleared = false;
     }
     laneX(lane) {
         return bikeLaneX(lane, this.width) + this.bend;
@@ -41,7 +42,10 @@ export class CentralPark {
         const at = world.distance, speed = world.speed, start = parkStart(at);
         const from = this.lastAt;
         this.lastAt = at;
-        const next = schedule.rivals[run.familyWins]?.at ?? Infinity;
+        const rival = schedule.rivals[run.familyWins];
+        // Donald waits on the score, so his final only blocks a ride once the runner has qualified.
+        const final = rival?.index === RIVALS.length - 1;
+        const next = !rival || final && !schedule.qualified ? Infinity : final ? at : rival.at;
         this.label = '';
         this.art.update(at, start);
         if (start !== this.start) this.art.route.visible = false;
@@ -55,7 +59,7 @@ export class CentralPark {
         const plan = this.plan;
         if (!plan || start !== this.start) return;
         const bus = run.busRide.active || player.fastFreeBusTimer > 0;
-        if (!this.active && (bus || schedule.initialRecordPending || plan.exit + speed * APPROACH_SECONDS >= next)) {
+        if (!this.active && (bus || run.raceWarning || plan.exit + speed * APPROACH_SECONDS >= next)) {
             this.armed = false;
             this.art.route.visible = false;
             return;
@@ -111,6 +115,7 @@ export class CentralPark {
         rig.figure.position.y = 0;
     }
     contact(run) {
+        this.gateCleared = false;
         if (!this.active) return null;
         const { world, player } = run, gate = this.plan.gates[this.nextGate];
         if (!gate) return null;
@@ -138,6 +143,7 @@ export class CentralPark {
         if (collected) stamp.visible = false;
         // Do not retire contact on the leading edge of the row.
         if (z >= 1.05) {
+            this.gateCleared = group.children[0].visible && group.children[1].visible;
             this.nextGate++;
             this.steered = false;
         }

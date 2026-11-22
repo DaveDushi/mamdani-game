@@ -53,7 +53,7 @@ export function roadStencil(name) {
 function marchers() {
     const m = new StreetMesh(), signs = new CivicSigns();
     for (const side of [-1, 1]) {
-        // The crowd stands behind NYPD blue sawhorses on both sidewalks.
+        // The crowd stands behind blue police sawhorses on both sidewalks.
         const x = side * 5.6;
         for (const post of [-.70,.70]) for (const z of [-.25,.25]) {
             m.tube([x+post,.79,-1.1],[x+post+post*.13,.04,-1.1+z],.055,0x286ba6,5);

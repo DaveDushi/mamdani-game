@@ -350,12 +350,13 @@ export class World {
             signs: signAtlas(),
             details: new THREE.MeshLambertMaterial({ vertexColors: true })
         };
+        mats.road.userData.lamps = mats.lamps;
         this.blocks = Array.from({ length: BLOCKS }, (_, i) => block(i, mats, cast));
         this.streetMaterials = mats;
         this.takeoverWins = 0;
         this.blocks.forEach((b) => scene.add(b.group));
         this.landmarks = new Landmarks(scene, mats.details);
-        this.crossings = new Crossings(scene);
+        this.crossings = new Crossings(scene, mats.walls);
         this.events = new CityEvents(scene, mats.lamps, (from, to) => streetClear(from, to) && !touchesPark(from, to));
         // Keep the central photograph at its original scale. Mirrored wings meet it at
         // matching edge pixels when the open river exposes the full horizontal field of view.
@@ -413,7 +414,7 @@ export class World {
         this.trainTime = 0;
         this.landmarks.update(0);
         this.light.update(0);
-        this.crossings?.update(0, this.light.night.value);
+        this.crossings?.update(0, this.light.night.value, 0);
         this.events?.reset(mode, this.speed);
         this.blocks.forEach((b, i) => {
             b.group.position.z = 15 - i * LENGTH;
@@ -467,7 +468,7 @@ export class World {
             if (site.visible && touchesPark(at - 8, at + 8)) site.visible = false;
         }
         this.light.update(this.distance);
-        this.crossings?.update(this.distance, this.light.night.value);
+        this.crossings?.update(this.distance, this.light.night.value, this.light.takeover.value);
         this.events?.update(dt, this.distance, this.speed);
         this.trainTime += dt * 7;
         for (const b of this.blocks) {

@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Group, Scene } from 'three';
-import { BusRide, busSeconds } from '../game/BusRide.js';
+import { BusRide, busSeconds, maxFare } from '../game/BusRide.js';
 import { cityBusModel } from '../game/CityBusArt.js';
 import { ScoreManager } from '../game/ScoreManager.js';
 import { ObstacleManager } from '../game/ObstacleManager.js';
+import { powerupSeconds } from '../game/Progression.js';
 import { PowerupManager } from '../game/PowerupManager.js';
 import { civicModels } from '../game/CivicEncounters.js';
 
@@ -43,7 +44,7 @@ test('the full-size bus and collectible share their body, and boarding preserves
     assert.equal(player.fastFreeBusTimer,0);
 });
 
-test('the actual swept path pays at most three gross stamps, once per work gate, without scoring distance', () => {
+test('the actual swept path pays up to eight gross stamps, once per work gate, without scoring distance', () => {
     for (const hz of [20,60,120]) {
         const {ride,player,traffic,add} = fixture();
         const score = new ScoreManager();
@@ -62,8 +63,8 @@ test('the actual swept path pays at most three gross stamps, once per work gate,
             score.addFoodStamps(ride.drive(1/hz,traffic,player,94,false));
         }
         assert.deepEqual(traffic.obstacles,[otherLane]);
-        assert.equal(score.grossStamps,101);
-        assert.equal(score.foodStamps,11);
+        assert.equal(score.grossStamps,103);
+        assert.equal(score.foodStamps,13);
         assert.equal(score.score,42200);
         assert.equal(ride.drive(1/hz,traffic,player,94,false),0);
     }
@@ -73,6 +74,23 @@ test('the actual swept path pays at most three gross stamps, once per work gate,
     add('gateBlock',1.6,-3).gate=gate;
     assert.equal(ride.drive(1/60,traffic,player,62,true),1);
     assert.equal(ride.fragments.visible,false);
+});
+
+test('the fare stops at eight stamps while every smash still counts for style, and upgrades lengthen the ride', () => {
+    const {ride,player,traffic,add} = fixture();
+    let fare = 0, smashed = 0;
+    for (let i=0;i<maxFare+3;i++) {
+        add('taxi',0,-3);
+        fare += ride.drive(1/60,traffic,player,62,true);
+        smashed += ride.smashed;
+    }
+    assert.deepEqual([fare,smashed],[8,11]);
+    assert.equal(ride.drive(1/60,traffic,player,62,true),0);
+    assert.equal(ride.smashed,0);
+    ride.reset(player);
+    ride.board(player,powerupSeconds('fastFreeBus',3));
+    assert.equal(player.fastFreeBusTimer,16);
+    assert.equal(ride.earned,0);
 });
 
 test('steering across a closed panel only counts while the bumper is alongside it', () => {

@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import { Batch, labelMaterial } from './Geometry.js';
+import { touchesPark } from './ParkRoute.js';
 
 const BRIDGE = 129, TUNNEL = 561, LENGTH = 96, LAP = 720;
 const names = ['Brooklyn Bridge', 'Queens–Midtown Tunnel', 'Manhattan Bridge', 'Brooklyn–Battery Tunnel'];
 const sides = [-1, 1];
 const plane = new THREE.PlaneGeometry();
+const cube = new THREE.BoxGeometry();
 const rod = new THREE.CylinderGeometry(1, 1, 1, 5, 1, true);
 const dir = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
 const orientation = new THREE.Quaternion(), euler = new THREE.Euler();
@@ -274,6 +276,21 @@ function ferry(b) {
         for (let i = 0; i < 8; i++) b.box(0x3e5c64, x - 2.97 + i * 0.79, -1.94, z + side * 1.16, 0.54, 0.4, 0.04);
 }
 
+// Warehouses along the far bank stand where the city block meets open ground.
+function waterfront(material) {
+    const b = new Batch();
+    for (const side of sides) {
+        for (let i = 0; i < 8; i++) {
+            const k = i * 2 + (side > 0 ? 1 : 0), height = 9 + k * 5 % 8;
+            const tile = [(k % 3) / 3 + 0.001, (k % 2) * 0.5 + 0.001, 1 / 3 - 0.002, 0.498];
+            const x = side * (27 + i * 13.2), z = -LENGTH - 12.4;
+            b.shape(cube, 0xe2d8d0, x, height / 2, z, 13, height, 13.7, 0, 0, 0, tile);
+            if (i % 2) b.shape(cube, 0xc7bfbf, x, height * 0.9, z - 15, 14, height * 1.8, 12, 0, 0, 0, tile);
+        }
+    }
+    return b.mesh(material);
+}
+
 function bridge(group, mats, steel) {
     const b = new Batch(), stone = new Batch(), bulbs = new Batch();
     const iron = steel ? 0x496773 : 0x60534c, cable = steel ? 0x728995 : 0x796859;
@@ -340,7 +357,9 @@ function bridge(group, mats, steel) {
         }
     }
     ferry(b);
-    group.add(b.mesh(mats.structural), bulbs.mesh(mats.bulbs));
+    const bank = waterfront(mats.walls);
+    group.userData.bank = bank;
+    group.add(b.mesh(mats.structural), bulbs.mesh(mats.bulbs), bank);
 }
 
 function tileMaterial(battery) {
@@ -467,13 +486,14 @@ function tunnel(group, mats, battery) {
     group.add(b.mesh(mats.structural), panels.mesh(mats.portal), lights.mesh(mats.bulbs));
 }
 
-const dayWater = new THREE.Color(0xffffff), nightWater = new THREE.Color(0x4e6983);
+const dayWater = new THREE.Color(0xffffff), nightWater = new THREE.Color(0x4e6983), overcastWater = new THREE.Color(0x6a6f76);
 const dayTiles = new THREE.Color(0xffffff), nightTiles = new THREE.Color(0xaea6a1);
 const dayRoad = new THREE.Color(0xcdc6b3), nightRoad = new THREE.Color(0x979fae);
 
 export class Crossings {
-    constructor(scene) {
+    constructor(scene, walls) {
         const mats = {
+            walls,
             structural: new THREE.MeshLambertMaterial({ vertexColors: true }),
             portal: new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }),
             bulbs: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
@@ -493,7 +513,7 @@ export class Crossings {
             scene.add(group);
             return group;
         });
-        this.update(0, 0);
+        this.update(0, 0, 0);
     }
 
     // Cut a riverbed into World's flat ground plane. The local Z uniform stays small even
@@ -515,7 +535,7 @@ export class Crossings {
         return crossingAt(midpoint) !== '';
     }
 
-    update(distance, night) {
+    update(distance, night, takeover) {
         this.currentName = crossingAt(distance);
         const lap = Math.max(0, Math.floor((distance - BRIDGE + LAP / 2 - LENGTH / 2) / LAP));
         this.riverStart.value = distance - (BRIDGE + lap * LAP);
@@ -526,11 +546,14 @@ export class Crossings {
             const group = this.groups[i];
             group.visible = z > -240 && z < LENGTH + 34;
             group.position.z = z;
+            const bank = group.userData.bank, shore = start + cycle * 2 * LAP + LENGTH;
+            if (bank) bank.visible = !touchesPark(shore, shore + 1);
         }
-        if (night !== this.lastNight) {
+        if (night !== this.lastNight || takeover !== this.lastTakeover) {
             this.lastNight = night;
+            this.lastTakeover = takeover;
             const m = this.materials;
-            m.water.color.lerpColors(dayWater, nightWater, night);
+            m.water.color.lerpColors(dayWater, nightWater, night).lerp(overcastWater, takeover * 0.85);
             m.tunnelRoad.color.lerpColors(dayRoad, nightRoad, night);
             m.tiles[0].color.lerpColors(dayTiles, nightTiles, night);
             m.tiles[1].color.copy(m.tiles[0].color);

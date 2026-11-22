@@ -24,17 +24,7 @@
         <link rel="stylesheet" href="./progression.css" />
         <link rel="stylesheet" href="./race-panel.css" />
         <link rel="stylesheet" href="./home.css" />
-        <style>
-            #race-schedule table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-            #race-schedule :is(th, td) { padding: 3px 0; text-align: left; }
-            #race-schedule :is(th, td):not(:first-child) { padding-left: 6px; text-align: right; white-space: nowrap; }
-            #shop-rivals tr { border-top: 1px solid #c4bba9; }
-            #shop-rivals th { font-weight: 500; }
-            #shop-rivals b { display: inline-block; }
-            @media (max-aspect-ratio: 4/5) {
-                #shop-screen .wardrobe:has(#training-panel:not([hidden]) #race-schedule[open]) { max-height: 80svh; }
-            }
-        </style>
+        <link rel="stylesheet" href="./hud.css" />
     </head>
     <body>
         <svg class="symbols" xmlns="http://www.w3.org/2000/svg">
@@ -62,6 +52,28 @@
                     <path d="M19 9c0 5-7 12-7 12S5 14 5 9a7 7 0 1 1 14 0Z" />
                     <circle cx="12" cy="9" r="2" />
                 </symbol>
+                <symbol id="i-close" viewBox="0 0 24 24">
+                    <path d="m6 6 12 12M18 6 6 18" stroke-width="2.6" />
+                </symbol>
+                <symbol id="i-gear" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="3.2" />
+                    <path d="M12 2.5v3m0 13v3M2.5 12h3m13 0h3M5.3 5.3l2.1 2.1m9.2 9.2 2.1 2.1m0-13.4-2.1 2.1m-9.2 9.2-2.1 2.1" />
+                </symbol>
+                <symbol id="i-share" viewBox="0 0 24 24">
+                    <path d="M12 15V3m-4 4 4-4 4 4M5 12v8h14v-8" />
+                </symbol>
+                <symbol id="i-sideways" viewBox="0 0 24 24">
+                    <path d="M3 12h18M7 7l-5 5 5 5M17 7l5 5-5 5" stroke-width="2.6" />
+                </symbol>
+                <symbol id="i-up" viewBox="0 0 24 24">
+                    <path d="M12 21V4m-7 7 7-7 7 7" stroke-width="2.6" />
+                </symbol>
+                <symbol id="i-down" viewBox="0 0 24 24">
+                    <path d="M12 3v17m-7-7 7 7 7-7" stroke-width="2.6" />
+                </symbol>
+                <symbol id="i-next" viewBox="0 0 24 24">
+                    <path d="m9 5 7 7-7 7" stroke-width="2.4" />
+                </symbol>
                 <symbol id="i-pause" viewBox="0 0 24 24">
                     <path d="M8 5v14m8-14v14" stroke-width="4" />
                 </symbol>
@@ -74,11 +86,8 @@
                     <h1 id="game-title"><span>Mamdani</span> <strong>Run!</strong></h1>
                 </div>
                 <figure class="home-art">
-                    <picture>
-                        <source media="(min-aspect-ratio: 1/1) and (max-height: 540px)" srcset="./art/chase-closeup.webp" />
-                        <img src="./art/borough-run.webp" width="1600" height="900"
-                            alt="Mamdani running through Manhattan with Trump in pursuit." fetchpriority="high" />
-                    </picture>
+                    <img src="./art/borough-run.webp" width="1600" height="900"
+                        alt="Mamdani running through Manhattan with Trump in pursuit." fetchpriority="high" />
                     <button type="button" class="sound-toggle home-sound" aria-label="Game sound" aria-pressed="true">
                         <svg aria-hidden="true"><use href="#i-sound" /></svg><span>Sound on</span>
                     </button>
@@ -94,11 +103,27 @@
                                 Night Shift
                             </button>
                         </div>
+                        <p class="menu-progress" id="menu-progress" aria-hidden="true"><i id="menu-meter"></i></p>
                         <p id="menu-wallet" class="menu-wallet" aria-live="polite"></p>
                     </div>
                     <button type="button" class="play" id="start-btn">
                         <span>Start Day Run</span>
                     </button>
+                    <dl class="home-stats">
+                        <div class="home-record"><dt id="menu-best-label">Day best</dt><dd id="menu-best">0</dd></div>
+                        <div><dt>Score to beat</dt><dd id="menu-record">…</dd></div>
+                        <div class="home-takeover">
+                            <dt>City takeover <b id="takeover-count">0/6</b></dt>
+                            <dd><svg id="takeover-skyline" preserveAspectRatio="xMinYMax meet" viewBox="0 0 120 36" role="img" aria-label="0 of 6 family wins in your best run">
+                                <g><path class="lot" d="M2 36V14h5V9h2V3h1v6h2v5h6v22z" /><path class="slab" d="M2 36V9h16v27z" /><path class="panes" d="M5 14h10m-10 5h10m-10 5h10m-10 5h10" /></g>
+                                <g><path class="lot" d="M22 36V19h4v-6l4-3 4 3v6h4v17z" /><path class="slab" d="M22 36V9h16v27z" /><path class="panes" d="M25 14h10m-10 5h10m-10 5h10m-10 5h10" /></g>
+                                <g><path class="lot" d="M42 36V8h16v28z" /><path class="slab" d="M42 36V9h16v27z" /><path class="panes" d="M45 14h10m-10 5h10m-10 5h10m-10 5h10" /></g>
+                                <g><path class="lot" d="M62 36V22h3V12h3V5h1v7h3v10h3v14z" /><path class="slab" d="M62 36V9h16v27z" /><path class="panes" d="M65 14h10m-10 5h10m-10 5h10m-10 5h10" /></g>
+                                <g><path class="lot" d="M82 36V16l8-6 8 6v20z" /><path class="slab" d="M82 36V9h16v27z" /><path class="panes" d="M85 14h10m-10 5h10m-10 5h10m-10 5h10" /></g>
+                                <g><path class="lot" d="M102 36V11h4V7h8v4h4v25z" /><path class="slab" d="M102 36V9h16v27z" /><path class="panes" d="M105 14h10m-10 5h10m-10 5h10m-10 5h10" /></g>
+                            </svg></dd>
+                        </div>
+                    </dl>
                     <div class="home-extras">
                         <button type="button" id="shop-btn"><svg aria-hidden="true"><use href="#i-shirt" /></svg>Shop</button>
                         <button type="button" id="instructions-btn"><svg aria-hidden="true"><use href="#i-game" /></svg>How to play</button>
@@ -111,20 +136,34 @@
                 <button id="move-save" type="button" hidden>Copy saved game to mamdanirun.com before Nov 21, 14:00 UTC</button>
             </aside>
             <footer class="home-footer">
-                <div class="home-record">
-                    <svg aria-hidden="true"><use href="#i-cup" /></svg><span id="menu-best-label">Day best</span><b id="menu-best">0 m</b>
-                </div>
+                <p class="home-disclaimer">Unofficial satire. Not affiliated with or endorsed by anyone depicted.</p>
                 <a class="home-coffee" data-support-link href="https://www.buymeacoffee.com/davedushi"
                     target="_blank" rel="noopener noreferrer" hidden>Buy Dave a coffee</a>
-                <button id="story-btn" type="button" title="Story and settings">City Wire</button>
+                <button id="settings-btn" type="button"><svg aria-hidden="true"><use href="#i-gear" /></svg>Settings</button>
+                <button id="story-btn" type="button" title="Satire desk and street posters">City Wire</button>
             </footer>
         </main>
         <div id="hud" class="hidden">
+            <div id="danger" aria-hidden="true"></div>
             <div class="hud-top">
-                <div class="run-metrics">
-                    <div class="distance"><small>Distance</small><b id="score">0</b><em> m</em></div>
-                    <div class="pace" title="Food stamps held after each 100-stamp audit"><small>Stamps held</small><b id="food-stamps">0</b></div>
-                    <div class="pace"><small>Pace</small><b id="pace">1.0×</b></div>
+                <div class="run-board">
+                    <div class="run-metrics">
+                        <div class="distance"><small>Score</small><b id="score">0</b></div>
+                        <div class="pace"><small>Metres</small><b id="metres">0</b></div>
+                        <div class="pace" title="Food stamps held after each 100-stamp audit"><small>Stamps</small><b id="food-stamps">0</b></div>
+                    </div>
+                    <div class="run-chase">
+                        <div id="multiplier" data-level="1" data-chain="0" title="Score multiplier">
+                            <svg aria-hidden="true" viewBox="0 0 48 48">
+                                <circle cx="24" cy="24" r="21" /><circle id="multiplier-ring" cx="24" cy="24" r="21" pathLength="1" />
+                            </svg>
+                            <b id="multiplier-level">x1</b><span aria-hidden="true"><i></i><i></i></span>
+                        </div>
+                        <div id="trump-gap" role="group" aria-label="Lead over Trump">
+                            <i aria-hidden="true"></i>
+                            <span>Trump <b id="gap-metres">24 m</b><em aria-hidden="true"><u id="gap-lead"></u></em></span>
+                        </div>
+                    </div>
                 </div>
                 <button id="pause-btn" class="tool" aria-label="Pause run">
                     <svg><use href="#i-pause" /></svg>
@@ -151,10 +190,6 @@
                     </div>
                     <span id="pickup-detail"></span><i aria-hidden="true"><u id="pickup-meter"></u></i>
                 </div>
-                <div id="chase-card" hidden>
-                    <i aria-hidden="true"></i>
-                    <span>Trump in pursuit <b id="chase-seconds">5s</b><em><u id="chase-meter"></u></em></span>
-                </div>
                 <div id="notice" role="status"></div>
             </div>
             <div id="capture-banner" hidden role="status">Trump caught you</div>
@@ -162,265 +197,381 @@
                 <span>Resuming in</span><strong id="count-digit">3</strong>
             </div>
         </div>
-        <section id="pause-screen" class="overlay hidden">
-            <div class="paper compact">
-                <p class="slug">Borough Arcade</p>
-                <h2>Paused</h2>
-                <p id="pause-print" hidden></p>
-                <button class="solid" id="resume-btn">Resume</button
-                ><button class="plain" data-home>Menu</button>
-                <button type="button" class="plain sound-toggle" aria-label="Game sound" aria-pressed="true">
-                    <svg aria-hidden="true"><use href="#i-sound" /></svg><span>Sound on</span>
-                </button>
-            </div>
-        </section>
-        <section id="game-over-screen" class="overlay hidden" aria-labelledby="result-headline">
-            <article class="paper newsprint results">
-                <header class="result-mast">
-                    <b class="result-nameplate">The City Wire</b>
-                    <p id="result-edition"></p>
-                </header>
-                <div class="result-story">
-                    <h2 id="result-headline"></h2>
-                    <figure class="result-illustration" id="result-illustration"></figure>
-                </div>
-                <div class="result-actions">
-                    <div class="result-summary">
-                        <div class="result-score"><span>Distance</span><strong id="final-distance"></strong></div>
-                        <div class="result-progress-summary">
-                            <dl class="agate result-best"><div><dt id="result-best-label">Personal best</dt><dd id="pb-score"></dd></div></dl>
-                            <p id="result-banked"></p>
-                        </div>
-                    </div>
-                    <p id="pb-rank-display" aria-live="polite"></p>
-                    <div class="action-row">
-                        <button class="solid" id="restart-btn">Run again</button>
-                        <button class="plain" data-home>Menu</button>
-                    </div>
-                    <details id="day-board">
-                        <summary>
-                            <svg aria-hidden="true"><use href="#i-cup" /></svg>
-                            Global leaderboard
-                            <span class="board-toggle" aria-hidden="true"></span>
-                        </summary>
-                        <div id="leaderboard-list" class="standings-list" role="region" aria-label="Leaderboard scores" tabindex="0" aria-live="polite"></div>
-                        <button id="result-board-retry" class="text-btn" hidden>Retry</button>
-                    </details>
-                    <div class="result-links">
-                        <button id="join-lb-btn" class="text-btn" type="button">Join leaderboard</button>
-                        <button id="result-shop" class="text-btn" type="button">Shop</button>
-                        <button id="play-night" class="text-btn" hidden>Play Night Shift</button>
-                        <button id="result-online-settings" class="text-btn" hidden>Online play</button>
-                    </div>
-                    <p class="load-status" role="status" id="result-load-status" hidden></p>
-                </div>
-                <details class="result-totals" id="result-details">
-                    <summary>Run details</summary>
-                    <p id="result-copy"></p>
-                    <dl class="agate">
-                        <div><dt>Run time</dt><dd id="run-seconds"></dd></div>
-                        <div><dt>Clean moves</dt><dd id="final-moves"></dd></div>
-                        <div><dt>Family races</dt><dd id="result-family"></dd></div>
+        <section id="pause-screen" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+            <div class="paper sheet pause-sheet">
+                <header class="sheet-head"><h2 id="pause-title">Paused</h2><b id="pause-mode"></b></header>
+                <div class="sheet-body">
+                    <dl class="pause-score">
+                        <div><dt>Score</dt><dd id="pause-points"></dd></div>
+                        <div><dt id="pause-best-label">Day best</dt><dd id="pause-best"></dd></div>
                     </dl>
-                    <div class="bank-receipt">
-                        <h3>Stamp receipt</h3>
-                        <dl class="agate">
-                            <div><dt>Stamps collected</dt><dd id="final-gross"></dd></div>
-                            <div><dt>City Hall tax (90%)</dt><dd id="final-tax"></dd></div>
-                        </dl>
-                        <p id="result-wallet"></p>
-                        <p id="result-progress"></p>
+                    <p id="pause-goal"></p>
+                    <p id="pause-print" hidden></p>
+                    <div class="pause-actions">
+                        <button class="solid go" id="resume-btn" type="button">Resume</button>
+                        <button class="plain" id="pause-restart" type="button">Restart</button>
+                        <button class="plain" id="pause-help" type="button">How to play</button>
+                        <button class="plain" id="pause-settings" type="button">Settings</button>
+                        <button class="plain" type="button" data-home>Menu</button>
+                        <button type="button" class="plain sound-toggle" aria-label="Game sound" aria-pressed="true">
+                            <svg aria-hidden="true"><use href="#i-sound" /></svg><span>Sound on</span>
+                        </button>
                     </div>
-                </details>
-            </article>
-        </section>
-        <section id="instructions-modal" class="overlay hidden" tabindex="-1">
-            <div class="paper">
-                <h2>How to play</h2>
-                <div class="manual">
-                    <p><b>Change lanes</b><span>Swipe across<br />Left/Right or A/D</span></p>
-                    <p><b>Jump</b><span>Swipe up<br />Up, W or Space</span></p>
-                    <p><b>Slide</b><span>Swipe down<br />Down or S</span></p>
-                    <p><b>Pause</b><span>Tap pause<br />P or Esc</span></p>
+                    <p class="load-status" role="status" id="pause-load-status" hidden></p>
+                    <p class="fine-print">Restart and Menu drop this run. Its stamps are not banked.</p>
                 </div>
-                <p>
-                    Follow the painted lane. Jump cabs and low hurdles. Slide under beams, scaffolds and food carts.
-                    Either move clears a ticket rail. The first gates have labels.
-                </p>
-                <details class="manual-more">
-                    <summary>More game rules</summary>
-                <p>
-                    When a delivery dolly crosses, take the lane it leaves open. Jump a low signal boom or duck a high one.
-                    Jump the blue ice patch or take a dry lane. On ice, steering locks for half a second.
-                </p>
-                <p>
-                    A bell and road marking announce a horse-drawn carriage. Leave its lane.
-                    At a protest, duck the police tape, then jump the fallen placard. Later pairs can switch lanes.
-                </p>
-                <p>
-                    At the open Central Park dock, move left again from the left lane to take a bike.
-                    Steer through gaps to earn stamps. You can hop a low barrier. The path rejoins Fifth Avenue.
-                </p>
-                <p>
-                    Without protection, hitting a STREET CLOSED wall head-on ends the run. Other traffic hits start a five-second chase.
-                    Hit traffic again during the chase and Trump catches you. Bottles reverse your controls for five seconds (“Haram!”).
-                </p>
-                <p>
-                    The rainbow draws in stamps and makes you invincible for 7 seconds. A keffiyeh shields for 5 seconds.
-                    A mask clears traffic for 3 seconds. Steer the Fast &amp; Free bus for 10 seconds.
-                    Smashing vehicles or worksite obstacles earns up to 3 stamps per ride.
-                </p>
-                <p>
-                    <b>Stamps.</b> Grab tickets. Chain three clean moves less than 5 seconds apart for a bonus stamp.
-                    During a 16-second 78° Heatwave, that streak pays 2 stamps.
-                    Bank 10% at the finish. Night Shift unlocks at 150 lifetime banked stamps, including those spent on training.
-                </p>
-                <p>
-                    <b>Family sprints.</b> Junior’s opening checkpoint is 650 m. On “Go!”, tap or press Space in a steady rhythm.
-                    Beat the five kids in order, even offline. Each one needs a faster pace. A loss ends the run.
-                </p>
-                <p>
-                    <b>Donald’s final.</b> Win all five heats in one run, then go beyond both 9 km and the live season record while online.
-                    Race Donald for 100 m. Each win changes one sixth of the city. Beat Donald for 100% takeover
-                    and endless Overtime at 10% higher speed. Day Run and Night Shift share the 2.3.1 rankings.
-                </p>
-                </details>
-                <button class="solid" data-home>Back to menu</button>
             </div>
         </section>
-        <section id="story-modal" class="overlay hidden">
-            <article class="paper">
-                <p class="slug">City Wire · Satire desk</p>
-                <h2>The mayor is on foot.</h2>
-                <button type="button" id="posters-btn" class="plain">Posters</button>
-                <p>
-                    Flatbush has a new bus lane. The Committee for Faster Buses is still voting on what “faster” means.
-                </p>
-                <p>
-                    The mayor endorsed today’s protest against yesterday’s protest. The Pride caucus and the Free Palestine organizers both want the good megaphone.
-                </p>
-                <p>
-                    You’re Mamdani. Trump wants the receipts. Run. City Hall keeps 90% of your stamps. Your cut buys sprint training and counts toward Night Shift.
-                </p>
-                <button class="solid" id="close-story-btn" data-home>Back to menu</button>
-                <div class="credits">
-                    <a
-                        href="https://www.buymeacoffee.com/davedushi"
-                        target="_blank"
-                        rel="noopener"
-                        id="bmc-wrapper"
-                        data-support-link hidden
-                        >Buy Dave a coffee</a
-                    ><button id="feedback-btn" class="text-btn" hidden>Send feedback</button>
-                    <a href="https://api.mamdanirun.com/privacy" target="_blank" rel="noopener">Privacy policy</a>
-                    <a href="https://api.mamdanirun.com/support" target="_blank" rel="noopener">Support</a>
-                    <button id="privacy-btn" class="text-btn" hidden>Online play and data</button>
-                </div>
-                <p id="pwa-prompt" class="install"></p>
-            </article>
-        </section>
-        <section id="rankings-screen" class="overlay hidden" aria-labelledby="global-rankings-heading">
-            <article class="paper newsprint rankings-paper">
-                <div class="standings-heading">
-                    <h2 id="global-rankings-heading">Global leaderboard</h2>
-                    <div class="rankings-actions">
-                        <button id="rankings-name-btn" class="text-btn" type="button">Set leaderboard name</button>
-                        <button id="close-rankings" class="plain" type="button">Close</button>
+        <section id="game-over-screen" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="result-headline">
+            <article class="paper newsprint results">
+                <div class="result-page">
+                    <header class="result-mast">
+                        <b class="nameplate">The City Wire</b>
+                        <p id="result-edition" class="edition-line"></p>
+                    </header>
+                    <div class="result-story">
+                        <p id="result-slug" class="result-slug"></p>
+                        <h2 id="result-headline"></h2>
+                        <p id="result-copy"></p>
+                        <figure class="result-illustration" id="result-illustration"></figure>
+                    </div>
+                    <div class="result-figures">
+                        <p id="result-unranked" class="result-flag" hidden></p>
+                        <div class="result-summary">
+                            <div class="result-score"><span>Score</span><strong id="final-distance"></strong><em id="result-new-best" hidden>New best!</em></div>
+                            <dl class="agate result-best"><div><dt id="result-best-label">Personal best</dt><dd id="pb-score"></dd></div></dl>
+                        </div>
+                        <dl class="result-stats">
+                            <div><dt>Distance</dt><dd id="final-metres"></dd></div>
+                            <div><dt>Style</dt><dd id="final-style"></dd></div>
+                            <div><dt>Best multiplier</dt><dd id="final-multiplier"></dd></div>
+                            <div><dt>Family wins</dt><dd id="result-family"></dd></div>
+                        </dl>
+                        <div class="result-bank">
+                            <p id="result-banked"></p>
+                            <div class="meter" aria-hidden="true"><i id="result-meter"></i></div>
+                            <p id="result-progress"></p>
+                            <button id="play-night" class="plain" type="button" hidden>Play Night Shift</button>
+                        </div>
+                        <p id="pb-rank-display" aria-live="polite"></p>
+                        <div class="result-links">
+                            <button id="join-lb-btn" class="text-btn" type="button">Join leaderboard</button>
+                            <button id="result-online-settings" class="text-btn" type="button" hidden>Online play</button>
+                        </div>
+                        <details id="day-board">
+                            <summary>
+                                <svg aria-hidden="true"><use href="#i-cup" /></svg>
+                                Global leaderboard
+                                <span class="board-toggle" aria-hidden="true"></span>
+                            </summary>
+                            <div id="leaderboard-list" class="standings-list" role="region" aria-label="Leaderboard scores" tabindex="0" aria-live="polite"></div>
+                            <button id="result-board-retry" class="text-btn" type="button" hidden>Retry</button>
+                        </details>
+                        <details class="result-totals" id="result-details">
+                            <summary>Stamp receipt</summary>
+                            <dl class="agate">
+                                <div><dt>Run time</dt><dd id="run-seconds"></dd></div>
+                                <div><dt>Clean moves</dt><dd id="final-moves"></dd></div>
+                                <div><dt>Stamps collected</dt><dd id="final-gross"></dd></div>
+                                <div><dt>City Hall tax (90%)</dt><dd id="final-tax"></dd></div>
+                                <div><dt>Wallet</dt><dd id="result-wallet"></dd></div>
+                            </dl>
+                        </details>
                     </div>
                 </div>
-                <div class="standings-scope"><span>Day Run and Night Shift</span><span>Season 2.3.1 · Top 50</span></div>
-                <div id="rankings-list" class="standings-list" aria-live="polite"></div>
-                <button id="rankings-retry" class="text-btn" hidden>Try again</button>
+                <footer class="result-dock">
+                    <p class="load-status" role="status" id="result-load-status" hidden></p>
+                    <button class="solid go" id="restart-btn" type="button">Run again</button>
+                    <button class="plain" id="share-btn" type="button" hidden><svg aria-hidden="true"><use href="#i-share" /></svg><span>Share</span></button>
+                    <button class="plain" id="result-shop" type="button">Shop</button>
+                    <button class="plain" type="button" data-home>Menu</button>
+                </footer>
             </article>
         </section>
-        <section id="poster-room" class="overlay hidden" aria-label="Street posters">
+        <section id="instructions-modal" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="instructions-title">
+            <div class="paper sheet wide">
+                <header class="sheet-head"><h2 id="instructions-title">How to play</h2><button type="button" class="sheet-close" data-close aria-label="Close"><svg aria-hidden="true"><use href="#i-close" /></svg></button></header>
+                <div class="sheet-body">
+                    <div class="cards">
+                        <section class="card card-moves">
+                            <h3>Moves</h3>
+                            <ul>
+                                <li><i><svg aria-hidden="true"><use href="#i-sideways" /></svg></i><b>Change lanes</b><span>Swipe across · <kbd>←</kbd><kbd>→</kbd></span></li>
+                                <li><i><svg aria-hidden="true"><use href="#i-up" /></svg></i><b>Jump</b><span>Swipe up · <kbd>↑</kbd><kbd>Space</kbd></span></li>
+                                <li><i><svg aria-hidden="true"><use href="#i-down" /></svg></i><b>Slide</b><span>Swipe down · <kbd>↓</kbd></span></li>
+                                <li><i><svg aria-hidden="true"><use href="#i-pause" /></svg></i><b>Pause</b><span>Tap pause · <kbd>P</kbd><kbd>Esc</kbd></span></li>
+                            </ul>
+                        </section>
+                        <section class="card card-gates">
+                            <h3>Gates</h3>
+                            <ul>
+                                <li><svg viewBox="0 0 48 40" aria-hidden="true"><path class="road" d="M2 37h44" /><path class="bar" d="M9 26h30" /><path class="post" d="M11 26v11m26-11v11" /><path class="go" d="M4 30C10 6 38 6 43 24m-6-3 6 4 4-6" /></svg><b>Low bar</b><span>Jump</span></li>
+                                <li><svg viewBox="0 0 48 40" aria-hidden="true"><path class="road" d="M2 37h44" /><path class="post" d="M9 6v31m30-31v31" /><path class="bar" d="M8 12h32" /><path class="go" d="M4 20c10 10 28 10 38 5m-7-3 8 3-4 7" /></svg><b>High beam</b><span>Slide</span></li>
+                                <li><svg viewBox="0 0 48 40" aria-hidden="true"><path class="road" d="M2 37h44" /><path class="post" d="M11 20v17m26-17v17" /><path class="bar" d="M9 20h30" /><path class="go" d="M24 15V3m-5 5 5-5 5 5M24 25v9m-4-4 4 4 4-4" /></svg><b>Ticket rail</b><span>Either</span></li>
+                                <li><svg viewBox="0 0 48 40" aria-hidden="true"><path class="road" d="M2 37h44" /><path class="wall" d="M6 8h22v27H6z" /><path class="go" d="M33 22h12m-5-5 5 5-5 5" /></svg><b>STREET CLOSED</b><span>Change lanes</span></li>
+                            </ul>
+                            <p>Cabs can be jumped. Scaffolds and carts can be slid under. Hit a closed wall head-on and the run is over.</p>
+                        </section>
+                        <section class="card card-gap">
+                            <h3>Trump</h3>
+                            <div class="gap-demo" aria-hidden="true"><i></i><span><em><u></u></em><small>18 m</small><small>Your lead</small></span></div>
+                            <p>A hit pulls him in 18 m. Clean moves and stamps push him back. A hit with less than 18 m left and he has you.</p>
+                        </section>
+                        <section class="card card-multiplier">
+                            <h3>Multiplier</h3>
+                            <div class="chip-row" aria-hidden="true"><b>x1</b><b>x2</b><b>x3</b><b>x4</b><b>x5</b></div>
+                            <p>Every third clean move in a row raises it. Five idle seconds cost a level. A hit resets it. Score is metres plus style.</p>
+                        </section>
+                        <section class="card card-powers">
+                            <h3>Power-ups</h3>
+                            <ul>
+                                <li><i class="power-icon" data-kind="kafiyeh"></i><b>Keffiyeh</b><span>Shield</span></li>
+                                <li><i class="power-icon" data-kind="rainbow"></i><b>Rainbow</b><span>Invincible, pulls stamps</span></li>
+                                <li><i class="power-icon" data-kind="covidMask"></i><b>Mask</b><span>Clears traffic</span></li>
+                                <li><i class="power-icon" data-kind="fastFreeBus"></i><b>Bus</b><span>Smash for stamps</span></li>
+                            </ul>
+                        </section>
+                        <section class="card card-races">
+                            <h3>Family races</h3>
+                            <div class="tap-demo" aria-hidden="true"><i>Tap fast</i><i class="gold">Gold</i><i class="stop">Hands off</i></div>
+                            <p>Tap as fast as you can. Each rival adds a trick, such as a gold burst, a red light or a pad that moves. Lose and the run ends.</p>
+                        </section>
+                        <section class="card card-stamps">
+                            <h3>Stamps</h3>
+                            <div class="ticket-demo" aria-hidden="true"><b>10</b><svg><use href="#i-next" /></svg><b class="kept">1</b></div>
+                            <p>City Hall takes nine of every ten. Bank 100 and Night Shift opens.</p>
+                        </section>
+                        <section class="card card-shop">
+                            <h3>Shop</h3>
+                            <svg aria-hidden="true"><use href="#i-shirt" /></svg>
+                            <p>Stamps buy sprint training and longer power-ups. Outfits are free.</p>
+                        </section>
+                    </div>
+                    <details class="manual-more">
+                        <summary>Full rules</summary>
+                        <p>
+                            <b>Street.</b> Follow the painted lane. The first gates have labels. When a delivery dolly crosses, take the lane it
+                            leaves open. Jump a low signal boom or duck a high one. Jump the blue ice patch or take a dry lane. On ice, steering
+                            locks for half a second.
+                        </p>
+                        <p>
+                            A bell and a road marking announce a horse-drawn carriage. Leave its lane. At a protest, duck the police tape, then jump
+                            the fallen placard. Later pairs can switch lanes. Bottles reverse your controls for five seconds (“Haram!”).
+                        </p>
+                        <p>
+                            <b>Stretches.</b> The street changes character as you run: Protest March, Construction Season, Rush Hour, Street Fair,
+                            Carriage Row, Rent Freeze and Collection Day. Each returns harder.
+                        </p>
+                        <p>
+                            <b>Trump.</b> He starts 24 m back. A hit costs 18 m of lead, and a hit with 18 m or less ends the run. Below 20 m you
+                            slowly pull away. Above 20 m the lead drifts down. Eight seconds without a clean move or a stamp lets him close in, though never past
+                            10 m. Only a hit can catch you. The first ten seconds of your first run are safe.
+                        </p>
+                        <p>
+                            <b>Score.</b> Each metre is a point. A clean move pays 10 points and a stamp 5, times the multiplier. A family win pays 500. Every third chained clean
+                            move also pays a bonus stamp. A 16-second 78° Heatwave doubles style and pays 5 stamps per streak.
+                        </p>
+                        <p>
+                            <b>Power-ups.</b> The keffiyeh lasts 5 seconds, the rainbow 7, the mask 3 and the Fast &amp; Free bus 10. Smashing
+                            obstacles with the bus pays up to 8 stamps a ride. Each shop level adds 20% to the clock, up to three levels.
+                        </p>
+                        <p>
+                            <b>Central Park.</b> At the open dock, move left again from the left lane to take a bike. Each gap you steer through pays
+                            3 stamps. You can hop a low barrier.
+                        </p>
+                        <p>
+                            <b>Family races.</b> Junior, Ivanka, Eric, Tiffany and Barron wait at 650, 1,670, 2,975, 4,650 and 6,650 m. They pay
+                            5, 8, 12, 16 and 20 stamps. Each has a different trick. A loss ends the run.
+                        </p>
+                        <p>
+                            <b>Donald’s final.</b> Beat all five in one run, then pass 12,000 points or the live record, whichever is higher. Your run needs
+                            a connection from the start. He races 100 m for 50 stamps. Beat him for 100% takeover and endless Overtime at 10% higher speed.
+                        </p>
+                    </details>
+                </div>
+            </div>
+        </section>
+        <section id="story-modal" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="story-title">
+            <article class="paper sheet newsprint wire-sheet">
+                <header class="sheet-head"><b class="nameplate">The City Wire</b><button type="button" class="sheet-close" id="close-story-btn" data-close aria-label="Close"><svg aria-hidden="true"><use href="#i-close" /></svg></button></header>
+                <div class="sheet-body">
+                    <p class="edition-line">Satire desk · Late edition</p>
+                    <h2 id="story-title">The mayor is on foot.</h2>
+                    <p class="wire-lede">
+                        You’re Mamdani. Trump wants the receipts. Run. City Hall keeps 90% of your stamps. Your cut buys training and counts toward Night Shift.
+                    </p>
+                    <button type="button" id="posters-btn" class="poster-strip">
+                        <i></i><i></i><i></i><span>Street posters <small>All nine prints</small></span>
+                    </button>
+                    <div class="wire-columns">
+                        <section>
+                            <h3>Flatbush gets a bus lane</h3>
+                            <p>The Committee for Faster Buses is still voting on what “faster” means.</p>
+                        </section>
+                        <section>
+                            <h3>Protest draws protest</h3>
+                            <p>The mayor endorsed today’s march against yesterday’s march. The Pride caucus and the Free Palestine organizers both want the good megaphone.</p>
+                        </section>
+                        <section>
+                            <h3>Trump gives chase</h3>
+                            <p>He says he could catch the mayor at any time. He is waiting for a better camera.</p>
+                        </section>
+                        <section>
+                            <h3>Scaffold turns forty</h3>
+                            <p>Neighbors threw a party under it. It rained on no one.</p>
+                        </section>
+                    </div>
+                    <button type="button" id="wire-data-btn" class="text-btn" hidden>Online play and data</button>
+                </div>
+            </article>
+        </section>
+        <section id="settings-modal" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+            <div class="paper sheet">
+                <header class="sheet-head"><h2 id="settings-title">Settings</h2><button type="button" class="sheet-close" data-close aria-label="Close"><svg aria-hidden="true"><use href="#i-close" /></svg></button></header>
+                <div class="sheet-body">
+                    <div class="setting-list">
+                        <button type="button" class="sound-toggle setting" aria-label="Game sound" aria-pressed="true">
+                            <svg aria-hidden="true"><use href="#i-sound" /></svg><span>Sound on</span><i class="switch" aria-hidden="true"></i>
+                        </button>
+                        <button id="privacy-btn" class="setting" type="button"><span>Online play and data</span><small id="settings-online"></small><svg aria-hidden="true"><use href="#i-next" /></svg></button>
+                        <button id="feedback-btn" class="setting" type="button" hidden><span>Send feedback</span><svg aria-hidden="true"><use href="#i-next" /></svg></button>
+                        <a class="setting" href="https://api.mamdanirun.com/support" target="_blank" rel="noopener"><span>Support</span><svg aria-hidden="true"><use href="#i-next" /></svg></a>
+                        <a class="setting" href="https://api.mamdanirun.com/privacy" target="_blank" rel="noopener"><span>Privacy policy</span><svg aria-hidden="true"><use href="#i-next" /></svg></a>
+                        <a class="setting" href="https://www.buymeacoffee.com/davedushi" target="_blank" rel="noopener" id="bmc-wrapper" data-support-link hidden><span>Buy Dave a coffee</span><svg aria-hidden="true"><use href="#i-next" /></svg></a>
+                    </div>
+                    <p id="pwa-prompt" class="install"></p>
+                    <h3 class="sheet-label">Credits and legal</h3>
+                    <p class="fine-print">
+                        A game by Dave Dushi. Characters adapted from the Microsoft Rocketbox Avatar Library and Avatar Studio (MIT). Barlow and
+                        UnifrakturMaguntia type (SIL Open Font License).
+                    </p>
+                    <p class="satire-notice fine-print">
+                        Mamdani Run is independent political satire. Its characters, headlines and events are fiction.
+                        No person, campaign, company or government agency depicted made, sponsored or endorsed it.
+                        Tips go to the developer. None go to a campaign.
+                    </p>
+                </div>
+            </div>
+        </section>
+        <section id="rankings-screen" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="global-rankings-heading">
+            <article class="paper newsprint sheet rankings-paper">
+                <header class="sheet-head">
+                    <h2 id="global-rankings-heading">Global leaderboard</h2>
+                    <button id="close-rankings" class="sheet-close" type="button" aria-label="Close"><svg aria-hidden="true"><use href="#i-close" /></svg></button>
+                </header>
+                <div class="standings-scope">
+                    <span>Day Run and Night Shift · Top 50</span>
+                    <p id="rankings-prompt"><span id="rankings-prompt-copy"></span> <button id="rankings-name-btn" class="text-btn" type="button">Add a name</button></p>
+                </div>
+                <div id="rankings-list" class="standings-list" role="region" aria-label="Leaderboard scores" tabindex="0" aria-live="polite"></div>
+                <button id="rankings-retry" class="text-btn" type="button" hidden>Try again</button>
+            </article>
+        </section>
+        <section id="poster-room" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="poster-title">
             <div class="poster-wall">
                 <div class="poster-heading">
-                    <h2>Street posters</h2>
-                    <button class="small" data-home>Close</button>
+                    <h2 id="poster-title">Street posters</h2>
+                    <button type="button" class="sheet-close" data-close aria-label="Close"><svg aria-hidden="true"><use href="#i-close" /></svg></button>
                 </div>
                 <div class="poster-print" role="img" id="poster-print"></div>
-                <p id="poster-caption"></p>
+                <p id="poster-caption" aria-live="polite"></p>
                 <div class="poster-controls">
-                    <button id="poster-prev" class="small" aria-label="Previous poster">Previous</button
-                    ><span id="poster-count" aria-live="polite"></span
-                    ><button id="poster-next" class="small" aria-label="Next poster">Next</button>
+                    <button id="poster-prev" class="small" type="button" aria-label="Previous poster">Previous</button
+                    ><span id="poster-count"></span
+                    ><button id="poster-next" class="small" type="button" aria-label="Next poster">Next</button>
                 </div>
             </div>
         </section>
-        <section id="shop-screen" class="fitting hidden">
+        <section id="shop-screen" class="fitting hidden" role="dialog" aria-modal="true" aria-labelledby="shop-title">
             <p id="preview-status" role="status" hidden></p>
             <div id="outfit-preview" tabindex="0" role="application" aria-label="Outfit preview. Use the left and right arrow keys to turn." aria-keyshortcuts="ArrowLeft ArrowRight"></div>
             <div class="paper wardrobe">
-                <h2>Campaign shop</h2>
+                <header class="shop-head">
+                    <h2 id="shop-title">Campaign shop</h2>
+                    <p id="shop-wallet" aria-live="polite"></p>
+                    <button type="button" class="sheet-close" id="close-shop-btn" data-close aria-label="Close shop"><svg aria-hidden="true"><use href="#i-close" /></svg></button>
+                </header>
                 <div class="shop-sections" role="group" aria-label="Shop section">
-                    <button id="show-training" type="button" aria-controls="training-panel" aria-pressed="true">Sprint training</button>
-                    <button id="show-outfits" type="button" aria-controls="outfits-panel" aria-pressed="false">Sponsored by Soros</button>
+                    <button id="show-outfits" type="button" aria-controls="outfits-panel" aria-pressed="true">Outfits</button>
+                    <button id="show-powerups" type="button" aria-controls="powerups-panel" aria-pressed="false">Power-ups</button>
+                    <button id="show-training" type="button" aria-controls="training-panel" aria-pressed="false">Sprint training</button>
                 </div>
-                <div id="training-panel">
+                <div id="outfits-panel" class="shop-panel">
+                    <p class="shop-lede"><b>Sponsored by Soros.</b> Free. Five looks, same speed.</p>
+                    <div id="shop-items"></div>
+                </div>
+                <div id="powerups-panel" class="shop-panel" hidden>
+                    <p class="shop-lede">Each level adds 20% to the clock. Yours to keep.</p>
+                    <p id="power-feedback" class="shop-feedback" role="status"></p>
+                    <div id="shop-powerups"></div>
+                </div>
+                <div id="training-panel" class="shop-panel" hidden>
                     <div class="training-heading"><h3>Family sprints</h3><b id="speed-level"></b></div>
                     <p id="speed-effect"></p>
-                    <p id="shop-wallet"></p>
                     <button id="buy-speed" type="button" class="solid"></button>
-                    <p id="speed-feedback" role="status"></p>
+                    <p id="speed-feedback" class="shop-feedback" role="status"></p>
                     <p id="shop-record"></p>
                     <details id="race-schedule">
                         <summary>Race schedule</summary>
                         <p id="schedule-status" role="status"></p>
                         <table aria-label="Family race schedule">
-                            <thead><tr><th scope="col">Rival</th><th scope="col">Street</th><th scope="col">Sprint</th></tr></thead>
+                            <thead><tr><th scope="col">Rival</th><th scope="col">Where</th><th scope="col">Sprint</th></tr></thead>
                             <tbody id="shop-rivals"></tbody>
                         </table>
-                        <p>Races start when the street is clear. Reach Donald’s mark with five wins and beat the live record online.</p>
+                        <p>Races start when the street is clear. Donald waits for five wins in one run and a score above the record.</p>
                     </details>
                 </div>
-                <div id="outfits-panel" hidden>
-                    <p>Five looks. Same speed.</p>
-                    <div id="shop-items"></div>
-                </div>
-                <button class="plain" id="close-shop-btn" data-home>Back to menu</button>
             </div>
         </section>
-        <section id="privacy-modal" class="overlay hidden">
-            <div class="paper compact">
-                <h2>Online play and data</h2>
-                <p>Turn on online play to post your scores and qualify for Donald’s final. The server receives your distance, run mode and a private random code. You can add a public nickname in Global rankings.</p>
-                <label><input id="online-play" type="checkbox" /> Enable online play</label>
-                <p>Delete online data to remove your scores and race claims from the server. Your local progress stays on this device.</p>
-                <button id="delete-online-data" type="button" class="text-btn">Delete online data</button>
-                <div id="delete-online-confirmation" hidden>
-                    <p>This permanently removes your online scores and race claims.</p>
-                    <button id="confirm-delete-online-data" type="button" class="solid">Delete scores and race claims</button>
-                    <button id="cancel-delete-online-data" type="button" class="plain">Cancel</button>
+        <section id="privacy-modal" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="privacy-title">
+            <div class="paper sheet compact">
+                <header class="sheet-head"><h2 id="privacy-title">Online play and data</h2><button type="button" class="sheet-close" data-close aria-label="Close"><svg aria-hidden="true"><use href="#i-close" /></svg></button></header>
+                <div class="sheet-body">
+                    <label class="check"><input id="online-play" type="checkbox" /> Enable online play</label>
+                    <p>Online play posts your scores to the public leaderboard and qualifies you for Donald’s final.</p>
+                    <p>The game sends a private random key with your run mode and points. The server keeps a hash of the key and gives each run a ticket, so scores and race claims can be checked. The leaderboard shows neither. A nickname is optional.</p>
+                    <hr />
+                    <p>Deleting removes your nickname, scores, race claims, run tickets<span id="privacy-feedback"> and feedback</span> from the server. A one-way hash stays to reject late uploads. Your stamps, upgrades and local bests stay on this device.</p>
+                    <button id="delete-online-data" type="button" class="text-btn">Delete online data</button>
+                    <div id="delete-online-confirmation" hidden>
+                        <p>This cannot be undone.</p>
+                        <div class="action-row">
+                            <button id="confirm-delete-online-data" type="button" class="solid">Delete everything online</button>
+                            <button id="cancel-delete-online-data" type="button" class="plain">Cancel</button>
+                        </div>
+                    </div>
+                    <p id="privacy-status" role="status"></p>
+                    <p><a href="https://api.mamdanirun.com/privacy" target="_blank" rel="noopener">Privacy policy</a></p>
                 </div>
-                <p id="privacy-status" role="status"></p>
-                <p><a href="https://api.mamdanirun.com/privacy" target="_blank" rel="noopener">Privacy policy</a></p>
-                <button type="button" class="plain" data-home>Back to menu</button>
             </div>
         </section>
         <section id="registration-modal" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="registration-title">
-            <form id="register-form" class="paper compact">
-                <h2 id="registration-title">Leaderboard name</h2>
-                <p id="reg-help">Use a nickname. It appears next to your score in the public global rankings.</p>
-                <label>Nickname<input id="reg-name" maxlength="15" aria-describedby="reg-help" required /></label>
-                <details id="reg-social-label"><summary>Add a Truth Social handle</summary>
-                    <label>Truth Social handle<input id="reg-social" maxlength="20" /></label>
-                </details>
-                <p id="reg-error" role="status"></p>
-                <div class="action-row">
-                    <button class="solid" id="submit-score-btn">Save name</button
-                    ><button type="button" class="plain" id="cancel-reg">Back</button>
+            <form id="register-form" class="paper sheet compact">
+                <header class="sheet-head"><h2 id="registration-title">Leaderboard name</h2><button type="button" class="sheet-close" id="close-reg" aria-label="Close"><svg aria-hidden="true"><use href="#i-close" /></svg></button></header>
+                <div class="sheet-body">
+                    <p id="reg-help">Use a nickname. It appears next to your score in the public global rankings.</p>
+                    <label>Nickname<input id="reg-name" maxlength="15" autocomplete="nickname" aria-describedby="reg-help reg-error" required /></label>
+                    <details id="reg-social-label"><summary>Add a Truth Social handle</summary>
+                        <label>Truth Social handle<input id="reg-social" maxlength="20" autocomplete="off" /></label>
+                    </details>
+                    <p id="reg-error" role="status"></p>
+                    <div class="action-row">
+                        <button class="solid" id="submit-score-btn">Save name</button
+                        ><button type="button" class="plain" id="cancel-reg">Back</button>
+                    </div>
                 </div>
             </form>
         </section>
-        <section id="feedback-modal" class="overlay hidden">
-            <form id="feedback-form" class="paper compact">
-                <h2>Feedback</h2>
-                <label>Your message<textarea id="feedback-msg" required rows="4"></textarea></label>
-                <p id="feedback-status" role="status"></p>
-                <div class="action-row">
-                    <button class="solid" id="send-feedback-btn">Send</button
-                    ><button type="button" class="plain" data-home>Back</button>
+        <section id="feedback-modal" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
+            <form id="feedback-form" class="paper sheet compact">
+                <header class="sheet-head"><h2 id="feedback-title">Feedback</h2><button type="button" class="sheet-close" data-close aria-label="Close"><svg aria-hidden="true"><use href="#i-close" /></svg></button></header>
+                <div class="sheet-body">
+                    <label>Your message<textarea id="feedback-msg" required rows="4" maxlength="4000"></textarea></label>
+                    <p id="feedback-status" role="status"></p>
+                    <div class="action-row">
+                        <button class="solid" id="send-feedback-btn">Send</button
+                        ><button type="button" class="plain" data-close>Back</button>
+                    </div>
                 </div>
             </form>
         </section>

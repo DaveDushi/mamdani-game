@@ -5,6 +5,8 @@ import { bikeLaneX, PARK_LENGTH, pathBend, pathWidth } from './ParkRoute.js';
 const metal = new THREE.MeshLambertMaterial({ vertexColors: true });
 const rod = new THREE.CylinderGeometry(1, 1, 1, 8);
 const canopy = new THREE.IcosahedronGeometry(1, 1);
+const shrub = new THREE.SphereGeometry(1, 7, 5);
+const cube = new THREE.BoxGeometry();
 const tile = new THREE.PlaneGeometry();
 const ink = 0x203631, green = 0x215d48, brass = 0xb19a67, blue = 0x1989b4;
 
@@ -58,13 +60,24 @@ export function parkBike() {
     return bike;
 }
 
-function bench(b, x, z) {
-    for (const dx of [-.82, .82]) {
-        b.box(ink, x + dx, .36, z, .10, .68, .55);
-        b.box(ink, x + dx, .68, z - .28, .075, .85, .07);
+// Benches run along the paths. The back is on the side away from the one they face.
+function bench(b, x, z, facing) {
+    for (const dz of [-.82, .82]) {
+        b.box(ink, x, .36, z + dz, .55, .68, .10);
+        b.box(ink, x - facing * .28, .68, z + dz, .07, .85, .075);
     }
-    for (const dz of [-.19, 0, .19]) b.box(0x967249, x, .61, z + dz, 2.1, .075, .16);
-    for (const y of [.81, 1.01]) b.box(0x917149, x, y, z - .29, 2.1, .14, .066);
+    for (const dx of [-.19, 0, .19]) b.box(0x967249, x + dx, .61, z, .16, .075, 2.1);
+    for (const y of [.81, 1.01]) b.box(0x917149, x - facing * .29, y, z, .066, .14, 2.1);
+}
+
+// A cast-iron park lamp, with its halo in the street's shared glow material.
+function parkLamp(b, glows, x, z) {
+    b.shape(rod, ink, x, .24, z, .15, .48, .15);
+    b.shape(rod, ink, x, 1.75, z, .062, 3.2, .062);
+    b.oval(0xf8e3ae, x, 3.50, z, .21, .29, .21);
+    b.oval(green, x, 3.79, z, .24, .075, .24);
+    glows.shape(tile, 0xffcb75, x, 3.5, z + .24, 1.7, 1.7, 1);
+    glows.shape(tile, 0xc08044, x + .6, .045, z, 4.2, 6.6, 1, -Math.PI / 2);
 }
 
 function sign(group, lines, x, y, z, w, h) {
@@ -73,66 +86,250 @@ function sign(group, lines, x, y, z, w, h) {
     group.add(panel);
 }
 
-function surfaceMap(turf) {
+// Grass, cycle-track and paving grain. Batched ground tiles these in metres.
+function surfaceMap(kind) {
+    const size = 256;
     const c = document.createElement('canvas');
-    c.width = c.height = 192;
+    c.width = c.height = size;
     const ctx = c.getContext('2d');
     let state = 114;
     const random = () => ((state = (Math.imul(state, 1664525) + 1013904223) >>> 0) / 4294967296);
-    ctx.fillStyle = turf ? '#859c59' : '#679381';
-    ctx.fillRect(0, 0, 192, 192);
-    for (let i = 0; i < 4300; i++) {
-        const v = random();
-        ctx.fillStyle = v < .5 ? 'rgba(21,52,29,.14)' : 'rgba(231,222,167,.17)';
-        ctx.fillRect(random() * 192, random() * 192, turf ? 1.7 : 1, turf ? v * 5 + 1 : 1.5);
+    const dab = (fill, count, w, h) => {
+        ctx.fillStyle = fill;
+        for (let i = 0; i < count; i++) ctx.fillRect(random() * size, random() * size, w * (.5 + random()), h * (.5 + random()));
+    };
+    if (kind === 'turf') {
+        ctx.fillStyle = '#74904c';
+        ctx.fillRect(0, 0, size, size);
+        for (const tint of ['rgba(44,76,32,.17)', 'rgba(150,164,84,.15)']) dab(tint, 70, 26, 18);
+        for (const tint of ['rgba(34,63,27,.34)', 'rgba(190,200,118,.30)', 'rgba(60,98,44,.4)', 'rgba(122,146,72,.45)']) dab(tint, 1500, 1.5, 6);
+        dab('rgba(236,226,170,.5)', 46, 2.2, 2.2);
+    } else if (kind === 'track') {
+        ctx.fillStyle = '#679381';
+        ctx.fillRect(0, 0, size, size);
+        dab('rgba(21,52,29,.14)', 3800, 1.4, 2);
+        dab('rgba(231,222,167,.17)', 3800, 1.4, 2);
+    } else {
+        // Two square metres of flagstones, four slabs each way.
+        ctx.fillStyle = '#b9b09f';
+        ctx.fillRect(0, 0, size, size);
+        for (let row = 0; row < 4; row++) for (let col = 0; col < 4; col++) {
+            const v = random();
+            ctx.fillStyle = v < .5 ? 'rgba(88,76,64,' + (.04 + v * .22) + ')' : 'rgba(255,244,220,' + (v - .5) * .34 + ')';
+            ctx.fillRect(col * 64, row * 64, 64, 64);
+        }
+        dab('rgba(70,62,55,.16)', 2400, 1.6, 1.6);
+        dab('rgba(255,246,224,.2)', 1800, 1.5, 1.5);
+        dab('rgba(60,52,46,.07)', 18, 34, 24);
+        for (let i = 0; i < 4; i++) {
+            ctx.fillStyle = 'rgba(74,64,56,.62)';
+            ctx.fillRect(i * 64, 0, 2.4, size);
+            ctx.fillRect(0, i * 64, size, 2.4);
+            ctx.fillStyle = 'rgba(255,246,226,.3)';
+            ctx.fillRect(i * 64 + 2.4, 0, 1.4, size);
+            ctx.fillRect(0, i * 64 + 2.4, size, 1.4);
+        }
     }
     const map = new THREE.CanvasTexture(c);
     map.colorSpace = THREE.SRGBColorSpace;
     map.wrapS = map.wrapT = THREE.RepeatWrapping;
-    map.anisotropy = 4;
+    map.anisotropy = 8;
     return map;
 }
 
-function parkGround(roadMaterial) {
-    const group = new THREE.Group(), land = new Batch(), fronts = new Batch(), road = new Batch(), foliage = new Batch();
-    const turf = surfaceMap(true);
-    turf.repeat.set(12, 75);
-    const lawn = new THREE.Mesh(new THREE.PlaneGeometry(53, 336), new THREE.MeshLambertMaterial({map:turf}));
-    lawn.rotation.x = -Math.PI / 2;
-    lawn.position.set(-31, .01, -168);
+const LAWN_WIDTH = 88, LAWN_EDGE = -6.9;
+// The cycle loop stays level. Beyond the footpath the meadow rises around the pond.
+function meadowHeight(x, z) {
+    const rise = THREE.MathUtils.smoothstep(-x, 27, 58);
+    const pond = THREE.MathUtils.smoothstep(Math.hypot((x + 32) / 14, (z + 156) / 60), .95, 1.5);
+    const ends = THREE.MathUtils.smoothstep(Math.min(-z, PARK_LENGTH + z), 0, 40);
+    return rise * pond * ends * (3.1 + 1.5 * Math.sin(z * .041 + 1) + .7 * Math.sin(z * .11 + x * .16));
+}
+
+function meadow() {
+    const geo = new THREE.PlaneGeometry(LAWN_WIDTH, PARK_LENGTH, 22, 84);
+    geo.rotateX(-Math.PI / 2);
+    geo.translate(LAWN_EDGE - LAWN_WIDTH / 2, 0, -PARK_LENGTH / 2);
+    const p = geo.attributes.position, uv = geo.attributes.uv;
+    const colors = new Float32Array(p.count * 3), tint = new THREE.Color();
+    const sun = new THREE.Color(0xf6f3c4), shade = new THREE.Color(0x8fa87c), worn = new THREE.Color(0xd2bd8e);
+    for (let i = 0; i < p.count; i++) {
+        const x = p.getX(i), z = p.getZ(i);
+        p.setY(i, .006 + meadowHeight(x, z));
+        // Broad mown bands, tree shade and dry patches break the lawn up at running speed.
+        const drift = Math.sin(x * .31 + Math.sin(z * .071) * 2.2) + Math.sin(z * .153 + x * .09) + .8 * Math.sin(z * .37 - x * .5);
+        tint.lerpColors(shade, sun, THREE.MathUtils.clamp(.5 + drift * .21, 0, 1));
+        tint.lerp(worn, THREE.MathUtils.smoothstep(Math.sin(x * .83 + 2) * Math.sin(z * .093 + x * .05), .62, 1) * .75);
+        if (x > LAWN_EDGE - 3) tint.lerp(shade, .6);
+        tint.toArray(colors, i * 3);
+        uv.setXY(i, x / 4.1, z / 4.1);
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.computeVertexNormals();
+    const lawn = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: surfaceMap('turf'), vertexColors: true }));
     lawn.receiveShadow = true;
-    group.add(lawn);
-    land.box(0xb5a994, 9, .005, -168, 8, .07, 336);
+    return lawn;
+}
+
+// Cards are lit as open canopy, so trees take the same dusk as the stone beside them.
+function skyward(geometry) {
+    const normal = geometry.attributes.normal;
+    for (let i = 0; i < normal.count; i++) normal.setXYZ(i, 0, 1, 0);
+    return geometry;
+}
+
+const wholeTree = [0, 0, 1, 1], mirroredTree = [1, 0, -1, 1], leaves = [.27, .50, .43, .30];
+function tree(b, x, y, z, height, mirrored, angle, tint = 0xffffff) {
+    b.shape(tile, tint, x, y + height / 2 - .1, z, height * .94, height, 1, 0, angle, 0, mirrored ? mirroredTree : wholeTree);
+}
+
+// Fifth Avenue keeps the street's own block: a cross street, then three buildings.
+function avenue(land, fronts, civic, flags, foliage, glows, block) {
+    const base = -block * 48;
+    land.box(0x676360, 12, -.045, base - 2.48, 70, .08, 5.04);
+    land.box(0x97928a, 9.2, .05, base - 26.5, 8.4, .14, 43);
+    land.box(0xd7c7ac, 5.09, .1, base - 26.5, .2, .2, 43);
+    flags.shape(tile, 0xffffff, 9.3, .128, base - 26.5, 8.2, 43, 1, -Math.PI / 2, 0, 0, [0, 0, 4.1, 21.5]);
+    for (let j = 0; j < 3; j++) {
+        const k = block * 3 + j, cell = (k * 5 + Math.floor(k / 4)) % 6, z = base - 12.2 - j * 14.05;
+        const height = [13.6, 17, 15, 19, 14, 16][cell] + (k % 4 === 0 ? 3 : 0), depth = 13.7;
+        const wall = 8.7 + (k % 3) * .5, width = 11, x = wall + width / 2;
+        const limestone = k % 3 === 0;
+        (limestone ? civic : fronts).shape(cube, 0xffffff, x, height / 2 + .12, z, width, height, depth, 0, 0, 0,
+            limestone ? [2 / 3 + .001, (k % 2) * .5 + .001, 1 / 3 - .002, .498]
+                : [(cell % 3) / 3 + .001, 1 - (Math.floor(cell / 3) + 1) / 2 + .001, 1 / 3 - .002, .498]);
+        land.box(0x847869, x, height + .19, z, width + .28, .24, depth + .24);
+        land.box(0xe5d3ac, x, height + .37, z, width + .42, .14, depth + .34);
+        land.box(0x6a6a61, x, height + .46, z, width, .12, depth);
+        land.box(0x928a79, x + 1, height + .95, z + 2, 2.5, 1, 1.6);
+        const canvas = [0x395e4d, 0x854746, 0x4f6264, 0x6d3b36, 0x2f4d5a, 0x756f61][cell];
+        if (limestone) {
+            // A doorman's canopy reaches the curb on brass posts.
+            land.box(canvas, wall - 1.35, 2.75, z, 2.7, .14, 2.1);
+            land.box(canvas, wall - 2.68, 2.58, z, .07, .36, 2.1);
+            for (const dz of [-.92, .92]) land.box(brass, wall - 2.6, 1.4, z + dz, .07, 2.6, .07);
+        } else {
+            land.box(canvas, wall - .46, height * .22, z, .98, .135, depth * .74, 0, 0, .2);
+            land.box(canvas, wall - .93, height * .22 - .15, z, .08, .22, depth * .74);
+        }
+        for (const dz of [-4.6, 4.6]) {
+            land.box(0x8b8273, wall - .45, .4, z + dz, .62, .56, 1.5);
+            land.shape(shrub, 0x4d7446, wall - .45, .86, z + dz, .4, .36, .74);
+        }
+        // Set back behind the front row, so the block has depth from the river.
+        fronts.shape(cube, 0xd3cdc9, x + 12.6, height * .62 + 2, z, 13, height * 1.24 + 4, depth, 0, 0, 0,
+            [((k + 1) % 3) / 3 + .001, .501, 1 / 3 - .002, .498]);
+        fronts.shape(cube, 0xc4bec0, x + 28, height * .8 + 2, z, 15, height * 1.6 + 4, depth, 0, 0, 0,
+            [((k + 2) % 3) / 3 + .001, .001, 1 / 3 - .002, .498]);
+        const tz = z + 5.6;
+        land.box(0x4c5045, 6.05, .141, tz, 1.1, .026, 1.15);
+        tree(foliage, 6.05, .14, tz, 5.4 + k % 3 * .5, k % 2, -.27);
+        if (j === 1) {
+            land.box(0x42616b, 6.14, .59, z - 2.2, .72, 1.12, .58);
+            land.box(0xc4bba4, 6.14, .77, z - 1.89, .5, .46, .04);
+            land.shape(rod, 0x445951, 6.15, .47, z - 4.4, .31, .86, .31);
+            bench(land, 6.6, z + 1.2, -1);
+        } else {
+            land.shape(rod, 0x9e4a3c, 5.67, .47, z - 1, .16, .76, .16);
+            land.oval(0xad5141, 5.67, .84, z - 1, .183, .16, .183);
+        }
+    }
+    for (const z of [base - 5.8, base - 33]) {
+        const x = 5.4;
+        land.shape(rod, 0x475655, x, 2.28, z, .067, 4.56, .067);
+        land.shape(rod, 0x36494a, x, .23, z, .165, .46, .165);
+        land.box(0x475655, x - .51, 4.53, z, 1.07, .093, .1, 0, 0, .09);
+        land.box(0xf5d199, x - 1.02, 4.42, z, .44, .06, .24);
+        glows.shape(tile, 0xffcb75, x - 1.02, 4.41, z + .15, 1.35, 1.13, 1);
+        glows.shape(tile, 0xe69c51, x - 1.66, .023, z, 4.1, 7.4, 1, -Math.PI / 2);
+    }
+}
+
+function riverRail(b, z, from, to) {
+    const width = to - from, x = (from + to) / 2;
+    b.box(0x989888, x, .26, z, width, .62, .5);
+    b.box(0xb1ad94, x, .6, z, width, .1, .62);
+    for (const y of [.86, 1.34]) b.box(green, x, y, z, width, .06, .06);
+    for (let at = from + .5; at < to; at += 2) b.box(green, at, .98, z, .06, .74, .06);
+}
+
+// One bay of the avenue wall: curb, dwarf wall, coping, railing and the hedge's core.
+// Instanced along the park except where the loop's two curb cuts pass through it.
+const BAY = 6, BAYS = PARK_LENGTH / BAY;
+function wallBay() {
+    const b = new Batch();
+    b.box(0xd7c7ac, -5.09, .1, 0, .2, .2, BAY);
+    b.box(0x989888, -7.2, .32, 0, .46, .62, BAY);
+    b.box(0xb1ad94, -7.2, .67, 0, .6, .12, BAY);
+    for (let post = 0; post < 4; post++) b.box(green, -7.2, 1.05, -2.25 + post * 1.5, .06, .74, .06);
+    for (const y of [.86, 1.4]) b.box(green, -7.2, y, 0, .065, .065, BAY);
+    b.box(0xa5a290, -7.2, .56, -BAY / 2, .74, 1.12, .74);
+    b.box(0xc1bca4, -7.2, 1.16, -BAY / 2, .86, .12, .86);
+    b.box(0x3d5c34, -8, .48, 0, .7, .95, BAY);
+    return b.mesh(metal).geometry;
+}
+
+function hedgeBay() {
+    const b = new Batch();
+    for (let i = 0; i < 4; i++) {
+        const z = -2.25 + i * 1.5;
+        b.shape(tile, 0xb9cf9c, -7.62, .74, z, 1.85, 1.15, 1, 0, Math.PI / 2 - .12, 0, leaves);
+        b.shape(tile, 0x9db884, -8, 1.02, z + .5, 1.5, .85, 1, 0, .35, 0, leaves);
+        b.shape(tile, 0xa5bf8c, -8.42, .74, z, 1.85, 1.15, 1, 0, -Math.PI / 2 + .12, 0, leaves);
+    }
+    return skyward(b.mesh(metal).geometry);
+}
+
+function curbTree() {
+    const pit = new Batch(), crown = new Batch();
+    pit.box(0x4c5045, -6.3, .034, 0, 1.05, .02, 1.3);
+    tree(crown, -6.3, 0, 0, 6, false, .14);
+    return [pit.mesh(metal).geometry, skyward(crown.mesh(metal).geometry)];
+}
+
+function parkGround(roadMaterial) {
+    const group = new THREE.Group();
+    const [land, fronts, civic, road, foliage, flags, glows] = Array.from({ length: 7 }, () => new Batch());
+    group.add(meadow());
     for (let i = 0; i < 7; i++) {
         road.shape(tile, 0xffffff, 0, .002, -24 - i * 48, 10, 48, 1, -Math.PI / 2);
+        avenue(land, fronts, civic, flags, foliage, glows, i);
+        // The promenade is flush, because the cycle loop crosses it at either curb cut.
+        flags.shape(tile, 0xd5d0c6, -6, .014, -24 - i * 48, 2, 48, 1, -Math.PI / 2, 0, 0, [0, 0, 1, 24]);
+    }
+    // A gravel footpath winds between the loop and the pond.
+    const bend = z => -24.7 + 1.6 * Math.sin(z * .035);
+    for (let i = 0; i < 84; i++) {
+        const z = -2 - i * 4;
+        if (z < -100 && z > -214) continue;
+        flags.shape(tile, 0xd9c49c, bend(z), .02, z, 2.5, 4.2, 1, -Math.PI / 2, 0,
+            Math.atan2(bend(z + 2) - bend(z - 2), 4), [0, 0, 1.25, 2.1]);
     }
     for (let i = 0; i < 28; i++) {
-        const z = -6 - i * 12, height = 12 + i * 11 % 14;
-        fronts.box(i % 3 === 0 ? 0xd8bda5 : 0xe4cbb7, 18, height / 2, z, 11, height, 11.9);
-        land.box(0xbfa88d, 18, height, z, 11.55, .44, 12);
+        const z = -6 - i * 12;
+        // Two rows of trees around the pond, and a far belt that closes the horizon.
         for (let j = 0; j < 2; j++) {
-            const x = j ? -35 - i * 7 % 13 : -25 - i * 3 % 5, tz = z - j * 4;
-            const h = 4.1 + i % 4;
-            const treeH = h + 5;
-            foliage.shape(tile, 0xffffff, x, treeH / 2, tz, (i % 2 ? -1 : 1) * treeH * .94, treeH, 1, 0, (i % 5 - 2) * .18);
+            const x = j ? -36 - i * 7 % 13 : -27.5 - i * 3 % 5, tz = z - j * 4;
+            if (Math.hypot((x + 32) / 9.6, (tz + 156) / 54) < 1) continue;
+            tree(foliage, x, meadowHeight(x, tz), tz, 9.1 + i % 4, i % 2, (i % 5 - 2) * .18, j ? 0xd9e2c8 : 0xffffff);
         }
-        if (i > 9 && i < 19) {
-            const x = -6.7;
-            foliage.shape(tile, 0xffffff, x - 1, 4.4, z, 7.7, 8.8, 1, 0, -.12);
-            land.box(0x989888, x, .3, z, .48, .59, 12);
-            land.box(0xb1ad94, x, .64, z, .58, .12, 12);
-            for (let post = 0; post < 6; post++) land.box(green, x, 1.04, z - 5 + post * 2, .065, .76, .065);
-            land.box(green, x, 1.36, z, .075, .075, 12);
+        for (let j = 0; j < 3; j++) {
+            const x = -56 - j * 12 - i * 5 % 9, tz = z + j * 3;
+            tree(foliage, x, meadowHeight(x, tz) - .4, tz, 12.5 + (i + j) % 4 * 1.2, (i + j) % 2, .1 * (j - 1), 0xaebd9c);
         }
         if (i % 3 === 1) {
-            bench(land, -20.9, z);
-            tube(land, ink, -21.1, 0, z - 2, -21.1, 3.3, z - 2, .07);
-            land.oval(0xf8e3ae, -21.1, 3.50, z - 2, .21, .29, .21);
-            land.oval(green, -21.1, 3.79, z - 2, .24, .075, .24);
+            bench(land, -21.5, z, 1);
+            parkLamp(land, glows, -21.4, z - 2.4);
+        }
+        if (i % 4 === 2) {
+            const x = -30 - i % 5 * 3;
+            land.shape(shrub, 0x587d45, x, meadowHeight(x, z + 3) + .5, z + 3, 2.1, 1.1, 1.6);
         }
         if (i > 8 && i < 17) {
             land.oval(0x719e99, -32, .018, z, 8.8, .027, 10);
-            land.shape(canopy, 0x98938a, -22.9, .29, z - 3, 1.9, .94, 1.44);
+            land.shape(shrub, 0x98938a, -22.9 - i % 2 * .5, .29, z - 3, 1.5 + i % 3 * .3, .8, 1.44);
+            // Sunk to the canopy, the same tree makes the pond's scrub.
+            for (let j = 0; j < 3; j++) tree(foliage, -23.7 - j * .5, -1.05 - j * .1, z + j * 4, 2.5 + (i + j) % 3 * .3, (i + j) % 2, .2, 0xc3cf9a);
         }
     }
     // A shallow cast-iron footbridge over the pond, with a curved deck and balustrades.
@@ -146,13 +343,35 @@ function parkGround(roadMaterial) {
             tube(land, 0xa3ad94, x - .58, y + .15, z, x + .58, y + .77, z, .035);
         }
     }
+    riverRail(land, -.5, -94, -18.8);
+    riverRail(land, -.5, 7, 60);
+    // The tunnel's retaining walls carry on across the top of the park, under a bank of trees.
+    for (const [from, to] of [[-95, -13.4], [13.4, 62]]) {
+        const x = (from + to) / 2, width = to - from;
+        land.box(0x98968a, x, 2.1, -335.4, width, 4.2, 1);
+        land.box(0xb4b09c, x, 4.3, -335.4, width, .26, 1.3);
+        for (let i = 0; i * 7 < width - 3; i++) {
+            const at = from + 3 + i * 7;
+            land.box(0x8a887d, at, 2.1, -334.8, .9, 4.2, .3);
+            if (from < 0) tree(foliage, at, 2, -336.6, 8.5 + i % 4, i % 2, 0, 0xb9c7a8);
+        }
+    }
     const street = road.mesh(roadMaterial);
-    street.receiveShadow = true;
+    const paving = flags.mesh(new THREE.MeshLambertMaterial({ map: surfaceMap('flags'), vertexColors: true }));
     const garden = land.mesh(metal);
-    garden.receiveShadow = true;
-    group.add(street, garden, fronts.mesh(new THREE.MeshLambertMaterial({ map: artTexture('facades'), vertexColors: true })),
-        foliage.mesh(new THREE.MeshBasicMaterial({map:artTexture('locust'), alphaTest:.42, vertexColors:true, side:THREE.DoubleSide})));
-    return group;
+    street.receiveShadow = paving.receiveShadow = garden.receiveShadow = true;
+    const leafy = new THREE.MeshLambertMaterial({ map: artTexture('locust'), alphaTest: .42, vertexColors: true });
+    const trees = foliage.mesh(leafy);
+    skyward(trees.geometry);
+    group.add(street, paving, garden, trees,
+        fronts.mesh(new THREE.MeshLambertMaterial({ map: artTexture('facades'), vertexColors: true })),
+        civic.mesh(new THREE.MeshLambertMaterial({ map: artTexture('districts'), vertexColors: true })));
+    if (roadMaterial.userData.lamps) group.add(glows.mesh(roadMaterial.userData.lamps));
+    const [pit, crown] = curbTree();
+    const bays = [new THREE.InstancedMesh(wallBay(), metal, BAYS), new THREE.InstancedMesh(hedgeBay(), leafy, BAYS),
+        new THREE.InstancedMesh(pit, metal, BAYS / 2), new THREE.InstancedMesh(crown, leafy, BAYS / 2)];
+    group.add(...bays);
+    return { group, bays };
 }
 
 function dock() {
@@ -212,12 +431,29 @@ function stripe(color, left, right, dashed = false, map = null) {
     return mesh;
 }
 
+const place = new THREE.Matrix4();
+// True where the loop, its dock or its exit needs the strip from the curb to the hedge.
+export function crossesWall(plan, from, to) {
+    if (!plan) return false;
+    for (let at = from; at <= to; at += .5) {
+        if (Math.abs(at - plan.entry) < 5 || Math.abs(at - plan.exit) < 3.5) return true;
+        if (at < plan.entry || at > plan.exit) continue;
+        const width = pathWidth(plan, at), center = bikeLaneX(1, width) + pathBend(plan, at, width);
+        const half = 1.48 * (.42 + 2.23 * width);
+        if (center - half < -4.9 && center + half > -8.9) return true;
+    }
+    return false;
+}
+
 export class ParkArt {
     constructor(scene, roadMaterial, stampModel) {
-        this.ground = parkGround(roadMaterial);
+        const { group, bays } = parkGround(roadMaterial);
+        this.ground = group;
+        this.bays = bays;
+        this.openWall(null, 0);
         this.route = new THREE.Group();
         this.ground.add(this.route);
-        this.ribbon = [stripe(0xffffff, -1.48, 1.48, false, surfaceMap(false)), stripe(0xf6e5b2, -1.48, -1.43), stripe(0xf6e5b2, 1.43, 1.48),
+        this.ribbon = [stripe(0xffffff, -1.48, 1.48, false, surfaceMap('track')), stripe(0xf6e5b2, -1.48, -1.43), stripe(0xf6e5b2, 1.43, 1.48),
             stripe(0xc6d8bc, -.515, -.485, true), stripe(0xc6d8bc, .485, .515, true)];
         this.entrance = dock();
         this.parked = parkBike();
@@ -243,6 +479,7 @@ export class ParkArt {
     }
     setRoute(plan, start) {
         this.route.visible = !!plan;
+        this.openWall(plan, start);
         if (!plan) return;
         this.entrance.position.z = start - plan.entry;
         this.parked.visible = true;
@@ -273,6 +510,25 @@ export class ParkArt {
                 child.position.x = bikeLaneX(lane, 1);
                 child.geometry = this.models[(gate.style + lane) % 3].geometry;
             }
+        });
+    }
+    // Lay the wall in every bay that the planned loop does not ride through.
+    openWall(plan, start) {
+        const counts = [0, 0, 0, 0];
+        for (let i = 0; i < BAYS; i++) {
+            const z = -BAY * (i + .5), at = start - z;
+            if (crossesWall(plan, at - BAY / 2 - 1.5, at + BAY / 2 + 1.5)) continue;
+            place.makeTranslation(0, 0, z);
+            this.bays[0].setMatrixAt(counts[0]++, place);
+            this.bays[1].setMatrixAt(counts[1]++, place);
+            if (i % 2) continue;
+            this.bays[2].setMatrixAt(counts[2]++, place);
+            this.bays[3].setMatrixAt(counts[3]++, place);
+        }
+        this.bays.forEach((mesh, i) => {
+            mesh.count = counts[i];
+            mesh.instanceMatrix.needsUpdate = true;
+            mesh.computeBoundingSphere();
         });
     }
     update(distance, start) {

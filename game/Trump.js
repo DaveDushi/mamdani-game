@@ -2,12 +2,17 @@ import { RunnerModel } from './RunnerModel.js';
 import { groundShadow } from './Player.js';
 import { Batch } from './Geometry.js';
 import { VictoryDance } from './RaceFinish.js';
+import { CATCH_GAP, Pursuit } from './Pursuit.js';
 
-const PURSUIT_SECONDS = 5;
+export const taunts = {
+    closing: ['Trump is close enough to read the receipts.', 'Trump calls your pace very low energy.', 'Trump can hear the stamps jingle.'],
+    lead: ['Trump says he is winning the chase.', 'Trump demands a recount of the street.', 'Trump blames the headwind.']
+};
 
 export class Trump {
     constructor(scene, asset) {
         this.rig = new RunnerModel(asset, true);
+        this.pursuit = new Pursuit();
         this.mesh = this.rig.root;
         this.mesh.scale.setScalar(1.1);
         // A red document case gives the pursuer a different silhouette from the suited runner.
@@ -31,13 +36,24 @@ export class Trump {
     reset() {
         this.dance?.reset();
         this.briefcase.visible = true;
-        this.isChasing = false;
-        this.chaseTimer = 0;
+        this.pursuit.reset();
         this.exitTime = 0;
         this.phase = 1;
         this.shoulder = 1;
         this.mesh.visible = this.shadow.visible = false;
         this.mesh.position.set(0, 0, 4);
+    }
+
+    get gap() {
+        return this.pursuit.gap;
+    }
+
+    get isChasing() {
+        return this.pursuit.isChasing;
+    }
+
+    get hot() {
+        return this.pursuit.hot;
     }
 
     celebrate(seconds, reducedMotion) {
@@ -50,25 +66,39 @@ export class Trump {
         this.dance.play(seconds, reducedMotion);
     }
 
-    startChase(x) {
-        this.isChasing = true;
-        this.chaseTimer = PURSUIT_SECONDS;
+    hit(x, safe) {
+        this.pursuit.hit(safe);
+        this.startChase(x);
+    }
+
+    startChase(x, z = 3.5) {
         this.exitTime = 0;
         this.shoulder = x > 0 ? -1 : 1;
-        this.mesh.position.set(x + this.shoulder * 0.95, 0, 3.5);
+        this.mesh.position.set(x + this.shoulder * 0.95, 0, z);
         this.mesh.visible = this.shadow.visible = true;
         this.shadow.position.set(this.mesh.position.x, 0.019, this.mesh.position.z);
     }
 
-    update(dt, x, glanceShoulder) {
-        if (!this.mesh.visible) return;
-        this.chaseTimer = Math.max(0, this.chaseTimer - dt);
-        this.isChasing = this.chaseTimer > 0;
+    // The capture can land while he is still running in from off screen.
+    arrive(x) {
+        if (this.mesh.visible && Math.abs(this.mesh.position.x - x) < 1.6 && this.mesh.position.z < 4) return;
+        this.startChase(x, 1.85);
+    }
+
+    // He drops toward the camera as the gap opens. `reach` is how far back he stays in frame on this screen.
+    update(dt, x, glanceShoulder, frozen = false, sheltered = false, reach = 2.2, hidden = false) {
+        const event = frozen ? this.pursuit.ride(dt) : this.pursuit.update(dt, sheltered);
+        const near = !hidden && (this.isChasing || this.hot);
+        if (!this.mesh.visible) {
+            if (!near) return event;
+            this.startChase(x, reach + 5);
+        }
         // Track the inside shoulder so both silhouettes stay in frame in either outside lane.
         // Finish the over-the-shoulder exchange before crossing behind a lane-changing runner.
-        if (this.isChasing && !glanceShoulder && Math.abs(x) > 1.3) this.shoulder = x > 0 ? -1 : 1;
-        const targetX = this.isChasing ? x + this.shoulder * 0.9 : this.shoulder * 7;
-        const targetZ = this.isChasing ? 1.85 : 7.5;
+        if (near && !glanceShoulder && Math.abs(x) > 1.3) this.shoulder = x > 0 ? -1 : 1;
+        const away = Math.min(1, this.gap / CATCH_GAP);
+        const targetX = x + this.shoulder * (near ? 0.9 + 0.35 * away : 7);
+        const targetZ = !near ? reach + 5.3 : glanceShoulder ? 1.85 : 1.45 + (reach - 1.45) * away;
         const dx = targetX - this.mesh.position.x;
         this.mesh.position.x += dx * (1 - Math.exp(-6.2 * dt));
         this.mesh.position.z += (targetZ - this.mesh.position.z) * (1 - Math.exp(-2.8 * dt));
@@ -76,9 +106,8 @@ export class Trump {
         this.phase += dt * 12;
         this.rig.pose(this.phase, 0, 0, dx * 0.22);
         this.shadow.position.set(this.mesh.position.x - 0.1, 0.019, this.mesh.position.z + 0.16);
-        if (!this.isChasing) {
-            this.exitTime += dt;
-            if (this.exitTime >= 0.85) this.mesh.visible = this.shadow.visible = false;
-        }
+        this.exitTime = near ? 0 : this.exitTime + dt;
+        if (this.exitTime >= 0.85) this.mesh.visible = this.shadow.visible = false;
+        return event;
     }
 }

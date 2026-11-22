@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RIVALS } from './FamilyRace.js';
-import { raceDistance } from './RaceSchedule.js';
+import { raceDistance, racePoints } from './RaceSchedule.js';
 import { Batch, labelMaterial } from './Geometry.js';
 
 export const APPROACH_SECONDS = 9.5;
@@ -9,20 +9,24 @@ const SIGHT_DISTANCE = 135;
 const FINAL = RIVALS.length - 1;
 
 export function approachCopy(schedule, rival, metres, speed, chasing, trackReady) {
-    if (schedule.initialRecordPending) {
-        return { tone: 'quiet', label: 'Family race', name: 'Checking season record', detail: '' };
-    }
     if (!rival) {
         return { tone: 'quiet', label: '100% takeover', name: 'Overtime', detail: '' };
     }
     const final = rival.index === FINAL;
+    if (final && schedule.initialRecordPending) {
+        return { tone: 'quiet', label: 'Record challenge', name: 'Checking season record', detail: '' };
+    }
     const waitingForRecord = final && !schedule.qualified;
-    const remaining = Math.max(0, rival.at - metres);
+    // Donald's mark is a forecast. Only the points decide whether he is due.
+    const remaining = waitingForRecord && schedule.pointsLeft ? Math.max(1, rival.at - metres) : Math.max(0, rival.at - metres);
     const close = remaining <= speed * APPROACH_SECONDS;
     const label = waitingForRecord ? 'Record challenge' : close ? 'Race ahead' : 'Next race';
     let detail;
-    if (!close) detail = waitingForRecord ? `Beat ${raceDistance(schedule.target)} to race` : `At ${raceDistance(rival.at)}`;
-    else if (remaining) detail = `${raceDistance(remaining)} ${waitingForRecord ? 'minimum' : 'to go'}`;
+    if (!close) detail = waitingForRecord ? `Beat ${racePoints(schedule.target)} to race` : `At ${raceDistance(rival.at)}`;
+    else if (waitingForRecord && schedule.pointsLeft) detail = `${racePoints(Math.ceil(schedule.pointsLeft))} points to go`;
+    else if (remaining && !waitingForRecord) detail = `${raceDistance(remaining)} to go`;
+    else if (waitingForRecord && !schedule.provider) detail = 'Online play is off';
+    else if (waitingForRecord && schedule.provider.unranked) detail = 'This run is not ranked';
     else if (waitingForRecord) detail = schedule.retryClaim && !schedule.claiming ? 'Retrying record check' : 'Checking your record';
     else if (chasing) detail = 'Clear the chase';
     else if (schedule.elapsed < schedule.nextHeatAt) detail = 'After the street stretch';
@@ -105,7 +109,7 @@ export class RaceApproach {
 
     place(rival, distance, recordPending, qualified) {
         const z = rival ? distance - (rival.at - CHECK_IN_LEAD) : Infinity;
-        if (recordPending || z < -SIGHT_DISTANCE || z > 2) {
+        if ((recordPending && rival?.index === FINAL) || z < -SIGHT_DISTANCE || z > 2) {
             if (this.checkIn) this.checkIn.group.visible = false;
             return;
         }

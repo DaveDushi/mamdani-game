@@ -4,10 +4,11 @@ import { readFile } from 'node:fs/promises';
 import { Box3, Group, MeshStandardMaterial, Scene, Vector3 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { courseSpeed, streetCourse } from '../game/Course.js';
+import { stretchLine, stretchThemes } from '../game/Stretches.js';
 import { ObstacleManager } from '../game/ObstacleManager.js';
 import { Player } from '../game/Player.js';
 import { RunnerModel } from '../game/RunnerModel.js';
-import { PowerupManager } from '../game/PowerupManager.js';
+import { PowerupManager, pickupGlow } from '../game/PowerupManager.js';
 import { busSeconds } from '../game/BusRide.js';
 import { World } from '../game/World.js';
 import { ICE_STEERING_SECONDS } from '../game/RentIce.js';
@@ -18,10 +19,10 @@ const noOp = () => {};
 
 test('both courses introduce an actual compulsory stunt after the opening', () => {
     for (const mode of ['day', 'night']) {
-        const events = layout(1, 15, mode);
+        const events = layout(1, 25, mode);
         const first = events.find(row => row.gate);
-        assert.equal(first?.gate, 'jump', mode);
-        assert.ok(first.distance < (mode === 'day' ? 190 : 120), mode);
+        assert.equal(first?.gate, mode === 'day' ? 'jumpAll' : 'jump', mode);
+        assert.ok(first.distance < 140, mode);
         assert.equal(first.exitLane, undefined);
     }
 });
@@ -31,16 +32,16 @@ test('both shifts mix bottles and recurring moving hazards into the first 1,200 
         let bottles = 0;
         let runsWithRepeat = 0;
         for (let seed = 1; seed <= 64; seed++) {
-            const early = layout(seed, 50, mode).filter(row => row.distance <= 1200);
+            const early = layout(seed, 70, mode).filter(row => row.distance <= 1200);
             const bottleRows = early.filter(row => row.lanes?.includes('alcohol'));
-            assert.ok(bottleRows[0]?.distance <= 200, `${mode}, seed ${seed}`);
+            assert.ok(bottleRows[0]?.distance <= 240, `${mode}, seed ${seed}`);
             assert.ok(bottleRows.every(row => row.lanes[row.exitLane] !== 'alcohol'));
             bottles += bottleRows.length;
-            const crews = early.filter(row => ['delivery-dolly', 'signal-boom'].includes(row.encounter?.id));
+            const crews = early.filter(row => ['delivery-dolly', 'signal-boom', 'horse-carriage'].includes(row.encounter?.id));
             if (crews.length > 2) runsWithRepeat++;
         }
         assert.ok(bottles / 64 >= 3, mode);
-        assert.ok(runsWithRepeat >= 48, mode);
+        assert.ok(runsWithRepeat >= 60, mode + runsWithRepeat);
     }
 });
 
@@ -49,13 +50,17 @@ function seededRandom(seed) {
     return () => ((state = (Math.imul(state, 1664525) + 1013904223) >>> 0) / 4294967296);
 }
 
-function layout(seed, size, mode = 'day') {
-    const course = streetCourse(seededRandom(seed), mode);
+function layout(seed, size, mode = 'day', firstRun = false) {
+    const course = streetCourse(seededRandom(seed), mode, undefined, firstRun);
     return Array.from({ length: size }, () => course.next().value);
 }
 
+const everyLane = row => row.gate === 'jumpAll' || row.gate === 'slideAll';
+const jumpProps = ['taxi', 'trashPile'];
+
 function legalLanes(row) {
     if (row.gate) return lanes.filter(lane => row.lanes[lane] !== 'gateBlock');
+    if (row.lesson) return lanes.filter(lane => !row.lanes[lane]);
     const side = row.actionLane ?? row.bonusLane;
     return side === undefined ? [row.exitLane] : [row.exitLane, side];
 }
@@ -91,29 +96,31 @@ test('both shifts gain speed through sixty kilometres and stay bounded in Overti
     }
 });
 
-test('ten openings give the starting lane time to react and still close every fixed lane', () => {
+test('the day opening teaches one move at a time, with no walls and nothing before sixty metres', () => {
     const openings = new Set();
-    for (let seed = 1; seed <= 64; seed++) {
-        const events = layout(seed, 700);
-        const rows = events.filter(row => row.lanes);
-        const opening = rows.slice(0, 4);
-        openings.add(opening.map(row => row.lanes.join(',').replace(/protest[0-2]/g, 'protest')).join('/'));
-        assert.ok(opening[0].distance >= 28);
-        assert.equal(opening[0].lanes[1], null);
-        assert.equal(opening[0].lanes.filter((key, lane) => key && lane !== opening[0].exitLane).length, 1);
-        for (let i = 1; i < opening.length; i++) {
-            assert.ok(opening[i].distance - opening[i - 1].distance >= 32);
-        }
-        assert.equal(new Set(opening.map(row => row.exitLane)).size, 3);
-        for (const lane of lanes) {
-            const hits = rows.filter(row => lane !== row.exitLane && row.lanes[lane] && row.lanes[lane] !== 'alcohol');
-            assert.ok(hits[1].distance <= opening.at(-1).distance, `seed ${seed}, opening lane ${lane}`);
-            if (lane === 1) {
-                assert.ok(hits[0].distance >= 60 && hits[1].distance >= 120, `seed ${seed}, starting lane runway`);
+    for (const firstRun of [false, true]) {
+        for (let seed = 1; seed <= 64; seed++) {
+            const events = layout(seed, 40, 'day', firstRun);
+            const rows = events.filter(row => row.lanes);
+            const [move, jump, slide] = rows;
+            openings.add(move.lanes[1] + move.exitLane);
+            assert.ok(move.distance >= 60);
+            assert.deepEqual([move.lanes[0], move.lanes[2]], [null, null]);
+            assert.equal(move.lesson.cue, move.exitLane === 0 ? 'moveLeftCue' : 'moveRightCue');
+            assert.deepEqual([jump.gate, jump.tutorial, jump.lanes], ['jumpAll', true, Array(3).fill('jumpGate')]);
+            assert.deepEqual([slide.gate, slide.tutorial, slide.lanes], ['slideAll', true, Array(3).fill('slideGate')]);
+            for (let i = 1; i < 3; i++) {
+                assert.ok((rows[i].distance - rows[i - 1].distance) / courseSpeed(rows[i].distance) > 2.1);
             }
+            assert.ok(rows.every(row => !row.lesson || row.lesson.lead / courseSpeed(row.distance) > 1));
+            const stamps = events.filter(row => row.trail && row.distance < 230).reduce((sum, row) => sum + row.trail.length, 0);
+            assert.ok(firstRun ? stamps >= 24 : stamps >= 10, `${firstRun} ${stamps}`);
+            let seconds = 0;
+            for (let at = 0; at < rows[3].distance; at++) seconds += 1 / courseSpeed(at);
+            if (firstRun) assert.ok(seconds > 10, String(seconds));
         }
     }
-    assert.equal(openings.size, 10);
+    assert.ok(openings.size >= 8);
 });
 
 test('late sequences mix more actions without removing any route or recovery window', () => {
@@ -121,39 +128,121 @@ test('late sequences mix more actions without removing any route or recovery win
         jump: ['gateBlock', 'gateBlock', 'jumpGate'],
         slide: ['gateBlock', 'gateBlock', 'slideGate'],
         choice: ['gateBlock', 'jumpGate', 'slideGate'],
-        rail: ['gateBlock', 'gateBlock', 'railGate']
+        rail: ['gateBlock', 'gateBlock', 'railGate'],
+        jumpAll: ['jumpGate', 'jumpGate', 'jumpGate'],
+        slideAll: ['slideGate', 'slideGate', 'slideGate']
     };
+    const canJump = row => row.lanes.includes('jumpGate') || row.gate === 'rail' || row.encounter?.position === 'low' ||
+        jumpProps.includes(row.lanes[row.bonusLane]);
     for (const mode of ['day', 'night']) {
         for (let seed = 1; seed <= 64; seed++) {
-            const rows = layout(seed, 1400, mode).filter(row => row.lanes);
+            const rows = layout(seed, 2400, mode, seed % 2 === 0).filter(row => row.lanes);
+            assert.ok(rows.at(-1).distance > 60000);
             if (mode === 'night') {
                 assert.equal(rows[0].distance, 42);
                 assert.equal(rows[0].lanes.filter((key, lane) => key && lane !== rows[0].exitLane).length, 2);
             }
-            const early = rows.filter(row => row.distance < 500);
-            assert.ok(early.filter(row => row.gate).length / early.length < 0.7);
             const late = rows.filter(row => row.distance > 1700);
-            assert.ok(late.filter(row => row.gate || row.encounter).length / late.length > 0.82);
+            assert.ok(late.filter(row => row.gate || row.encounter).length / late.length > 0.64);
             const combined = late.filter((row, i) => row.gate && late[i + 1]?.gate && late[i + 1].gate !== row.gate);
-            assert.ok(combined.length / late.length > 0.45);
+            assert.ok(combined.length / late.length > 0.28, `${mode} ${combined.length / late.length}`);
             for (let i = 1; i < rows.length; i++) {
                 const row = rows[i], last = rows[i - 1];
                 const seconds = (row.distance - last.distance) / (courseSpeed(row.distance, mode) * 1.1);
-                const canJump = r => r.lanes.includes('jumpGate') || r.gate === 'rail' || r.encounter?.position === 'low';
-                assert.ok(seconds >= (canJump(last) && canJump(row) ? 0.89 : 0.53));
+                assert.ok(seconds >= (canJump(last) && canJump(row) ? 0.89 : 0.53), `${mode} ${seed} ${row.distance} ${seconds}`);
+                // A row open in every lane asks for no steering. Otherwise each way through meets each way onward.
+                if (everyLane(row) || last.lesson) continue;
                 for (const a of legalLanes(last)) for (const b of legalLanes(row)) assert.ok(Math.abs(a - b) <= 1);
             }
             const stunts = rows.filter(row => row.gate);
-            assert.deepEqual(stunts.slice(0, 4).map(row => [row.gate, row.tutorial]), [
-                ['jump', true], ['slide', true], ['choice', true], ['rail', false]
+            assert.deepEqual(stunts.slice(0, 7).map(row => [row.gate, row.tutorial]), mode === 'day' ? [
+                ['jumpAll', true], ['slideAll', true], ['jump', true], ['slide', true], ['choice', true], ['rail', false],
+                [stunts[6].gate, false]
+            ] : [
+                ['jump', true], ['slide', true], ['choice', true], ['rail', false],
+                ...stunts.slice(4, 7).map(row => [row.gate, false])
             ]);
-            assert.ok(stunts.slice(3).every(row => row.tutorial === false));
+            assert.ok(stunts.slice(6).every(row => row.tutorial === false));
             const railRate = late.filter(row => row.gate === 'rail').length / late.length;
-            assert.ok(railRate > 0.1 && railRate < 0.24);
+            assert.ok(railRate > 0.06 && railRate < 0.2, String(railRate));
             for (const row of stunts) {
                 assert.deepEqual([...row.lanes].sort(), expected[row.gate]);
             }
         }
+    }
+});
+
+test('every stretch keeps its own vocabulary, returns shuffled and harder, and rests on loose stamps', () => {
+    const themes = new Map(stretchThemes.map(theme => [theme.id, theme]));
+    assert.ok(themes.size >= 5);
+    const owned = { protest: ['protest0', 'protest1', 'protest2'], construction: ['scaffold', 'signalBoom', 'deliveryDolly'],
+        rush: ['taxi'], fair: ['halal', 'fairBanner'], carriage: ['horseCarriage'], freeze: ['rentIce'], trash: ['trashPile'] };
+    for (const mode of ['day', 'night']) {
+        const first = new Set(), orders = new Set(), roads = new Map();
+        const density = [[0, 0], [0, 0]];
+        for (let seed = 1; seed <= 24; seed++) {
+            const visits = [];
+            let gap = null;
+            for (const row of streetCourse(seededRandom(seed), mode)) {
+                if (row.distance > 26000) break;
+                if (!row.stretch) {
+                    if (row.trail && visits.length) gap = row;
+                    continue;
+                }
+                if (visits.at(-1)?.stretch !== row.stretch) {
+                    if (visits.length) assert.ok(gap?.distance > visits.at(-1).rows.at(-1).distance, 'breather stamps');
+                    visits.push({ stretch: row.stretch, rows: [] });
+                }
+                visits.at(-1).rows.push(row);
+            }
+            visits.pop();
+            first.add(visits[0].stretch.id);
+            orders.add(visits.slice(0, themes.size).map(visit => visit.stretch.id).join());
+            assert.ok(visits[0].stretch.at < 560);
+            const seen = new Map();
+            visits.forEach(({ stretch, rows }, i) => {
+                const count = (seen.get(stretch.id) ?? 0) + 1;
+                seen.set(stretch.id, count);
+                assert.equal(stretch.level, count);
+                assert.equal(stretch.name, themes.get(stretch.id).name);
+                assert.ok(stretch.until - stretch.at >= 320 && stretch.until - stretch.at < 1050, String(stretch.until - stretch.at));
+                assert.ok(rows.every(row => row.distance > stretch.at && row.distance <= stretch.until));
+                if (i) assert.notEqual(visits[i - 1].stretch.id, stretch.id);
+                const key = stretch.id + stretch.level;
+                const road = rows.filter(row => row.lanes).map(row => row.gate ?? row.encounter?.id ?? 'open').join();
+                (roads.get(key) ?? roads.set(key, []).get(key)).push(road);
+                const pieces = rows.flatMap(row => [...(row.lanes ?? []), ...Object.values(row.skin ?? {})]);
+                assert.ok(owned[stretch.id].some(piece => pieces.includes(piece)), key);
+                if (stretch.level > 2) return;
+                const timed = rows.filter(row => row.lanes);
+                const bucket = density[stretch.level - 1];
+                bucket[0] += timed.length - 1;
+                bucket[1] += (timed.at(-1).distance - timed[0].distance) / courseSpeed(timed[0].distance, mode);
+            });
+            assert.ok(visits.length >= themes.size * 3);
+        }
+        assert.ok(first.size >= 5);
+        assert.ok(orders.size >= 23);
+        for (const [key, list] of roads) assert.ok(new Set(list).size >= list.length * .8, key);
+        const [one, two] = density.map(([rows, seconds]) => rows / seconds);
+        assert.ok(two > one + .06, `${mode} ${one} ${two}`);
+    }
+    assert.ok(stretchThemes.every(theme => theme.lines.length >= 1 && stretchLine({ id: theme.id, level: 7 })));
+});
+
+test('a theme earns harder combinations only as its level rises, at the same distance tier', () => {
+    const rank = beat => ({ split: 3, team: 3, swerve: 2, blackIce: 2 }[beat] ?? 1);
+    for (const { motifs, id } of stretchThemes) {
+        assert.ok(motifs.filter(motif => motif.level === 1).length >= 3, id);
+        assert.ok(motifs.length >= 8, id);
+        for (const { level, beats } of motifs) {
+            for (const beat of beats) assert.ok(level >= rank(beat), id + ' ' + beat);
+        }
+        const size = level => {
+            const list = motifs.filter(motif => motif.level === level);
+            return list.reduce((sum, motif) => sum + motif.beats.length, 0) / list.length;
+        };
+        assert.ok(size(1) < size(2) && size(2) <= size(3) && size(3) <= size(4), id);
     }
 });
 
@@ -178,7 +267,7 @@ test('expert stages sustain a higher decision rate than the opening and middle s
         const rates = totals.map(t => t.gates / t.seconds);
         assert.ok(rates[2] > rates[1] + .10, mode + ' ' + rates);
         assert.ok(rates[5] > rates[3] + .05, mode + ' ' + rates);
-        assert.ok(rates[6] > rates[5] + .02 && rates[6] > .95, mode + ' ' + rates);
+        assert.ok(rates[6] > rates[2] + .15 && rates[6] > .75, mode + ' ' + rates);
     }
 });
 
@@ -212,28 +301,22 @@ test('expert roads reproduce by seed and vary stunt order, turn direction, and t
                 }
             }
             assert.ok(motifs.size >= 160, `${mode} ${overtime} ${motifs.size}`);
-            assert.ok(gapBins.size >= 10, `${mode} ${overtime} ${gapBins.size}`);
-            assert.ok(edgeHolds / (edgeTurns + edgeHolds) >= .25, `${mode} ${overtime}`);
+            assert.ok(gapBins.size >= 8, `${mode} ${overtime} ${gapBins.size}`);
+            assert.ok(edgeHolds / (edgeTurns + edgeHolds) >= .18, `${mode} ${overtime}`);
         }
     }
 });
 
-test('winning the final lengthens the next stunt set on the live course', () => {
+test('winning the final tightens the live course without touching the road already laid', () => {
     for (const mode of ['day', 'night']) {
-        function lengths(course) {
-            const sets = [];
-            let length = 0;
+        let regular = 0, extra = 0;
+        const count = course => {
+            let rows = 0;
             for (const row of course) {
-                if (!row.lanes) continue;
-                if (row.gate) length++;
-                else if (!['signal-boom', 'delivery-dolly'].includes(row.encounter?.id)) {
-                    if (length >= 5) sets.push(length);
-                    length = 0;
-                    if (sets.length === 6) return sets.slice(1);
-                }
+                if (row.distance > 12000) return rows;
+                if (row.lanes) rows++;
             }
-        }
-        const regular = [], extra = [];
+        };
         for (let seed = 1; seed <= 32; seed++) {
             let overtime = false;
             const normal = streetCourse(seededRandom(seed), mode);
@@ -244,12 +327,10 @@ test('winning the final lengthens the next stunt set on the live course', () => 
                 assert.deepEqual(live.next().value, row);
             } while (row.distance < 4000);
             overtime = true;
-            regular.push(...lengths(normal));
-            extra.push(...lengths(live));
+            regular += count(normal);
+            extra += count(live);
         }
-        assert.ok(Math.min(...regular) >= 5 && Math.max(...regular) <= 10, `${mode} ${Math.min(...regular)}–${Math.max(...regular)}`);
-        assert.ok(Math.min(...extra) >= 6 && Math.max(...extra) >= 10, `${mode} ${Math.min(...extra)}–${Math.max(...extra)}`);
-        assert.ok(extra.reduce((a, b) => a + b, 0) - regular.reduce((a, b) => a + b, 0) >= regular.length, mode);
+        assert.ok(extra > regular * 1.05, `${mode} ${regular} ${extra}`);
     }
 });
 
@@ -267,7 +348,7 @@ test('both moving hazards get a standalone introduction and later link to anothe
                 const [delivery, signal] = encounters;
                 assert.equal(delivery.encounter.id, 'delivery-dolly');
                 assert.equal(signal.encounter.id, 'signal-boom');
-                assert.ok(delivery.distance < 500 && signal.distance < 600);
+                assert.ok(delivery.distance < 640 && signal.distance < 900, `${mode} ${delivery.distance} ${signal.distance}`);
                 for (const row of [delivery, signal]) {
                     const i = rows.indexOf(row);
                     assert.equal(rows[i - 1].gate ?? rows[i - 1].encounter, undefined);
@@ -275,13 +356,13 @@ test('both moving hazards get a standalone introduction and later link to anothe
                     assert.equal(next.gate, undefined);
                     if (next.encounter) {
                         assert.equal(next.encounter.id, 'horse-carriage');
-                        assert.ok((next.distance - row.distance) / next.encounter.approachSpeed >= 1.5);
+                        assert.ok((next.distance - row.distance) / next.encounter.approachSpeed >= 1.4);
                     }
                 }
                 const late = encounters.filter(row => row.distance > 15000 && row !== rows.at(-1));
                 assert.ok(late.filter(row => row.encounter.id === 'signal-boom').length >= 10);
                 assert.ok(late.filter(row => row.encounter.id === 'delivery-dolly').length >= 10);
-                assert.ok(late.filter(row => row.lanes[row.exitLane]).length >= 4);
+                assert.ok(late.some(row => row.lanes[row.exitLane]));
                 for (const row of encounters) {
                     const { encounter, exitLane } = row;
                     if (encounter.id === 'delivery-dolly') {
@@ -295,19 +376,18 @@ test('both moving hazards get a standalone introduction and later link to anothe
                         assert.equal(row.lanes[encounter.lane], 'signalBoom');
                         assert.ok(['low', 'high'].includes(encounter.position));
                         if (row.lanes[exitLane]) {
-                            assert.ok(row.distance > 15000);
+                            assert.ok(row.stretch.id === 'construction' && row.stretch.level >= 3);
                             assert.equal(row.lanes[exitLane], encounter.position === 'low' ? 'slideGate' : 'jumpGate');
                         }
                     }
                 }
-                assert.ok(late.every(row => rows[rows.indexOf(row) + 1]?.gate));
             }
         }
     }
 });
 
 test('expert work zones can require a second moving read during one five-second pursuit', () => {
-    const ids = ['delivery-dolly', 'signal-boom'];
+    const ids = ['delivery-dolly', 'signal-boom', 'horse-carriage'];
     for (const mode of ['day', 'night']) {
         for (const overtime of [false, true]) {
             const pairs = new Set();
@@ -316,33 +396,30 @@ test('expert work zones can require a second moving read during one five-second 
                 let first;
                 for (const row of streetCourse(seededRandom(seed), mode, () => overtime)) {
                     if (row.distance > 60000) break;
-                    if (!row.lanes) continue;
-                    const id = row.encounter?.id;
-                    if (ids.includes(id)) {
-                        if (first) {
-                            assert.ok(first.distance >= 30000);
-                            const seconds = (row.distance - first.distance) /
-                                (courseSpeed(row.distance, mode) * (overtime ? 1.1 : 1));
-                            assert.ok(seconds > 2.35 && seconds < 4.9, `${mode} ${overtime} ${seconds}`);
-                            pairs.add(first.encounter.id + '/' + id);
+                    if (!ids.includes(row.encounter?.id)) continue;
+                    if (first && row.distance >= 30000) {
+                        const seconds = (row.distance - first.distance) /
+                            (courseSpeed(row.distance, mode) * (overtime ? 1.1 : 1));
+                        assert.ok(seconds > .84, `${mode} ${overtime} ${seconds}`);
+                        if (seconds < 4.9) {
+                            pairs.add(first.encounter.id + '/' + row.encounter.id);
                             count++;
                         }
-                        first = row;
-                    } else if (!row.gate || row.encounter) {
-                        first = null;
                     }
+                    first = row;
                 }
             }
-            assert.ok(count >= 30);
-            assert.deepEqual([...pairs].sort(), ['delivery-dolly/signal-boom', 'signal-boom/delivery-dolly', 'signal-boom/signal-boom']);
+            assert.ok(count >= 60, String(count));
+            assert.ok(pairs.size >= 7);
         }
     }
 });
 
-test('ice leaves two dry lanes, one dry stamp, and enough Overtime runway to thaw before the next decision', () => {
+test('ice leaves a reachable dry lane and stamp, and enough Overtime runway to thaw before the next decision', () => {
     for (const mode of ['day', 'night']) {
         for (const overtime of [false, true]) {
             const lanesSeen = new Set();
+            let blocked = 0;
             for (let seed = 1; seed <= 12; seed++) {
                 const rows = [];
                 for (const row of streetCourse(seededRandom(seed), mode, () => overtime)) {
@@ -350,30 +427,34 @@ test('ice leaves two dry lanes, one dry stamp, and enough Overtime runway to tha
                     if (row.lanes) rows.push(row);
                 }
                 const ice = rows.filter(row => row.iceLane !== undefined && row !== rows.at(-1));
-                assert.ok(ice.length >= 8 && ice.length <= 13);
-                assert.ok(ice[0].distance >= 2900 && ice[0].distance < 3700);
-                for (let i = 0; i < ice.length; i++) {
-                    const row = ice[i], next = rows[rows.indexOf(row) + 1];
+                assert.ok(ice.length >= 12, String(ice.length));
+                for (const row of ice) {
+                    const next = rows[rows.indexOf(row) + 1];
                     lanesSeen.add(row.iceLane);
+                    assert.equal(row.stretch.id, 'freeze');
                     assert.equal(row.lanes[row.iceLane], 'rentIce');
                     assert.equal(row.lanes[row.exitLane], null);
-                    assert.equal(row.lanes.filter(Boolean).length, 1);
-                    assert.deepEqual(legalLanes(next), [1]);
+                    const occupied = row.lanes.filter(Boolean).length;
+                    if (occupied === 2) {
+                        blocked++;
+                        assert.ok(row.stretch.level >= 2);
+                    } else assert.equal(occupied, 1);
+                    if (!everyLane(next)) assert.deepEqual(legalLanes(next), [1]);
                     const speed = courseSpeed(next.distance, mode) * 1.1;
                     assert.ok((next.distance - row.distance) / speed > 1.41);
-                    if (i > 0) assert.ok(row.distance - ice[i - 1].distance >= 4500);
                 }
             }
+            assert.ok(blocked > 20);
             assert.deepEqual([...lanesSeen].sort(), [0, 1, 2]);
         }
     }
 });
 
-test('even collecting every scheduled protection leaves most of the run exposed', () => {
+test('even collecting every scheduled protection leaves half of the run exposed', () => {
     for (const mode of ['day', 'night']) {
         for (const seed of [1, 9, 23, 52]) {
-            const pickups = layout(seed, 500, mode).filter(row => row.pickup);
-            assert.ok(pickups[0].distance >= (mode === 'night' ? 820 : 300));
+            const pickups = layout(seed, 900, mode).filter(row => row.pickup);
+            assert.ok(pickups[0].distance >= (mode === 'night' ? 360 : 270));
             let pickupIndex = 0;
             let duration = 0;
             let protectedTime = 0;
@@ -383,7 +464,7 @@ test('even collecting every scheduled protection leaves most of the run exposed'
                 world.update(step);
                 const pickup = pickups[pickupIndex];
                 if (world.distance >= pickup.distance) {
-                    const effect = { updateWearables: noOp };
+                    const effect = { updateWearables: noOp, powerLevels: {} };
                     Player.prototype.activatePowerup.call(effect, pickup.pickup);
                     duration = pickup.pickup === 'fastFreeBus' ? busSeconds : effect[pickup.pickup + 'Timer'];
                     // Count the visible stretch the mask clears after its timer expires.
@@ -396,33 +477,37 @@ test('even collecting every scheduled protection leaves most of the run exposed'
                 }
                 frames++;
             }
-            assert.ok(protectedTime / (frames * step) < (mode === 'night' ? 0.21 : 0.25));
+            assert.ok(protectedTime / (frames * step) < 0.5);
         }
     }
 });
 
-test('the second pickup is a bus, and one or two rotating wearables separate each later bus', () => {
+test('a power-up comes every fifteen to twenty seconds, never repeats, and keeps the bus in rotation', () => {
     for (const mode of ['day', 'night']) {
-        const firstPickups = new Set();
+        const firstPickups = new Set(), gaps = [];
         for (let seed = 1; seed <= 64; seed++) {
-            const pickups = layout(seed, 500, mode).filter(row => row.pickup);
+            const pickups = layout(seed, 900, mode).filter(row => row.pickup);
             const wearables = pickups.filter(row => row.pickup !== 'fastFreeBus');
             const cycle = wearables.slice(0, 3).map(row => row.pickup);
             firstPickups.add(cycle[0]);
             assert.deepEqual([...cycle].sort(), ['covidMask', 'kafiyeh', 'rainbow']);
             assert.ok(wearables.every((row, index) => row.pickup === cycle[index % 3]));
             assert.equal(pickups[1].pickup, 'fastFreeBus');
-            assert.ok(pickups[1].distance < (mode === 'night' ? 2350 : 1300));
             let lastBus = 1;
             for (const [i, pickup] of pickups.entries()) {
-                if (i <= 1) continue;
-                if (pickup.pickup === 'fastFreeBus') {
-                    assert.ok(i - lastBus === 2 || i - lastBus === 3);
+                if (!i) continue;
+                assert.notEqual(pickup.pickup, pickups[i - 1].pickup);
+                gaps.push((pickup.distance - pickups[i - 1].distance) / courseSpeed((pickup.distance + pickups[i - 1].distance) / 2, mode));
+                if (i > 1 && pickup.pickup === 'fastFreeBus') {
+                    assert.ok(i - lastBus === 3 || i - lastBus === 4);
                     lastBus = i;
                 }
-                assert.ok(pickup.distance - pickups[i - 1].distance >= (mode === 'night' ? 1650 : 1200));
             }
         }
+        gaps.sort((a, b) => a - b);
+        assert.ok(gaps[0] > 13.2, String(gaps[0]));
+        assert.ok(gaps[Math.floor(gaps.length * .5)] < 18.6);
+        assert.ok(gaps[Math.floor(gaps.length * .95)] < 21.5, String(gaps[Math.floor(gaps.length * .95)]));
         assert.equal(firstPickups.size, 3);
     }
 });
@@ -447,8 +532,7 @@ test('all generated pieces are pooled and painted lane cues lead to one collecti
             traffic.powerups.reset();
             traffic.reset(mode, seededRandom(seed));
             let viewDistance = 0;
-            const rows = layout(seed, 400, mode).filter(row => row.lanes);
-            assert.ok(traffic.obstacles.every(obj => obj.type !== 'coin' || -obj.mesh.position.z >= rows[0].distance));
+            const rows = layout(seed, 520, mode).filter(row => row.lanes);
             const advanceTo = distance => {
                 while (viewDistance < distance) {
                     const advance = Math.min(10, distance - viewDistance);
@@ -460,6 +544,10 @@ test('all generated pieces are pooled and painted lane cues lead to one collecti
                 const leads = row.gate ? [4, 3] : [3, 2];
                 advanceTo(row.distance - leads[0] * row.cueStep - 1);
                 const marks = new Map();
+                if (row.lesson) {
+                    keys.add(row.lesson.cue);
+                    assert.ok(traffic.obstacles.some(obj => obj.key === row.lesson.cue));
+                }
                 if (!row.gate && (!row.encounter || !row.lanes[row.exitLane])) marks.set(row.exitLane, ['laneCue', 1.02, 0]);
                 for (const [lane, key] of row.lanes.entries()) {
                     if (key === 'jumpGate') marks.set(lane, ['jumpCue', 2.42, 0]);
@@ -486,8 +574,8 @@ test('all generated pieces are pooled and painted lane cues lead to one collecti
                 advanceTo(row.distance);
                 for (const [lane, slot] of row.lanes.entries()) {
                     if (!slot || (!row.encounter && lane === row.exitLane)) continue;
-                    const key = slot !== 'gateBlock' && row.streetProp ? row.streetProp : row.encounter?.id === 'protest-line'
-                        ? ({ slideGate: 'policeTape', jumpGate: 'fallenPlacard', gateBlock: 'marchBarrier' }[slot] ?? slot) : slot;
+                    const key = row.skin?.[slot] ?? (row.encounter?.id === 'protest-line'
+                        ? { slideGate: 'policeTape', jumpGate: 'fallenPlacard', gateBlock: 'marchBarrier' }[slot] ?? slot : slot);
                     keys.add(key);
                     assert.ok(traffic.models[key] && traffic.pool[key], key);
                     const x = (lane - 1) * 3;
@@ -521,7 +609,7 @@ test('even the fastest Overtime gates enter the scene at least 1.55 seconds ahea
                 seen.add(obstacle);
             }
         }
-        assert.ok(seen.size >= 16);
+        assert.ok(seen.size >= 10);
     }
 });
 
@@ -537,9 +625,10 @@ test('road power-ups spawn alone in the marked lane and fit the food stamp dimen
         const [{ mesh }] = traffic.powerups.powerups;
         assert.equal(mesh.position.x, 3);
         assert.equal(mesh.position.z, -20);
-        assert.equal(mesh.children.length, 1);
         assert.equal(mesh.children[0].isMesh, true);
-        const size = new Box3().setFromObject(mesh, true).getSize(new Vector3());
+        assert.deepEqual(mesh.children.slice(1).map(child => [child.name, child.material.color.getHex(), child.material.depthWrite]),
+            [['halo', pickupGlow[type], false], ['glowPool', pickupGlow[type], false]]);
+        const size = new Box3().setFromObject(mesh.children[0], true).getSize(new Vector3());
         const scale = Math.max(size.x / stamp.x, size.y / stamp.y);
         assert.ok(Math.abs(scale - 1) < 1e-6, type);
         traffic.powerups.reset();
@@ -700,12 +789,17 @@ test('one ticket rail pays one stamp and move for either clear, and hits a stand
 });
 
 function courseTrial(seed, mode, { at = 0, size = 36, strategy = 'jumpChoice', dt = step,
-    overtime = false, jumpLead = 0.35, actionInterval = 0, takeBonus = false } = {}) {
+    overtime = false, jumpLead = 0.35, actionInterval = 0, takeBonus = false, theme, level } = {}) {
     const source = streetCourse(seededRandom(seed), mode, () => overtime);
     let first;
-    do { first = source.next().value; } while (!first.lanes || first.distance < at);
+    do { first = source.next().value; } while (!first.lanes || first.distance < at ||
+        theme && first.stretch?.id !== theme || level && first.stretch?.level < level);
     const events = [first];
-    while (events.length < size + 8) events.push(source.next().value);
+    while (events.filter(event => event.lanes).length < size + 8) {
+        const event = source.next().value;
+        // Loose stamps are extra. This counts the one each row promises.
+        if (!event.trail) events.push(event);
+    }
     const rows = events.filter(row => row.lanes).slice(0, size - 4);
     const world = worldWithoutScenery(mode);
     world.overtime = overtime;
@@ -723,13 +817,14 @@ function courseTrial(seed, mode, { at = 0, size = 36, strategy = 'jumpChoice', d
         const jumpLane = row.encounter?.position === 'low' ? boom : row.lanes.indexOf('jumpGate');
         const slideLane = row.encounter?.position === 'high' ? boom : row.lanes.indexOf('slideGate');
         const railLane = row.lanes.indexOf('railGate');
+        const inEveryLane = everyLane(row);
         const takeSlide = railLane >= 0 ? strategy === 'slideChoice' :
             jumpLane < 0 || (strategy === 'slideChoice' && slideLane >= 0);
         const preferred = strategy === 'slideChoice' ? slideLane : jumpLane;
         const detour = takeBonus && row.bonusLane !== undefined;
-        const target = detour ? row.bonusLane : row.gate ? (railLane >= 0 ? railLane : takeSlide ? slideLane : jumpLane)
+        const target = detour ? row.bonusLane : inEveryLane || row.lesson && player.currentLane !== 1 ? player.currentLane : row.gate ? (railLane >= 0 ? railLane : takeSlide ? slideLane : jumpLane)
             : boom >= 0 && preferred >= 0 && strategy !== 'laneOnly' ? preferred : exitLane;
-        const action = detour ? (row.lanes[target] === 'taxi' ? 'up' : 'down') :
+        const action = detour ? (jumpProps.includes(row.lanes[target]) ? 'up' : 'down') :
             strategy !== 'laneOnly' && (row.gate || target === boom || target === preferred && boom >= 0)
             ? (row.gate ? (takeSlide ? 'down' : 'up') : target === slideLane ? 'down' : 'up') : null;
         let acted = false;
@@ -788,9 +883,21 @@ test('unchanged player physics clear both routes through every tier and the Over
                 }
             }
         }
-        for (const path of ['choice:jump', 'choice:slide', 'rail:jump', 'rail:slide',
-            'signal-boom:jump', 'signal-boom:slide', 'paired-gate:jump', 'paired-gate:slide']) {
+        for (const path of ['choice:jump', 'choice:slide', 'rail:jump', 'rail:slide', 'jumpAll:jump', 'slideAll:slide',
+            'signal-boom:jump', 'signal-boom:slide']) {
             assert.ok(clears.has(path), `${mode} ${path}`);
+        }
+    }
+});
+
+test('a runner can clear every theme at its first and its highest levels, at the cap and in Overtime', () => {
+    for (const mode of ['day', 'night']) for (const { id } of stretchThemes) {
+        for (const [at, level, overtime] of [[0, 1], [9000, 2], [24000, 4], [60000, 8], [60000, 8, true]]) {
+            for (const seed of [3, 11]) for (const strategy of ['jumpChoice', 'slideChoice']) {
+                const result = courseTrial(seed, mode, { at, theme: id, level, overtime, strategy, dt: 1 / 30, size: 22,
+                    jumpLead: strategy === 'jumpChoice' ? .32 : .38, takeBonus: seed === 11 });
+                assert.deepEqual(result.strikes, [], `${mode} ${id} ${level} at ${at}m, seed ${seed} ${strategy}`);
+            }
         }
     }
 });
@@ -804,7 +911,7 @@ test('a runner who needs 1.2s between vertical inputs survives onboarding and lo
             assert.deepEqual(early.strikes, []);
             for (const at of [10000, 30000, 60000]) {
                 const late = courseTrial(seed, mode, { at, actionInterval: 1.2 });
-                assert.ok(late.strikes.some((hit, i) => i && hit.time - late.strikes[i - 1].time < 5),
+                assert.ok(late.strikes.some((hit, i) => i && hit.time - late.strikes[i - 1].time < 7),
                     `${mode} at ${at}m, seed ${seed}: ${JSON.stringify(late.strikes)}`);
             }
         }

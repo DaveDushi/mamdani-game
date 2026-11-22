@@ -1,7 +1,11 @@
 import { policeTape, fallenPlacard, marchBarrier, tapePost, tapeBottom, placardTop } from './CivicSigns.js';
 import { horseCarriage, carriagePace, carriageAngle } from './HorseCarriage.js';
 
-const gallopPhase = [0, 2.4, .6, 1.8];
+// Hind pair, then fore pair, a beat apart on each side: a gallop rather than a trot.
+const gallopPhase = [2.5, 0, 3.1, .6];
+const GALLOP = 2 * Math.PI * 2.7;
+const BELL_FROM = -1.6, BELL_TO = -.8;
+const MERGE_FROM = -1.5, MERGE_TO = -.68;
 
 export function civicModels() {
     return { horseCarriage: horseCarriage(), policeTape: policeTape(), fallenPlacard: fallenPlacard(), marchBarrier: marchBarrier() };
@@ -15,10 +19,10 @@ export function civicGateKey(key, encounter) {
     return key;
 }
 
-export function configureCivic(obj, speed, reducedMotion) {
-    obj.approachSpeed = Math.max(12, speed || 17.5);
+export function configureCivic(obj, encounter, reducedMotion) {
+    obj.approachSpeed = Math.max(12, encounter?.approachSpeed || 17.5);
     obj.stencil ??= obj.mesh.getObjectByName('roadStencil');
-    obj.stencil.position.z = obj.approachSpeed * (obj.type === 'horseCarriage' ? .69 : .43);
+    obj.stencil.position.z = obj.approachSpeed * (obj.type === 'horseCarriage' ? .95 : .43);
     obj.stencil.castShadow = false;
     if (obj.type === 'policeTape') {
         obj.march ??= obj.mesh.getObjectByName('sidewalkMarch');
@@ -26,26 +30,61 @@ export function configureCivic(obj, speed, reducedMotion) {
     }
     if (obj.type !== 'horseCarriage') return;
     obj.carriage ??= obj.mesh.getObjectByName('carriage');
+    obj.horse ??= obj.carriage.getObjectByName('horse');
+    obj.dust ??= obj.carriage.getObjectByName('hoofDust');
+    obj.merge ??= obj.stencil.getObjectByName('mergePaint');
     obj.legs ??= ['FrontLeft','RearRight','FrontRight','RearLeft'].map(name =>
         obj.carriage.getObjectByName('leg'+name));
+    obj.shins ??= obj.legs.map(leg => leg.getObjectByName('shin'));
     obj.frontWheels ??= obj.carriage.getObjectByName('frontWheels');
     obj.backWheels ??= obj.carriage.getObjectByName('backWheels');
     obj.reducedMotion = reducedMotion;
-    obj.carriage.rotation.y = obj.mesh.position.x > 0 ? -carriageAngle : carriageAngle;
-    obj.bellRang = false;
+    obj.pace = carriagePace(obj.approachSpeed);
+    obj.mergeX = encounter?.fromLane === undefined ? 0 : (encounter.fromLane - 1) * 3 - obj.mesh.position.x;
+    obj.merge.visible = obj.mergeX !== 0;
+    obj.merge.position.set(obj.mergeX, 0, -3.4);
+    // Painted at the lane it leaves, with the arrow bent into the lane it takes.
+    obj.merge.scale.x = -Math.sign(obj.mergeX) || 1;
+    obj.bellRang = true;
     moveCarriage(obj);
+    obj.bellRang = false;
 }
 
 export function moveCarriage(obj) {
     const t = obj.mesh.position.z / obj.approachSpeed;
-    const travel = t * carriagePace;
-    obj.carriage.position.z = travel;
-    obj.frontWheels.rotation.x = obj.reducedMotion ? 0 : travel / .41;
-    obj.backWheels.rotation.x = obj.reducedMotion ? 0 : travel / .59;
-    for (let i = 0; i < obj.legs.length; i++) {
-        obj.legs[i].rotation.x = obj.reducedMotion ? .035 : .48 * Math.sin(travel * 1.65 + gallopPhase[i]);
+    const travel = t * obj.pace;
+    const { carriage, legs, shins, horse, dust } = obj;
+    carriage.position.z = travel;
+    const along = Math.max(0, Math.min(1, (t - MERGE_FROM) / (MERGE_TO - MERGE_FROM)));
+    // The lane change is finished well before the runner reaches it, so contact stays a straight sweep.
+    carriage.position.x = obj.mergeX * (1 - along * along * (3 - 2 * along));
+    const yaw = obj.mesh.position.x > 0 ? -carriageAngle : carriageAngle;
+    carriage.rotation.y = yaw - Math.sign(obj.mergeX) * .34 * Math.sin(Math.PI * along);
+    if (obj.reducedMotion) {
+        obj.frontWheels.rotation.x = obj.backWheels.rotation.x = 0;
+        horse.position.y = horse.rotation.x = 0;
+        dust.visible = false;
+        for (let i = 0; i < legs.length; i++) {
+            const reach = i % 2 ? -.2 : .2;
+            legs[i].rotation.x = -reach;
+            shins[i].rotation.x = .1;
+        }
+    } else {
+        obj.frontWheels.rotation.x = travel / .41;
+        obj.backWheels.rotation.x = travel / .59;
+        const stride = t * GALLOP;
+        for (let i = 0; i < legs.length; i++) {
+            const swing = Math.sin(stride + gallopPhase[i]);
+            legs[i].rotation.x = .78 * swing;
+            // The shin folds only while its leg is carried forward.
+            shins[i].rotation.x = .95 * Math.max(0, Math.cos(stride + gallopPhase[i]));
+        }
+        horse.position.y = .07 * Math.sin(stride * 2) + .05;
+        horse.rotation.x = .075 * Math.sin(stride + .7);
+        dust.visible = true;
+        dust.scale.setScalar(.75 + .35 * Math.sin(stride * 2 + 1));
     }
-    if (!obj.bellRang && t >= -1.33 && t < -.65) {
+    if (!obj.bellRang && t >= BELL_FROM && t < BELL_TO) {
         obj.bellRang = true;
         return true;
     }
@@ -88,7 +127,8 @@ export function civicContact(obj, runner, startX, startY) {
     const head = runner.slideTimer > 0 ? .89 : 1.87;
     if (obj.type === 'horseCarriage') {
         const sin = Math.sin(obj.carriage.rotation.y), cos = Math.cos(obj.carriage.rotation.y);
-        z0 *= 1 + carriagePace/obj.approachSpeed;
+        // The horse is back in a straight line here, closing at its own pace plus the street's.
+        z0 *= 1 + obj.pace/obj.approachSpeed;
         z1 -= obj.carriage.position.z;
         const localX0 = cos*x0-sin*z0, localX1 = cos*x1-sin*z1;
         const localZ0 = sin*x0+cos*z0, localZ1 = sin*x1+cos*z1;

@@ -1,8 +1,12 @@
-import { Group } from 'three';
+import { Group, MeshBasicMaterial } from 'three';
+import { Batch } from './Geometry.js';
 import { CivicSigns, roadStencil } from './CivicSigns.js';
 import { StreetMesh, tile } from './StreetHazardMesh.js';
+import { laneArrow } from './StretchArt.js';
 
-export const carriagePace = 8, carriageAngle = .19;
+// The horse covers its own ground toward the runner, on top of the street's pace.
+export const carriagePace = speed => Math.max(15, speed * .6);
+export const carriageAngle = .19;
 const bay = 0x98522e, chestnut = 0xaf6840, mane = 0x352820, harness = 0x3e3030;
 const ivory = 0xf5e1bc, wine = 0x782d40, brass = 0xd4a34f, iron = 0x333742;
 
@@ -52,14 +56,31 @@ function horse(m) {
     m.tube([-.105,.62,-.04],[-.15,.48,-.09],.084,mane,8,.025);
 }
 
+// Thigh and shin are separate joints, so a gallop can gather and reach.
 function leg(hind) {
-    const m = new StreetMesh();
+    const thigh = new StreetMesh(), shin = new StreetMesh();
     const hock = hind ? -.16 : .04;
-    m.tube([0,0,0],[0,-.47,hock],.127,bay,7,.081);
-    m.tube([0,-.47,hock],[0,-.78,hock+.015],.079,chestnut,7,.052);
-    m.tube([0,-.78,hock+.015],[0,-.98,.018],.056,ivory,7,.06);
-    m.tube([0,-.98,.018],[0,-1.044,.051],.068,mane,7,.093);
-    return m.finish();
+    thigh.tube([0,.04,0],[0,-.47,hock],.135,bay,7,.081);
+    shin.tube([0,0,0],[0,-.31,.015],.079,chestnut,7,.052);
+    shin.tube([0,-.31,.015],[0,-.51,.018-hock],.056,ivory,7,.06);
+    shin.tube([0,-.51,.018-hock],[0,-.574,.051-hock],.068,mane,7,.093);
+    const limb = thigh.group(), lower = shin.finish();
+    lower.name = 'shin';
+    lower.position.set(0,-.47,hock);
+    limb.add(lower);
+    return limb;
+}
+
+let dustStyle;
+function dust() {
+    const b = new Batch();
+    for (const [x,z,r] of [[-.36,.15,.26],[.33,.34,.30],[-.28,-.42,.36],[.38,-.66,.33],[.02,-.98,.42]]) {
+        b.oval(0xd8ccb4,x,r*.34,z,r,r*.36,r*1.25);
+    }
+    dustStyle ??= new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: .34, depthWrite: false });
+    const mesh = b.mesh(dustStyle);
+    mesh.name = 'hoofDust';
+    return mesh;
 }
 
 function wheelAxle(radius, x) {
@@ -122,16 +143,19 @@ function coach(m) {
 }
 
 export function horseCarriage() {
-    const m = new StreetMesh();
-    horse(m);
-    const plate = coach(m), rig = m.group();
+    const rig = new Group(), animal = new Group();
+    const body = new StreetMesh(), cab = new StreetMesh();
+    horse(body);
+    const plate = coach(cab);
     rig.name = 'carriage';
-    rig.add(plate);
+    animal.name = 'horse';
+    animal.add(body.finish());
+    rig.add(animal,cab.finish(),plate);
     for (const s of [-1,1]) for (const hind of [true,false]) {
         const limb = leg(hind);
         limb.name = 'leg' + (hind ? 'Rear' : 'Front') + (s < 0 ? 'Left' : 'Right');
         limb.position.set(s*.235,1.09,hind?.53:1.39);
-        rig.add(limb);
+        animal.add(limb);
     }
     for (const [name,r,z,x] of [['backWheels',.59,-1.96,.80],['frontWheels',.41,-.67,.75]]) {
         const axle = wheelAxle(r,x);
@@ -139,7 +163,15 @@ export function horseCarriage() {
         axle.position.set(0,r,z);
         rig.add(axle);
     }
+    const puff = dust();
+    puff.position.z = .95;
+    rig.add(puff);
+    // The stencil marks the lane to leave. A merging horse adds the lane it starts in.
+    const stencil = roadStencil('carriage'), merge = new Group();
+    merge.name = 'mergePaint';
+    merge.add(laneArrow(1,1.15));
+    stencil.add(merge);
     const root = new Group();
-    root.add(rig,roadStencil('carriage'));
+    root.add(rig,stencil);
     return root;
 }

@@ -53,17 +53,18 @@ function flagMap() {
     return map;
 }
 
-function movingMaterial(clock, map = null) {
+function movingMaterial(clock, roar, map = null) {
     const material = new THREE.MeshBasicMaterial({ map, side: THREE.DoubleSide, alphaTest: .42 });
     material.onBeforeCompile = shader => {
         shader.uniforms.cheerTime = clock;
-        shader.vertexShader = 'uniform float cheerTime; attribute vec2 cheer;\n' +
+        shader.uniforms.cheerRoar = roar;
+        shader.vertexShader = 'uniform float cheerTime; uniform float cheerRoar; attribute vec2 cheer;\n' +
             shader.vertexShader.replace('#include <begin_vertex>', `
                 #include <begin_vertex>
                 float t = cheerTime * 3.8 + cheer.x;
                 if (cheer.y >= 0.) {
                     transformed.x += sin(t) * .040 * cheer.y;
-                    transformed.y += (.5 + .5 * sin(t * 1.45)) * .068 * cheer.y;
+                    transformed.y += (.5 + .5 * sin(t * 1.45)) * (.068 + .12 * cheerRoar) * cheer.y;
                 } else {
                     float fly = -1. - cheer.y;
                     transformed.y += fly * (.062 * sin(t - fly * 5.) - .035);
@@ -87,7 +88,7 @@ function pose(plane, phase, flag) {
 }
 
 export function grandstands(scene, structure, addSign) {
-    const clock = { value: 0 };
+    const clock = { value: 0 }, roar = { value: 0 };
     const flags = new Batch();
     const face = spritePlane(1), cloth = spritePlane(8);
     const loader = new THREE.TextureLoader();
@@ -115,7 +116,7 @@ export function grandstands(scene, structure, addSign) {
         structure.box(0xe4c68c, boxX, 1.22, -2.05, 3.50, .06, .09);
         structure.box(seat, boxX, .98, -3.67, 3.48, 1.96, 1.0);
         structure.box(0xe4c68c, boxX, 1.96, -3.17, 3.50, .06, .08);
-        addSign(index + 5, side * .56, .90, -2.036, .94, .30);
+        structure.box(0xe4c68c, boxX, .62, -2.045, 3.48, .05, .02);
         fan(0, side * .52, 1.16, -2.36, 1.34);
         fan(1, side * 1.44, 1.16, -2.40, 1.34);
         fan(2, side * .99, 1.91, -3.41, 1.35);
@@ -143,7 +144,7 @@ export function grandstands(scene, structure, addSign) {
             }
             flag(side * 4.12, 1.30, z + (bay % 2 ? 1.8 : -.7), 3.18, 1.15, yaw * .6);
         }
-        const mesh = fans.mesh(movingMaterial(clock));
+        const mesh = fans.mesh(movingMaterial(clock, roar));
         mesh.name = 'Race crowd / ' + camp.art;
         mesh.visible = false;
         scene.add(mesh);
@@ -154,10 +155,10 @@ export function grandstands(scene, structure, addSign) {
             mesh.visible = true;
         }).catch(() => {}));
     }
-    const standards = flags.mesh(movingMaterial(clock, flagMap()));
+    const standards = flags.mesh(movingMaterial(clock, roar, flagMap()));
     standards.name = 'Race flags';
     scene.add(standards);
     face.dispose();
     cloth.dispose();
-    return { clock, ready: Promise.all(loads) };
+    return { clock, roar, ready: Promise.all(loads) };
 }

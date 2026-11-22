@@ -1,0 +1,161 @@
+/* Score, multiplier and the lead over Trump. Linked after the older HUD rules in style.css. */
+.run-board {
+    display: grid;
+    gap: 6px;
+    justify-items: start;
+}
+.run-metrics #metres,
+.run-metrics #food-stamps {
+    min-width: 2ch;
+}
+.run-chase {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+#hud .hud-foot { align-items: flex-end; }
+#hud .street-tag { letter-spacing: .045em; line-height: 1.08; }
+#hud #effect { flex: none; white-space: pre; letter-spacing: .02em; }
+#hud .hud-calls {
+    top: calc(max(16px, env(safe-area-inset-top)) + 119px);
+}
+#hud.is-racing .run-board,
+#hud:has(#capture-banner:not([hidden])) :is(.run-board, #race-checkpoint, #danger) {
+    display: none;
+}
+#hud:has(.race-warning:not([hidden])) #race-checkpoint {
+    display: none;
+}
+
+#multiplier {
+    --heat: #8c969b;
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #17252eec;
+    color: #d5cbaf;
+}
+#multiplier[data-level='2'] { --heat: #ffdf7a; }
+#multiplier[data-level='3'] { --heat: #ffc24d; }
+#multiplier[data-level='4'] { --heat: #ff9f43; }
+#multiplier[data-level='5'] { --heat: #ff6b4a; background: #4a1711f2; }
+#multiplier:not([data-level='1']) { color: var(--heat); }
+#multiplier svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+    fill: none;
+    stroke: #3a4850;
+    stroke-width: 5;
+}
+#multiplier-ring {
+    stroke: var(--heat);
+    stroke-dasharray: 1 2;
+    stroke-dashoffset: 1.02;
+    transition: stroke-dashoffset .1s linear;
+}
+#multiplier b {
+    font: italic 900 25px/1 Condensed, Impact, sans-serif;
+    translate: -1px -2px;
+}
+#multiplier span {
+    position: absolute;
+    bottom: 8px;
+    display: flex;
+    gap: 3px;
+}
+#multiplier span i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #53616a;
+}
+#multiplier[data-chain='1'] span i:first-child,
+#multiplier[data-chain='2'] span i {
+    background: #fff5de;
+}
+#multiplier[data-level='5'] span { visibility: hidden; }
+
+#trump-gap {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 9px 4px 4px;
+    border-radius: 3px;
+    background: #17252eec;
+    color: #fff1d5;
+    font: 700 13px/1.05 Condensed, sans-serif;
+    text-transform: uppercase;
+}
+#trump-gap i {
+    width: 29px;
+    height: 31px;
+    background: url('/art/front-page.webp') 11% 43% / 665% auto;
+}
+#trump-gap span {
+    display: grid;
+    grid-template-columns: auto auto;
+    justify-content: space-between;
+    width: 112px;
+}
+#trump-gap b {
+    color: #ffd077;
+    font-variant-numeric: tabular-nums;
+}
+#trump-gap em {
+    position: relative;
+    grid-column: 1 / -1;
+    display: block;
+    height: 6px;
+    margin-top: 5px;
+    /* One hit inside the dark red stretch ends the run. */
+    background: linear-gradient(90deg, #6e2620 45%, #35434b 45%);
+}
+#gap-lead {
+    display: block;
+    height: 100%;
+    background: #8fd8a5;
+    transform-origin: left;
+    transition: transform .1s linear;
+}
+#trump-gap em::after {
+    content: '';
+    position: absolute;
+    inset: -2px auto -2px 45%;
+    width: 2px;
+    background: #fff1d5;
+}
+#trump-gap[data-danger] {
+    background: #6f2925f5;
+}
+#trump-gap[data-danger] #gap-lead { background: #ffca67; }
+#trump-gap[data-frozen] { opacity: .62; }
+
+#danger {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at 50% 45%, transparent 56%, #7d150fb0 118%);
+    transition: opacity .35s;
+}
+
+@media (orientation: landscape) and (max-height: 430px) {
+    .run-board { grid-auto-flow: column; align-items: center; }
+    #effect { position: absolute; right: 0; bottom: 0; }
+    #multiplier { width: 44px; height: 44px; }
+    #multiplier b { font-size: 22px; }
+    #trump-gap span { width: 78px; }
+    #hud .hud-calls { top: calc(max(16px, env(safe-area-inset-top)) + 58px); }
+}
+@media (orientation: landscape) and (max-height: 430px) and (max-width: 760px) {
+    .run-metrics .pace:nth-child(2) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    #danger, #gap-lead, #multiplier-ring { transition: none; }
+}

@@ -2,6 +2,50 @@ import * as THREE from 'three';
 import { foodStampSize, roadPickup } from './PickupArt.js';
 import { cityBusModel } from './CityBusArt.js';
 
+export const pickupGlow = { fastFreeBus: 0x6fc6ff, rainbow: 0xff86d4, kafiyeh: 0xffd25e, covidMask: 0x62f0f2 };
+const FLOAT = 1.14;
+let haloMap, poolShape;
+
+// A soft disc whose color adds light while its alpha tints, so it reads on pale day
+// asphalt as well as on a wet night street.
+function glowTexture() {
+    if (haloMap) return haloMap;
+    const size = 64, data = new Uint8Array(size * size * 4);
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        const r = Math.hypot(x - 31.5, y - 31.5) / 31.5;
+        const soft = Math.max(0, 1 - r) ** 1.7;
+        const ring = Math.max(0, 1 - Math.abs(r - .62) / .16) * .34;
+        const light = Math.min(1, soft * .6 + ring);
+        const i = (y * size + x) * 4;
+        data[i] = data[i + 1] = data[i + 2] = Math.round(255 * light);
+        data[i + 3] = Math.round(255 * light * .55);
+    }
+    haloMap = new THREE.DataTexture(data, size, size);
+    haloMap.magFilter = haloMap.minFilter = THREE.LinearFilter;
+    haloMap.needsUpdate = true;
+    return haloMap;
+}
+
+function glowStyle(color) {
+    return {
+        map: glowTexture(), color, transparent: true, depthWrite: false, fog: false, toneMapped: false,
+        blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor
+    };
+}
+
+function addGlow(group, color) {
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial(glowStyle(color)));
+    halo.name = 'halo';
+    halo.position.z = -.3;
+    halo.scale.setScalar(2);
+    poolShape ??= new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+    const pool = new THREE.Mesh(poolShape, new THREE.MeshBasicMaterial(glowStyle(color)));
+    pool.name = 'glowPool';
+    pool.position.y = .045 - FLOAT;
+    pool.scale.set(2.3, 1, 2.9);
+    group.add(halo, pool);
+}
+
 function stampSizedPickup(model, angle = 0) {
     model.rotation.y = angle;
     model.castShadow = false;
@@ -43,6 +87,9 @@ export class PowerupManager {
             kafiyeh: stampSizedPickup(roadPickup('kafiyeh')),
             covidMask: stampSizedPickup(roadPickup('covidMask'))
         };
+        for (const [type, model] of Object.entries(this.models)) addGlow(model, pickupGlow[type]);
+        this.reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+        this.pulse = 0;
         this.types = Object.keys(this.models);
         this.pool = Object.fromEntries(this.types.map((type) => [type, []]));
         this.powerups = [];
@@ -58,18 +105,25 @@ export class PowerupManager {
     }
     spawnPowerup(lane, z, type = this.types[Math.floor(Math.random() * this.types.length)]) {
         const pickup = this.pool[type].pop() || { mesh: this.models[type].clone(), type };
-        pickup.mesh.position.set(lane, 1.14, z);
+        pickup.halo ??= pickup.mesh.getObjectByName('halo');
+        pickup.pool ??= pickup.mesh.getObjectByName('glowPool');
+        pickup.mesh.position.set(lane, FLOAT, z);
         pickup.previousZ = z;
         this.scene.add(pickup.mesh);
         this.powerups.push(pickup);
     }
     update(dt, speed) {
+        if (!this.reducedMotion) this.pulse = (this.pulse + dt * 3.4) % (2 * Math.PI);
+        const breath = Math.sin(this.pulse);
         for (let i = this.powerups.length - 1; i >= 0; i--) {
             const pickup = this.powerups[i];
             const m = pickup.mesh;
             pickup.previousZ = m.position.z;
             m.position.z += speed * dt;
-            m.position.y = 1.15 + 0.095 * Math.sin(m.position.z * 0.27);
+            m.position.y = this.reducedMotion ? FLOAT : 1.15 + 0.095 * Math.sin(m.position.z * 0.27);
+            pickup.pool.position.y = .045 - m.position.y;
+            pickup.halo.scale.setScalar(2 + .2 * breath);
+            pickup.pool.scale.set(2.3 - .14 * breath, 1, 2.9 - .18 * breath);
             if (pickup.previousZ > 10) this.remove(i);
         }
     }

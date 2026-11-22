@@ -29,8 +29,12 @@ export class Heatwave {
         }
     }
 
-    get streakReward() {
+    get styleBoost() {
         return this.active ? 2 : 1;
+    }
+
+    get streakReward() {
+        return this.active ? 5 : 1;
     }
 
     get active() {

@@ -12,13 +12,15 @@ test('heatwaves start beyond onboarding and hold the full streak window through 
     assert.equal(round.update(35, 950, false), undefined);
     assert.equal(round.update(0, 950, true), undefined);
     assert.equal(round.update(1 / 60, 950, true), 'start');
-    assert.equal(round.streakReward, 2);
+    assert.equal(round.streakReward, 5);
+    assert.equal(round.styleBoost, 2);
     round.update(5, 1100, true);
     round.update(100, 5400, false);
     assert.equal(round.remaining, HEATWAVE_SECONDS - 5);
     assert.equal(round.streakReward, 1);
+    assert.equal(round.styleBoost, 1);
     round.update(0, 5400, true);
-    assert.equal(round.streakReward, 2);
+    assert.equal(round.streakReward, 5);
     assert.equal(round.update(11, 5700, true), 'end');
     assert.equal(round.streakReward, 1);
     round.update(100, 6000, false);

@@ -23,8 +23,8 @@ def text(word, box, color):
 d.rectangle((0, 0, 767, 95), fill=gold)
 d.rectangle((0, 5, 767, 10), fill=ink)
 d.rectangle((0, 85, 767, 90), fill=ink)
-text("NYPD", (24, 21, 193, 76), ink)
-text("POLICE LINE", (255, 18, 739, 78), ink)
+text("POLICE", (24, 21, 193, 76), ink)
+text("DO NOT CROSS", (255, 18, 739, 78), ink)
 for x in (210, 225):
     d.polygon([(x, 74), (x+10, 21), (x+19, 21), (x+9, 74)], fill=ink)
 
@@ -70,8 +70,7 @@ text("PARK", (567,356,714,388), gold)
 d.rectangle((0,410,767,511), fill="#194b7b")
 d.rectangle((0,417,767,423), fill=cream)
 d.rectangle((0,496,767,502), fill=cream)
-text("NYPD", (21,436,198,485), cream)
-text("STREET CLOSED", (243,437,744,484), cream)
+text("STREET CLOSED", (64,436,704,485), cream)
 
 atlas.save(Path(__file__).resolve().parents[1] / "public/art/civic-signs.webp",
            method=6, lossless=True)

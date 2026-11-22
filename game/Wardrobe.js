@@ -86,16 +86,18 @@ export class Wardrobe {
         const w = innerWidth;
         const h = innerHeight;
         const portrait = matchMedia('(max-aspect-ratio: 4/5)').matches;
-        const x = portrait ? 0 : -0.65;
+        const { left, top, width, height } = this.preview.getBoundingClientRect();
+        if (width <= 0 || height <= 0) return;
+        let x = 0;
         if (portrait) {
-            const { left, top, width, height } = this.preview.getBoundingClientRect();
-            if (width <= 0 || height <= 0) return;
             const inset = Math.min(8, height / 8);
             // Fit the character inside the preview while drawing the backdrop across the canvas.
             this.camera.setViewOffset(width, height - 2 * inset, -left, -(top + inset), w, h);
         } else {
             this.camera.aspect = w / h;
             this.camera.clearViewOffset();
+            // Stand the character in the middle of the free street beside the panel.
+            x = (1 - 2 * (left + width / 2) / w) * this.camera.aspect * 3.87 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
         }
         this.camera.position.set(x, 1.37, 3.87);
         this.camera.lookAt(x, 1.02, 0);

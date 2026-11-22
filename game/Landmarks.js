@@ -136,7 +136,7 @@ function theatre(b, group) {
     }
     sign(
         group,
-        ['UNION SQUARE   •   RENT: THE MUSICAL'],
+        ['UNION SQUARE   •   RENT: THE HEARING'],
         '#f0ddad',
         '#552f2b',
         0,

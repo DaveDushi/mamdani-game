@@ -6,6 +6,7 @@ import { encounterModels } from './StreetEncounterArt.js';
 import { configureEncounter, encounterContact, moveEncounter } from './StreetEncounters.js';
 import { rentIceModel, touchesRentIce } from './RentIce.js';
 import { civicContact, civicGateKey, civicModels, configureCivic, moveCarriage } from './CivicEncounters.js';
+import { fairClearance, stretchBounds, stretchModels } from './StretchArt.js';
 
 const MIN_LOOKAHEAD = 83;
 const bounds = {
@@ -15,21 +16,24 @@ const bounds = {
     protestor: [0.51, 2.8, 0.33],
     alcohol: [0.25, 1.02, 0.25],
     coin: [0.47, 0.4, 0.24],
-    ...skillGateBounds
+    ...skillGateBounds,
+    ...stretchBounds
 };
 const floorClearance = {
     halal: 1.36,
     scaffold: 1.36,
     slideGate: slideClearance,
-    railGate: railClearance
+    railGate: railClearance,
+    fairBanner: fairClearance
 };
+const jumpProps = new Set(['taxi', 'trashPile']);
 
 export class ObstacleManager {
     constructor(scene, powerups, cast) {
         this.scene = scene;
         this.powerups = powerups;
         this.reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-        this.models = { ...streetProps(cast), ...skillGateModels(), ...courseCueModels(), ...encounterModels(), ...civicModels(), rentIce: rentIceModel() };
+        this.models = { ...streetProps(cast), ...skillGateModels(), ...courseCueModels(), ...encounterModels(), ...civicModels(), ...stretchModels(), rentIce: rentIceModel() };
         for (const [key, g] of Object.entries(this.models)) {
             if (key !== 'coin' && key !== 'rentIce' && !key.endsWith('Cue'))
                 g.traverse((part) => {
@@ -39,6 +43,7 @@ export class ObstacleManager {
         this.pool = Object.fromEntries(Object.keys(this.models).map((key) => [key, []]));
         this.obstacles = [];
         this.previewRows = [];
+        this.stretches = [];
     }
     add(key, x, z, height = 1.02, encounter = null) {
         const obj = this.pool[key].pop() || {
@@ -64,7 +69,7 @@ export class ObstacleManager {
         }
         obj.moving = key === 'deliveryDolly' || key === 'signalBoom';
         if (obj.moving) configureEncounter(obj, encounter, this.reducedMotion);
-        if (obj.civic) configureCivic(obj, encounter?.approachSpeed, this.reducedMotion);
+        if (obj.civic) configureCivic(obj, encounter, this.reducedMotion);
         this.scene.add(obj.mesh);
         this.obstacles.push(obj);
         return obj;
@@ -74,21 +79,31 @@ export class ObstacleManager {
         this.scene.remove(obj.mesh);
         this.pool[obj.key].push(obj);
     }
-    reset(mode = 'day', random = Math.random, isOvertime) {
+    reset(mode = 'day', random = Math.random, isOvertime, firstRun = false) {
         for (let i = this.obstacles.length - 1; i >= 0; i--) this.remove(i);
         this.previousRunnerX = this.previousRunnerY = 0;
-        this.course = streetCourse(random, mode, isOvertime);
+        this.course = streetCourse(random, mode, isOvertime, firstRun);
         this.previewRows = [];
-        this.nextRow = this.course.next().value;
+        this.stretches = [];
+        this.nextRow = this.pullRow();
         this.fillCourse(0);
         this.lastStunt = null;
         this.slippedOnIce = false;
     }
+    pullRow() {
+        const row = this.course.next().value;
+        if (row?.stretch && this.stretches?.at(-1) !== row.stretch) this.stretches.push(row.stretch);
+        return row;
+    }
+    stretchAt(distance) {
+        while (this.stretches.length && this.stretches[0].until < distance) this.stretches.shift();
+        const stretch = this.stretches[0];
+        return stretch && stretch.at <= distance ? stretch : null;
+    }
     peekRowsThrough(distance) {
-        while ((this.previewRows.at(-1) ?? this.nextRow).distance < distance) {
-            this.previewRows.push(this.course.next().value);
-        }
-        return [this.nextRow, ...this.previewRows];
+        while ((this.previewRows.at(-1) ?? this.nextRow).distance < distance) this.previewRows.push(this.pullRow());
+        // Loose stamps leave the road open, so they never close a curb cut.
+        return [this.nextRow, ...this.previewRows].filter(row => !row.trail);
     }
     markLane(x, z, row, cue = 'laneCue') {
         const leads = row.gate ? [4, 3] : [3, 2];
@@ -103,11 +118,17 @@ export class ObstacleManager {
         while (this.nextRow.distance <= distance + horizon) {
             const row = this.nextRow;
             const z = distance - row.distance;
-            if (row.gate) {
+            if (row.lesson) {
+                const cue = this.add(row.lesson.cue, 0, z + row.lesson.lead);
+                cue.cueLead = row.lesson.lead;
+            }
+            if (row.trail) {
+                row.trail.forEach((lane, i) => this.add('coin', (lane - 1) * 3, z - i * row.spacing));
+            } else if (row.gate) {
                 const gate = { hit: false, lanes: row.lanes };
                 row.lanes.forEach((key, lane) => {
                     const x = (lane - 1) * 3;
-                    const model = key !== 'gateBlock' && row.streetProp ? row.streetProp : civicGateKey(key, row.encounter);
+                    const model = row.skin?.[key] ?? civicGateKey(key, row.encounter);
                     const obstacle = this.add(model, x, z, 1.02, row.encounter);
                     obstacle.gate = gate;
                     if (key === 'gateBlock') return;
@@ -131,8 +152,10 @@ export class ObstacleManager {
                     if (!key || (open && lane === row.exitLane)) return;
                     const x = (lane - 1) * 3;
                     const obstacle = this.add(key, x, z, 1.02, row.encounter);
+                    const guide = obstacle.mesh.getObjectByName('tutorialSign');
+                    if (guide) guide.visible = false;
                     if (lane === row.bonusLane) {
-                        const jump = key === 'taxi';
+                        const jump = jumpProps.has(key);
                         const height = jump ? 2.42 : .55;
                         this.markLane(x, z, row, jump ? 'jumpCue' : 'slideCue');
                         this.add('coin', x, z + row.cueStep, height);
@@ -144,8 +167,6 @@ export class ObstacleManager {
                         this.add('coin', x, z, jump ? 2.42 : .54);
                     } else if (lane === row.exitLane) {
                         const jump = key === 'jumpGate';
-                        const guide = obstacle.mesh.getObjectByName('tutorialSign');
-                        if (guide) guide.visible = false;
                         this.markLane(x, z, row, jump ? 'jumpCue' : 'slideCue');
                         this.add('coin', x, z, jump ? 2.42 : .55);
                     }
@@ -159,7 +180,7 @@ export class ObstacleManager {
                 const x = (row.pickupLane - 1) * 3;
                 this.powerups.spawnPowerup(x, z, row.pickup);
             }
-            this.nextRow = this.previewRows.shift() ?? this.course.next().value;
+            this.nextRow = this.previewRows.shift() ?? this.pullRow();
         }
     }
     clear() {
@@ -277,7 +298,7 @@ export class ObstacleManager {
             }
             if (p.y + 0.09 > h) {
                 if (obj.type === 'taxi') obj.stunt = 'cab';
-                if (obj.type === 'jumpGate' || obj.type === 'railGate') obj.stunt = 'jump';
+                if (obj.type === 'jumpGate' || obj.type === 'railGate' || obj.type === 'trashPile') obj.stunt = 'jump';
                 continue;
             }
             const clearance = floorClearance[obj.type] ?? 0;

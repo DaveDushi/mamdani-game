@@ -1,14 +1,17 @@
 import { BoxGeometry, Color, InstancedMesh, MeshBasicMaterial, Object3D } from 'three';
 import { dollyDepth, dollyWidth } from './StreetEncounterArt.js';
 import { skillGateBounds } from './SkillGates.js';
+import { powerupSeconds } from './Progression.js';
 
-export const busSeconds = 10;
-const maxFare = 3, nose = -3.75, tail = 1.79, halfWidth = 1.06;
+export const busSeconds = powerupSeconds('fastFreeBus');
+export const maxFare = 8;
+const nose = -3.75, tail = 1.79, halfWidth = 1.06;
 // Half-width, forward depth and impact color of unoccupied vehicles and worksite equipment.
 const solids = {
     taxi: [.83,1.66,0xf3b52b], halal: [1.2,.8,0xb7bdaf], scaffold: [1.21,.8,0x6f967c],
     deliveryDolly: [dollyWidth,dollyDepth,0xd3a16c], signalBoom: [1.42,.4,0xf3ae49],
-    fallenPlacard: [1.22,.45,0xd9bd8d], policeTape: [1.4,.35,0xe9c155]
+    fallenPlacard: [1.22,.45,0xd9bd8d], policeTape: [1.4,.35,0xe9c155],
+    trashPile: [1.2,.6,0x47504f], fairBanner: [1.42,.3,0xd8614a]
 };
 for (const [key, dimensions] of Object.entries(skillGateBounds)) {
     solids[key] = [dimensions[0], dimensions[2], key === 'gateBlock' ? 0x48846c : 0xf09d4c];
@@ -45,6 +48,7 @@ export class BusRide {
         scene.add(model);
         this.active = false;
         this.cameraBlend = 0;
+        this.smashed = 0;
         // One pooled draw for the broken panels. All pieces start at the actual contact point.
         this.fragments = new InstancedMesh(new BoxGeometry(),new MeshBasicMaterial(),12);
         this.fragments.frustumCulled = false;
@@ -56,11 +60,11 @@ export class BusRide {
         scene.add(this.fragments);
         this.model.visible = this.fragments.visible = false;
     }
-    board(player) {
+    board(player, seconds = busSeconds) {
         if (this.active) return;
         this.active = this.model.visible = true;
-        player.fastFreeBusTimer = busSeconds;
-        this.earned = 0;
+        player.fastFreeBusTimer = seconds;
+        this.earned = this.smashed = 0;
         this.lastX = this.model.position.x = player.mesh.position.x;
         player.mesh.position.y = player.ySpeed = player.slideTimer = player.buffer = 0;
         player.isGrounded = true;
@@ -111,6 +115,7 @@ export class BusRide {
         this.model.position.x = x;
         this.model.rotation.y = reduced ? 0 : -.07 * player.bank;
         let fare = 0;
+        this.smashed = 0;
         for (let i=traffic.obstacles.length-1; i>=0; i--) {
             const obj = traffic.obstacles[i], p = obj.mesh.position;
             if (obj.type === 'protestor' || obj.type === 'horseCarriage') {
@@ -132,9 +137,12 @@ export class BusRide {
                 this.burst(contactX,Math.max(nose,Math.min(tail,p.z)),solid[2]);
                 this.fragments.visible = true;
             }
-            if (this.earned < maxFare && !obj.gate?.busPaid) {
-                this.earned++;
-                fare++;
+            if (!obj.gate?.busPaid) {
+                this.smashed++;
+                if (this.earned < maxFare) {
+                    this.earned++;
+                    fare++;
+                }
                 if (obj.gate) obj.gate.busPaid = true;
             }
             clearBarrier(traffic,i);

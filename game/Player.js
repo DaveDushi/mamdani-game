@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { RunnerModel } from './RunnerModel.js';
 import { StumbleReaction } from './StumbleReaction.js';
 import { Batch } from './Geometry.js';
+import { powerupSeconds } from './Progression.js';
 
 let contactMap;
 export function groundShadow(scene, w, d) {
@@ -102,6 +103,7 @@ export class Player {
         this.confusionTimer = 0;
         this.iceTimer = 0;
         this.hitTime = 0;
+        this.powerLevels = {};
         this.kafiyehTimer = this.rainbowTimer = this.covidMaskTimer = 0;
         this.updateWearables();
         this.flagAura.visible = this.bottleStars.visible = false;
@@ -118,12 +120,8 @@ export class Player {
     }
 
     activatePowerup(type) {
-        if (type === 'kafiyeh') this.kafiyehTimer = 5;
-        if (type === 'rainbow') {
-            this.rainbowTimer = 7;
-            this.confusionTimer = 0;
-        }
-        if (type === 'covidMask') this.covidMaskTimer = 3;
+        this[type + 'Timer'] = powerupSeconds(type, this.powerLevels[type]);
+        if (type === 'rainbow') this.confusionTimer = 0;
         this.updateWearables();
     }
 
@@ -165,7 +163,9 @@ export class Player {
         const reverse = this.confusionTimer > 0;
         const side = Number(input.isJustPressed('right')) - Number(input.isJustPressed('left'));
         if (this.iceTimer <= 0) {
-            this.currentLane = THREE.MathUtils.clamp(this.currentLane + side * (reverse ? -1 : 1), 0, 2);
+            const lane = THREE.MathUtils.clamp(this.currentLane + side * (reverse ? -1 : 1), 0, 2);
+            if (lane !== this.currentLane) this.events.push('whoosh');
+            this.currentLane = lane;
         }
         this.iceTimer = Math.max(0, this.iceTimer - dt);
         const targetX = parkRide?.active ? parkRide.laneX(this.currentLane) : (this.currentLane - 1) * 3;
@@ -211,7 +211,10 @@ export class Player {
         this.effort = 1 - Math.exp(-speed / 34);
         const stride = 1.48 + .64 * this.effort;
         const transfer = this.slideTimer > 0 ? 1 : 1 - .9 * this.slidePose;
+        const footfall = Math.floor(this.phase / Math.PI);
         this.phase += dt * 2 * Math.PI * stride * transfer;
+        if (this.isGrounded && wasGrounded && this.slidePose < .1 && !parkRide?.active &&
+            Math.floor(this.phase / Math.PI) !== footfall) this.events.push('step');
         if (!this.isGrounded) {
             this.jumpSample = .77 * THREE.MathUtils.clamp((8.9 - this.ySpeed) / 17.8, 0, 1);
             this.jumpWeight += (1 - this.jumpWeight) * (1 - Math.exp(-31 * dt));

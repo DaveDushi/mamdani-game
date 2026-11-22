@@ -1,11 +1,34 @@
-import { OPENING_RECORD_METRES, SEASON } from './season-rules.js';
+import {
+    FINAL_FLOOR_POINTS, HEAD_START_POINTS, MAX_POINTS, POINTS_PER_SECOND, SEASON, TICKET_MS
+} from './season-rules.js';
 
 export { SEASON };
 export const PREFIX = '/seasons/' + SEASON + '/';
+const PLAYER_TICKETS = 20;
 
 const recordQuery = 'SELECT MAX(score) AS record FROM season_scores WHERE season = ?1 AND score > 0';
 const improveScore = `ON CONFLICT(season, player_id) DO UPDATE SET score = excluded.score, created_at = excluded.created_at
     WHERE excluded.score > season_scores.score`;
+
+const earned = (score, now) => `started_at > ${now} - ${TICKET_MS}
+    AND ${score} <= ${HEAD_START_POINTS} + (${now} - started_at) * ${POINTS_PER_SECOND} / 1000`;
+
+function earnedBy(run, score, now) {
+    return score <= HEAD_START_POINTS + (now - run.started_at) * POINTS_PER_SECOND / 1000;
+}
+
+function expired(run, now) {
+    return now - run.started_at >= TICKET_MS;
+}
+
+function refuse(status, error) {
+    return { status, body: { ok: false, error } };
+}
+
+function cleanText(value, length) {
+    const text = typeof value === 'string' ? value.trim() : null;
+    return text === null || text.length > length || /[\p{Cc}\p{Cf}]/u.test(text) ? null : text;
+}
 
 function response(data, status) {
     const headers = {
@@ -16,23 +39,28 @@ function response(data, status) {
     return data === null ? new Response(null, { status, headers }) : Response.json(data, { status, headers });
 }
 
-function validId(id) {
-    return typeof id === 'string' && id.length > 0 && id.length <= 128 && /^[a-zA-Z0-9_-]+$/.test(id);
-}
-
-async function iosPlayerId(key) {
+async function playerId(key, platform) {
     if (typeof key !== 'string' || !/^[a-f0-9]{64}$/.test(key)) return null;
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key));
-    return 'ios_' + Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+    return platform + '_' + Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
+// deleted_ios_players holds the digests of deleted web players too.
 function ensurePlayer(db, id) {
-    if (id.startsWith('ios_')) {
-        return db.prepare(`INSERT INTO players (player_id)
-            SELECT ?1 WHERE NOT EXISTS (SELECT 1 FROM deleted_ios_players WHERE player_id = ?1)
-            ON CONFLICT(player_id) DO NOTHING`).bind(id);
-    }
-    return db.prepare('INSERT INTO players (player_id) VALUES (?) ON CONFLICT(player_id) DO NOTHING').bind(id);
+    return db.prepare(`INSERT INTO players (player_id)
+        SELECT ?1 WHERE NOT EXISTS (SELECT 1 FROM deleted_ios_players WHERE player_id = ?1)
+        ON CONFLICT(player_id) DO NOTHING`).bind(id);
+}
+
+function ensureTicketHolder(db, id, ticket) {
+    return db.prepare(`INSERT INTO players (player_id)
+        SELECT player_id FROM run_tickets WHERE ticket = ?1 AND player_id = ?2 AND season = ?3
+        ON CONFLICT(player_id) DO NOTHING`).bind(ticket, id, SEASON);
+}
+
+function findTicket(db, id, ticket) {
+    return db.prepare(`SELECT mode, started_at, final_score FROM run_tickets
+        WHERE ticket = ?1 AND player_id = ?2 AND season = ?3`).bind(ticket, id, SEASON);
 }
 
 function standing(db, id) {
@@ -50,46 +78,147 @@ function scoreResult(row) {
     return { ok: true, bestScore: row.bestScore, rank: row.rank, onLeaderboard: row.rank <= 50 };
 }
 
-async function submit(db, playerId, score) {
-    const [, , result] = await db.batch([
-        ensurePlayer(db, playerId),
-        db.prepare(`INSERT INTO season_scores (season, player_id, score, created_at)
-            SELECT ?1, player_id, ?3, ?4 FROM players WHERE player_id = ?2
-            ${improveScore}`).bind(SEASON, playerId, score, Date.now()),
-        standing(db, playerId)
+async function startRun(db, id, mode) {
+    const now = Date.now();
+    // Expired tickets linger for a while so that a late retry still gets its original answer.
+    const [, , issued] = await db.batch([
+        db.prepare('DELETE FROM run_tickets WHERE started_at < ?1').bind(now - 2 * TICKET_MS),
+        db.prepare(`DELETE FROM run_tickets WHERE ticket IN (SELECT ticket FROM run_tickets
+            WHERE player_id = ?1 ORDER BY started_at DESC, rowid DESC LIMIT -1 OFFSET ?2)`).bind(id, PLAYER_TICKETS - 1),
+        db.prepare(`INSERT INTO run_tickets (ticket, season, player_id, mode, started_at)
+            SELECT ?1, ?2, ?3, ?4, ?5 WHERE NOT EXISTS (SELECT 1 FROM deleted_ios_players WHERE player_id = ?3)
+            RETURNING ticket`).bind(crypto.randomUUID(), SEASON, id, mode, now)
     ]);
-    return scoreResult(result.results[0]);
+    const row = issued.results[0];
+    return row ? { status: 200, body: { ok: true, ticket: row.ticket } } : refuse(410, 'Profile deleted');
 }
 
-async function claim(db, playerId, attemptId, score) {
-    // The comparison and insert share one D1 transaction. A winning attempt has one durable receipt.
-    const [, , , decision, latest] = await db.batch([
-        ensurePlayer(db, playerId),
+async function submit(db, id, { ticket, score, mode }) {
+    const now = Date.now();
+    const [, , , found, result] = await db.batch([
+        ensureTicketHolder(db, id, ticket),
+        db.prepare(`UPDATE run_tickets SET final_score = ?3
+            WHERE ticket = ?1 AND player_id = ?2 AND season = ?4 AND mode = ?5 AND final_score IS NULL
+                AND ${earned('?3', '?6')}`).bind(ticket, id, score, SEASON, mode, now),
+        db.prepare(`INSERT INTO season_scores (season, player_id, score, created_at)
+            SELECT season, player_id, final_score, ?6 FROM run_tickets
+            WHERE ticket = ?1 AND player_id = ?2 AND season = ?4 AND mode = ?5 AND final_score = ?3
+                AND started_at > ?6 - ${TICKET_MS}
+            ${improveScore}`).bind(ticket, id, score, SEASON, mode, now),
+        findTicket(db, id, ticket),
+        standing(db, id)
+    ]);
+    const run = found.results[0];
+    if (!run || run.mode !== mode) return refuse(403, 'Unknown run ticket');
+    if (run.final_score === null) {
+        return expired(run, now) ? refuse(410, 'Run ticket expired') : refuse(422, 'Score too high for the length of the run');
+    }
+    if (run.final_score !== score) return refuse(409, 'This run already has a final score');
+    return { status: 200, body: scoreResult(result.results[0]) };
+}
+
+async function claim(db, id, { ticket, score, mode }) {
+    const now = Date.now();
+    // The comparison and insert share one D1 transaction. A winning run has one durable receipt.
+    const [, , , decision, latest, found] = await db.batch([
+        ensureTicketHolder(db, id, ticket),
         db.prepare(`INSERT INTO season_claims (season, player_id, attempt_id, score, previous_record)
-            SELECT ?1, ?2, ?3, ?4, record FROM (${recordQuery}) WHERE ?4 > MAX(COALESCE(record, 0), ?5)
-                AND EXISTS (SELECT 1 FROM players WHERE player_id = ?2)
-            ON CONFLICT(season, player_id, attempt_id) DO NOTHING`).bind(SEASON, playerId, attemptId, score, OPENING_RECORD_METRES),
+            SELECT season, player_id, ticket, ?1, record FROM run_tickets,
+                (SELECT MAX(score) AS record FROM season_scores WHERE season = ?2 AND score > 0)
+            WHERE ticket = ?3 AND player_id = ?4 AND season = ?2 AND mode = ?5 AND final_score IS NULL
+                AND ${earned('?1', '?6')} AND ?1 > MAX(COALESCE(record, 0), ?7)
+            ON CONFLICT(season, player_id, attempt_id) DO NOTHING`)
+            .bind(score, SEASON, ticket, id, mode, now, FINAL_FLOOR_POINTS),
         db.prepare(`INSERT INTO season_scores (season, player_id, score, created_at)
             SELECT season, player_id, score, ?4 FROM season_claims
             WHERE season = ?1 AND player_id = ?2 AND attempt_id = ?3
-            ${improveScore}`).bind(SEASON, playerId, attemptId, Date.now()),
-        db.prepare(`SELECT score, previous_record FROM season_claims
-            WHERE season = ?1 AND player_id = ?2 AND attempt_id = ?3`).bind(SEASON, playerId, attemptId),
-        db.prepare(recordQuery).bind(SEASON)
+            ${improveScore}`).bind(SEASON, id, ticket, now),
+        db.prepare(`SELECT previous_record FROM season_claims
+            WHERE season = ?1 AND player_id = ?2 AND attempt_id = ?3`).bind(SEASON, id, ticket),
+        db.prepare(recordQuery).bind(SEASON),
+        findTicket(db, id, ticket)
     ]);
     const receipt = decision.results[0];
+    const run = found.results[0];
     const record = latest.results[0].record;
-    return { ok: true, qualified: !!receipt, previousRecord: receipt ? receipt.previous_record : record, record };
+    if (!receipt) {
+        if (!run || run.mode !== mode) return refuse(403, 'Unknown run ticket');
+        if (run.final_score !== null) return refuse(409, 'This run already has a final score');
+        if (expired(run, now)) return refuse(410, 'Run ticket expired');
+        if (!earnedBy(run, score, now)) return refuse(422, 'Score too high for the length of the run');
+    }
+    return {
+        status: 200,
+        body: { ok: true, qualified: !!receipt, previousRecord: receipt ? receipt.previous_record : record, record }
+    };
 }
 
-async function deleteIosPlayer(db, playerId) {
+async function deletePlayer(db, id) {
     // Keep the one-way digest so that a late score upload cannot restore deleted data.
     await db.batch([
-        db.prepare('INSERT OR IGNORE INTO deleted_ios_players (player_id) VALUES (?1)').bind(playerId),
-        db.prepare('DELETE FROM season_claims WHERE player_id = ?1').bind(playerId),
-        db.prepare('DELETE FROM season_scores WHERE player_id = ?1').bind(playerId),
-        db.prepare('DELETE FROM players WHERE player_id = ?1').bind(playerId)
+        db.prepare('INSERT OR IGNORE INTO deleted_ios_players (player_id) VALUES (?1)').bind(id),
+        ...['run_tickets', 'season_claims', 'season_scores', 'feedback', 'players']
+            .map(table => db.prepare(`DELETE FROM ${table} WHERE player_id = ?1`).bind(id))
     ]);
+    return { status: 200, body: { ok: true } };
+}
+
+async function saveProfile(db, id, body, ios) {
+    const name = cleanText(body.name, 15);
+    if (name === null) return refuse(400, 'Invalid leaderboard name');
+    const social = ios ? '' : cleanText(body.social ?? '', 20);
+    if (social === null) return refuse(400, 'Invalid social handle');
+    const [, updated] = await db.batch([
+        ensurePlayer(db, id),
+        db.prepare('UPDATE players SET name = ?2, social = ?3, is_pwa = ?4 WHERE player_id = ?1 RETURNING 1')
+            .bind(id, name || null, social || null, body.isPwa === true ? 1 : 0)
+    ]);
+    return updated.results.length ? { status: 200, body: { ok: true } } : refuse(410, 'Profile deleted');
+}
+
+async function sendFeedback(db, id, text) {
+    const message = typeof text === 'string' ? text.trim() : '';
+    if (!message || message.length > 4000) return refuse(400, 'A message of up to 4000 characters is required');
+    const [, saved] = await db.batch([
+        ensurePlayer(db, id),
+        db.prepare(`INSERT INTO feedback (player_id, message, created_at)
+            SELECT player_id, ?2, ?3 FROM players WHERE player_id = ?1 RETURNING 1`).bind(id, message, Date.now())
+    ]);
+    return saved.results.length ? { status: 200, body: { ok: true } } : refuse(410, 'Profile deleted');
+}
+
+async function leaderboard(db, requested, owner) {
+    const limit = Math.min(50, Math.max(1, Number.parseInt(requested ?? '50', 10) || 50));
+    const { results } = await db.prepare(`SELECT s.player_id, NULLIF(TRIM(p.name), '') AS name,
+            CASE WHEN TRIM(p.name) != '' THEN p.social END AS social, s.score, s.created_at
+        FROM season_scores s JOIN players p USING (player_id)
+        WHERE s.season = ?1 AND s.score > 0
+        ORDER BY s.score DESC, s.created_at, s.player_id LIMIT ?2`).bind(SEASON, limit).all();
+    // Stored IDs stay on the server. A caller with a key learns only which row is its own.
+    return results.map(({ player_id, name, social, score, created_at }) => ({
+        ...(player_id.startsWith('ios_') ? { name: name ?? 'iPhone runner' } : { name: name ?? 'Anonymous', social }),
+        score,
+        created_at,
+        ...(player_id === owner && { you: true })
+    }));
+}
+
+const posts = new Set(['run', 'score', 'record/claim', 'leaderboard', 'profile', 'feedback', 'delete']);
+
+async function post(db, path, id, body, ios) {
+    if (path === 'leaderboard') return { status: 200, body: { entries: await leaderboard(db, body.limit, id) } };
+    if (path === 'profile') return saveProfile(db, id, body, ios);
+    if (path === 'feedback') return sendFeedback(db, id, body.message);
+    if (path === 'delete') return deletePlayer(db, id);
+    if (!['day', 'night'].includes(body.mode)) return refuse(400, 'Unknown run mode');
+    if (path === 'run') return startRun(db, id, body.mode);
+    if (typeof body.ticket !== 'string' || !/^[a-f0-9-]{36}$/.test(body.ticket)) {
+        return refuse(403, 'A run ticket is required. Update the game to post scores.');
+    }
+    if (!Number.isSafeInteger(body.score) || body.score < 0) return refuse(400, 'A nonnegative integer score is required');
+    if (body.score > MAX_POINTS) return refuse(422, 'Score out of range');
+    if (path === 'score') return submit(db, id, body);
+    return body.score > 0 ? claim(db, id, body) : refuse(400, 'A positive score is required');
 }
 
 export async function seasonRequest(request, env) {
@@ -106,57 +235,16 @@ export async function seasonRequest(request, env) {
             return reply({ ok: true, record });
         }
         if (path === 'leaderboard') {
-            const limit = Math.min(50, Math.max(1, Number.parseInt(url.searchParams.get('limit') ?? '50', 10) || 50));
-            if (ios) {
-                const { results } = await db.prepare(`SELECT score FROM season_scores
-                    WHERE season = ?1 AND score > 0
-                    ORDER BY score DESC, created_at, player_id LIMIT ?2`).bind(SEASON, limit).all();
-                return reply({ entries: results });
-            }
-            const { results } = await db.prepare(`SELECT s.player_id, NULLIF(TRIM(p.name), '') AS name,
-                    CASE WHEN TRIM(p.name) != '' THEN p.social END AS social, s.score, s.created_at
-                FROM season_scores s JOIN players p USING (player_id)
-                WHERE s.season = ?1 AND s.score > 0
-                ORDER BY s.score DESC, s.created_at, s.player_id LIMIT ?2`).bind(SEASON, limit).all();
-            return reply({ entries: results.map(entry => entry.player_id.startsWith('ios_')
-                ? { name: entry.name ?? 'iPhone runner', score: entry.score, created_at: entry.created_at }
-                : { ...entry, name: entry.name ?? 'Anonymous' }) });
-        }
-        if (!ios && path === 'score') {
-            const id = url.searchParams.get('playerId');
-            if (!validId(id) || id.startsWith('ios_')) return reply({ error: 'Invalid player ID' }, 400);
-            return reply(scoreResult(await standing(db, id).first()));
+            const entries = await leaderboard(db, url.searchParams.get('limit'));
+            return reply({ entries: ios ? entries.map(({ score }) => ({ score })) : entries });
         }
     }
-    if (request.method === 'POST' && (path === 'score' || path === 'record/claim' ||
-        (ios && (path === 'delete' || path === 'profile')))) {
+    if (request.method === 'POST' && posts.has(path) && !(ios && path === 'feedback')) {
         const body = await request.json().catch(() => null);
-        const id = ios ? await iosPlayerId(body?.key) : body?.playerId;
-        if (!validId(id) || (!ios && id.startsWith('ios_'))) return reply({ error: 'Invalid player ID' }, 400);
-        if (path === 'delete') {
-            await deleteIosPlayer(db, id);
-            return reply({ ok: true });
-        }
-        if (path === 'profile') {
-            const name = typeof body.name === 'string' ? body.name.trim() : null;
-            if (name === null || name.length > 15 || /[\p{Cc}\p{Cf}]/u.test(name)) {
-                return reply({ error: 'Invalid leaderboard name' }, 400);
-            }
-            const [, updated] = await db.batch([
-                ensurePlayer(db, id),
-                db.prepare('UPDATE players SET name = ?2 WHERE player_id = ?1 RETURNING 1').bind(id, name || null)
-            ]);
-            return updated.results.length ? reply({ ok: true }) : reply({ error: 'Profile deleted' }, 410);
-        }
-        if (!Number.isSafeInteger(body.score) || body.score < 0) {
-            return reply({ error: 'A player ID and a nonnegative integer distance are required' }, 400);
-        }
-        if (body.mode !== undefined && !['day', 'night'].includes(body.mode)) return reply({ error: 'Unknown run mode' }, 400);
-        if (path === 'score') return reply(await submit(db, id, body.score));
-        if (!validId(body.attemptId) || !body.mode || body.score < 1) {
-            return reply({ error: 'An attempt ID, run mode and positive distance are required' }, 400);
-        }
-        return reply(await claim(db, id, body.attemptId, body.score));
+        const id = await playerId(body?.key, ios ? 'ios' : 'web');
+        if (!id) return reply({ ok: false, error: 'A private player key is required. Update the game to play online.' }, 400);
+        const result = await post(db, path, id, body, ios);
+        return reply(result.body, result.status);
     }
     return reply({ error: 'Not found' }, 404);
 }

@@ -17,7 +17,7 @@
     overflow: auto;
 }
 
-.home-footer, .home-extras, .home-extras button, .home-record {
+.home-footer, .home-extras, .home-extras button {
     display: flex;
     align-items: center;
 }
@@ -72,7 +72,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: 94% 38%;
+    object-position: 94% 30%;
 }
 .home-sound {
     position: absolute;
@@ -114,6 +114,8 @@
 }
 .home-modes .run-selector button:disabled { color: var(--muted-ink); }
 .home-modes .run-selector button:not([aria-pressed='true']):enabled:hover { background: #e4dbc7; }
+.menu-progress { height: 6px; margin: 0; background: #ddd2ba; border: 1px solid var(--print); border-top: 0; }
+.menu-progress i { display: block; height: 100%; background: var(--vermillion); transform: scaleX(0); transform-origin: left; }
 .home-modes .menu-wallet {
     margin: 7px 0 0;
     color: var(--muted-ink);
@@ -132,6 +134,24 @@
     font-size: clamp(26px, 2.5vw, 39px);
 }
 .home-console .play:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--print); }
+.home-stats {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    margin: 11px 0 0;
+    border-block: 1px solid var(--print);
+}
+.home-stats > div { padding: 6px 12px 7px; border-left: 1px solid #b2ad9f; }
+.home-stats > div:first-child { padding-left: 0; border-left: 0; }
+.home-stats > div:last-child { padding-right: 0; }
+.home-stats dt { color: var(--muted-ink); font: 700 13px/1.1 Condensed, sans-serif; letter-spacing: .02em; white-space: nowrap; }
+.home-stats dt b { margin-left: 3px; color: var(--print); }
+.home-stats dd { margin: 2px 0 0; font: italic 900 24px/1 Condensed, Impact, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#takeover-skyline { display: block; width: 100%; max-width: 106px; height: 31px; margin-top: -2px; stroke: none; border-bottom: 2px solid var(--print); }
+#takeover-skyline .lot { fill: #c3bba7; }
+#takeover-skyline :is(.slab, .panes) { display: none; }
+#takeover-skyline .taken .lot { display: none; }
+#takeover-skyline .taken .slab { display: inline; fill: var(--vermillion); }
+#takeover-skyline .taken .panes { display: inline; stroke: #f6eedb; stroke-width: 1.6; }
 .home-extras { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
 .home-extras button { padding-inline: 3px; border: 1px solid #b2ad9f; }
 .home-extras button:hover { background: #e4dbc7; }
@@ -175,21 +195,20 @@
     color: var(--sheet);
     font-size: 14px;
 }
-.home-record { gap: 7px; }
-.home-record svg { color: var(--gold); width: 17px; }
-.home-record b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.home-disclaimer { flex: 1 0 100%; margin: 0; padding-top: 6px; font-size: 11px; line-height: 1.25; }
 .home-coffee {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
-    margin-left: auto;
     color: inherit;
     text-decoration: underline;
     text-underline-offset: .2em;
     white-space: nowrap;
 }
 #start-screen :is(button, a):focus-visible { outline-color: #0877a0; outline-offset: 1px; z-index: 2; }
-.home-footer #story-btn { min-height: 44px; margin-left: auto; padding: 0 4px; color: inherit; font-weight: 700; }
+.home-footer button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 4px; color: inherit; font-weight: 700; }
+.home-footer button:hover { color: var(--gold); }
+.home-footer #settings-btn { margin-left: auto; }
 #start-screen .home-footer :is(button, a):focus-visible { outline-color: var(--gold); outline-offset: -3px; }
 
 /* The phone cover follows a newspaper front page: headline, illustration, then play. */
@@ -230,7 +249,8 @@
     #start-screen h1 { white-space: nowrap; font-size: min(9vw, 13.5svh, 80px); line-height: .9; }
     #start-screen h1 span, #start-screen h1 strong { display: inline; font-size: 1em; line-height: inherit; }
     .home-art { grid-area: 2 / 1; border: none; }
-    .home-art img { object-position: center 48%; }
+    /* Frame Mamdani's head with Trump over his shoulder. */
+    .home-art img { object-position: 100% 0; transform: scale(1.45); transform-origin: 93% 4%; }
     .home-console.run-controls {
         grid-area: 1 / 2 / -1;
         align-self: center;
@@ -239,8 +259,13 @@
         max-width: none;
     }
     .home-modes .run-selector button { font-size: 16px; }
-    .home-modes .menu-wallet { margin-top: 3px; font-size: 12px; }
-    .home-console .play { height: 44px; margin-top: 5px; font-size: 25px; }
+    .home-modes .menu-wallet { margin-top: 3px; font-size: 13px; }
+    .home-stats { margin-top: 8px; }
+    .home-stats > div { padding-block: 3px 4px; }
+    .home-stats dd { font-size: 21px; }
+    #takeover-skyline { height: 25px; max-width: 86px; }
+    .home-sound { right: auto; left: max(10px, env(safe-area-inset-left)); }
+    .home-console .play { height: 46px; margin-top: 5px; font-size: 25px; }
     .home-extras { margin-top: 6px; }
     .home-extras svg { display: none; }
     .wire.home-wire { min-height: 44px; gap: 15px; }

@@ -12,6 +12,12 @@ const BASE = import.meta.env.BASE_URL;
 const plank = new THREE.PlaneGeometry();
 const runnerSize = { junior: 1.08, ivanka: 1.07, eric: 1.14, tiffany: 1.01, barron: 1.21 };
 const ink = 0x17374b;
+const CAMERA_HEIGHT = 1.70;
+const GANTRY_TOP = 4.68;
+const GANTRY_Z = 4.8;
+// Pixels the ready heading and instruction cards take from the screen. A short screen docks them aside.
+const READY_HEAD = 92;
+const READY_DECK = 288;
 const steel = 0x758995;
 const cream = 0xffecd0;
 
@@ -35,7 +41,7 @@ function signSheet() {
     canvas.height = 1024;
     const g = canvas.getContext('2d');
     const rows = [
-        ['EAST RIVER SPRINT', '#152f43', '#ffe4a1'],
+        ['EAST RIVER SPRINT', '#1c4257', '#ffe4a1'],
         ['BROOKLYN   /   FINISH', '#f0ae38', '#173449'],
         ['BROOKLYN  /  NYC', '#18384b', '#f7e7bf'],
         ['EAST RIVER TRACK CLUB', '#e3ae4b', '#1d3745'],
@@ -127,10 +133,10 @@ function track() {
 
 function venue(scene) {
     const structure = new Batch(), boards = new Batch();
-    const startZ = -4.8;
+    const startZ = -GANTRY_Z;
     for (const [z, finish] of [[startZ, false], [COURSE, true]]) {
         const height = finish ? 3.53 : 4.36;
-        const beam = finish ? .59 : .32;
+        const beam = finish ? .59 : .64;
         for (const side of [-1, 1]) {
             const x = side * 2.62;
             structure.box(ink, x, height / 2, z, .28, height, .27);
@@ -138,7 +144,9 @@ function venue(scene) {
             structure.box(steel, x, .045, z, .60, .09, .56);
         }
         structure.box(ink, 0, height, z, 5.53, beam, .26);
-        sign(boards, finish ? 1 : 0, 0, height, z + .141, 5.51, beam - .035);
+        // The camps hang over the start, clear of the two runners standing on the line.
+        if (finish) sign(boards, 1, 0, height, z + .141, 5.51, beam - .035);
+        else for (const side of [-1, 1]) sign(boards, side < 0 ? 5 : 6, side * 1.0, height, z + .141, 1.84, beam - .04);
     }
     for (const z of [0, COURSE]) {
         structure.box(cream, 0, .008, z, 4.26, .008, .15);
@@ -223,6 +231,18 @@ function ribbon(scene) {
 
 function laneDistance(dx, dz, sin, cos, clearance, viewWidth) {
     return dx * sin + dz * cos + (Math.abs(dx * cos - dz * sin) + clearance) / viewWidth;
+}
+
+// Pull back until the hanging camp names and both pairs of shoes fit between the ready cards.
+function readyDistance(h, fov, head) {
+    const room = THREE.MathUtils.degToRad(fov) * Math.max(.36, (h - head - READY_DECK) / h);
+    let near = 6.5, far = 20;
+    for (let i = 0; i < 12; i++) {
+        const d = (near + far) / 2;
+        if (Math.atan(CAMERA_HEIGHT / d) + Math.atan((GANTRY_TOP - CAMERA_HEIGHT) / (d + GANTRY_Z)) > room) near = d;
+        else far = d;
+    }
+    return far;
 }
 
 class Athlete {
@@ -444,6 +464,8 @@ export class RaceStage {
         });
         this.idle = 0;
         this.finishTime = 0;
+        this.readyFrame = 1;
+        this.roar = 0;
         this.crowd.clock.value = 0;
     }
 
@@ -477,7 +499,9 @@ export class RaceStage {
         const sin = Math.sin(angle), cos = Math.cos(angle);
         const leaderX = reducedMotion ? 0 : .40 * THREE.MathUtils.clamp((r - p) * COURSE, -1, 1);
         const closeup = lost && !reducedMotion ? THREE.MathUtils.smoothstep(this.finishTime, .22, .94) : 0;
-        const aimX = THREE.MathUtils.lerp((portrait ? 0 : -.20 * courseAngle) + finishFrame * leaderX, .86, closeup);
+        this.readyFrame = intro ? 1 : reducedMotion ? 0 : this.readyFrame * Math.exp(-3.2 * dt);
+        const docked = !portrait && h < 500;
+        const aimX = THREE.MathUtils.lerp((docked ? 1.05 * this.readyFrame : 0) + (portrait ? 0 : -.20 * courseAngle) + finishFrame * leaderX, .86, closeup);
         const halfFov = Math.tan(THREE.MathUtils.degToRad(fov / 2));
         const viewWidth = halfFov * aspect * .88;
         const clearance = .48 + .57 * finishFrame;
@@ -487,14 +511,19 @@ export class RaceStage {
         const wideDist = Math.max(base + (portrait ? 0 : 3.1) * finishFrame,
             laneDistance(-.86 - aimX, p * COURSE - focus, sin, cos, clearance, viewWidth),
             laneDistance(.86 - aimX, r * COURSE - focus, sin, cos, clearance, viewWidth));
-        const dist = THREE.MathUtils.lerp(wideDist, Math.max(5.5, .98 / viewWidth), closeup);
+        const readyFrame = docked ? 0 : this.readyFrame;
+        const readyDist = readyFrame > .001 ? readyDistance(h, fov, portrait ? READY_HEAD : 16) : 0;
+        const dist = THREE.MathUtils.lerp(THREE.MathUtils.lerp(wideDist, Math.max(5.5, .98 / viewWidth), closeup), readyDist, readyFrame);
         const aimZ = THREE.MathUtils.lerp(focus, r * COURSE, closeup);
-        camera.position.set(aimX + dist * sin, portrait ? 1.70 : 1.53, aimZ + dist * cos);
+        camera.position.set(aimX + dist * sin, portrait ? CAMERA_HEIGHT : 1.53, aimZ + dist * cos);
         // Leave the countdown clear above the flags and a full stride below the athletes.
         const lift = reducedMotion ? (portrait ? .65 : .40) :
             ((portrait || h < 500 ? .65 : .27) + .46 * shortPortrait) * (1 - courseAngle) +
             (portrait ? .50 * shortPortrait : .18) * finishFrame;
-        camera.lookAt(aimX, (h < 500 ? .98 : 1.02) + lift, aimZ);
+        const aimY = (h < 500 ? .98 : 1.02) + lift;
+        // Seat the shoes just above the instructions.
+        const shoes = Math.atan(CAMERA_HEIGHT / dist) - THREE.MathUtils.degToRad(fov) * (.5 - READY_DECK / h);
+        camera.lookAt(aimX, readyFrame ? THREE.MathUtils.lerp(aimY, CAMERA_HEIGHT - dist * Math.tan(shoes), readyFrame) : aimY, aimZ);
         // The distant skyline tracks the broadcast camera; the near rail and spectators have true parallax.
         const far = 100, viewHeight = 2 * far * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
         const backH = Math.max(viewHeight * .75, viewHeight * aspect / 2.7);
@@ -503,14 +532,19 @@ export class RaceStage {
         this.sun.position.set(-3.1, 6.5, aimZ + 3.6);
         this.sun.target.position.set(0, 0, aimZ);
         if ((!done || lost) && dt > 0) this.idle += Math.min(.1, dt);
-        this.crowd.clock.value = reducedMotion ? 0 : this.crowd.clock.value + Math.min(dt, .1);
+        // Fast feet, a tight finish or a home win lifts the stands.
+        const excited = race.phase === 'won' || race.closeFinish ? 1 : race.phase === 'racing' ? Math.min(1, race.rate / 8) : 0;
+        this.roar += (excited - this.roar) * (1 - Math.exp(-4 * Math.min(dt, .1)));
+        this.crowd.clock.value = reducedMotion ? 0 : this.crowd.clock.value + Math.min(dt, .1) * (1 + 1.5 * this.roar);
+        this.crowd.roar.value = reducedMotion ? 0 : this.roar;
         for (let i = 0; i < 2; i++) {
             const athlete = i ? this.rival : this.player;
             const lane = i ? .86 : -.86, progress = i ? r : p;
             if (!athlete) continue;
             const z = progress * COURSE;
             athlete.root.position.set(lane, 0, z);
-            const waiting = intro || lost || (!i && race.speed < .3);
+            const falseStart = i && intro && r > 0;
+            const waiting = (intro && !falseStart) || lost || (i ? race.rivalStanding : race.speed < .3);
             const dancing = i === winnerLane && lost && (reducedMotion || this.finishTime >= RACE_RUNOUT);
             if (dancing) {
                 if (!athlete.dance?.active) {

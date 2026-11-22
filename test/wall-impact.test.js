@@ -54,10 +54,10 @@ test('a pair of closed panels has no passable seam; an adjoining hurdle keeps it
     assert.equal(sweep(-1, 3, -2, 4.675, 1, [null, 'gateBlock', 'jumpGate']), 'wall');
 });
 
-test('the wall report names the crash and runs beneath the ordinary or Overtime headline', () => {
+test('the wall report names the crash in the headline', () => {
     for (const overtime of [false, true]) {
-        const [headline, copy] = frontPage('wall', 3, overtime);
-        assert.equal(headline, overtime ? 'Mamdani keeps NYC.' : 'Trump returns.');
-        assert.match(copy, /head-on into a STREET CLOSED wall/);
+        const { headline, slug } = frontPage('wall', 0, { overtime });
+        assert.match(headline, /head-on into a STREET CLOSED wall/);
+        assert.equal(slug, overtime ? 'Mamdani keeps NYC' : 'Stop press');
     }
 });

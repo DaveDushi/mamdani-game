@@ -7,13 +7,15 @@ import { CentralPark } from './CentralPark.js';
 import { streetClear } from './Crossings.js';
 import { StreetLight } from './StreetLight.js';
 import { Player } from './Player.js';
-import { Trump } from './Trump.js';
+import { Trump, taunts } from './Trump.js';
+import { CATCH_GAP, GAP_MAX } from './Pursuit.js';
 import { Input } from './Input.js';
 import { ParticleSystem } from './ParticleSystem.js';
 import { ObstacleManager } from './ObstacleManager.js';
 import { PowerupManager } from './PowerupManager.js';
 import { BusRide } from './BusRide.js';
-import { ScoreManager, stampReceipt } from './ScoreManager.js';
+import { powerupSeconds } from './Progression.js';
+import { CLEAN_MOVE_POINTS, FAMILY_WIN_POINTS, FAMILY_WIN_STAMPS, STAMP_POINTS, ScoreManager, stampReceipt } from './ScoreManager.js';
 import { Heatwave } from './Heatwave.js';
 import { ICE_STEERING_SECONDS } from './RentIce.js';
 import { editionLines, stuntLines } from './CityWire.js';
@@ -25,17 +27,29 @@ import { RacePanel } from './RacePanel.js';
 import { RaceStage } from './RaceStage.js';
 import { CITY_REVEAL, DANCE_HOLD, FINISH_HOLD, RACE_RUNOUT, frameOpenBlock } from './RaceFinish.js';
 import { courseSpeed } from './Course.js';
+import { stretchLine } from './Stretches.js';
 
 const STEP = 1 / 60;
 const RACE_WARNING_SECONDS = 3;
+const RACE_DELAY_METRES = 150;
 const STREET_RECOVERY_SECONDS = 1;
+const SLOW_FINISH = .35;
 const RACE_TUTORIAL_KEY = 'mamdani_race_tutorial_seen';
+const FIRST_RUN_KEY = 'mamdani_first_run_done';
+// Anyone with one of these has finished a run on an earlier version.
+const VETERAN_KEYS = [FIRST_RUN_KEY, 'mamdani_edition', 'mamdani_best_score'];
+const FIRST_RUN_SAFE_SECONDS = 10;
+const TAUNT_SECONDS = 22;
+const PARK_STAMPS = 3;
+const RUNNER_FEET = .51, CHASE_FEET = .36;
 const pickups = {
-    fastFreeBus: { title: 'Fast & Free', detail: 'Steer into barriers for up to 3 stamps', short: 'Bus ride' },
+    fastFreeBus: { title: 'Fast & Free', detail: 'Steer into barriers for up to 8 stamps', short: 'Bus ride' },
     kafiyeh: { title: 'Allah Akbar', detail: 'Keffiyeh · Collision shield', short: 'Keffiyeh shield' },
     rainbow: { title: 'Full spectrum immunity', detail: 'Rainbow · Invincible + magnet', short: 'Invincible + magnet' },
     covidMask: { title: 'listen to Fauci', detail: 'COVID mask · Traffic cleared', short: 'Clear street' }
 };
+const moveNames = { cab: 'Clean jump', jump: 'Clean jump', slide: 'Clean slide', sidestep: 'Clean dodge' };
+
 export class Run {
     constructor(canvas, sound, onEnd, cast, fittingRoom) {
         this.sound = sound;
@@ -83,14 +97,17 @@ export class Run {
         this.particles = new ParticleSystem(this.scene);
         this.input = new Input(canvas, () => this.mode === 'playing' && !this.race && !this.capture);
         this.captureBanner = document.getElementById('capture-banner');
-        this.racePanel = new RacePanel(document.getElementById('hud'), () => {
-            if (this.mode !== 'playing' || !this.race?.tap()) return;
-            this.sound.play('stride');
-        }, () => this.leaveRace(), () => this.readyForRace());
+        this.racePanel = new RacePanel(document.getElementById('hud'), side => this.tapRace(side),
+            () => this.leaveRace(), () => this.readyForRace());
         try {
             this.raceTutorialSeen = localStorage.getItem(RACE_TUTORIAL_KEY) === '1';
         } catch {
             this.raceTutorialSeen = false;
+        }
+        try {
+            this.veteran = VETERAN_KEYS.some(key => localStorage.getItem(key) !== null);
+        } catch {
+            this.veteran = false;
         }
         this.raceApproach = new RaceApproach(document.getElementById('race-checkpoint'), this.scene);
         this.magnet = new THREE.Vector3();
@@ -98,7 +115,14 @@ export class Run {
         this.hud = Object.fromEntries(
             [
                 'score',
-                'pace',
+                'metres',
+                'multiplier',
+                'multiplier-level',
+                'multiplier-ring',
+                'trump-gap',
+                'gap-lead',
+                'gap-metres',
+                'danger',
                 'resume-count',
                 'count-digit',
                 'food-stamps',
@@ -113,10 +137,7 @@ export class Run {
                 'wire-flash',
                 'wire-copy',
                 'wire-source',
-                'pause-print',
-                'chase-card',
-                'chase-meter',
-                'chase-seconds'
+                'pause-print'
             ].map((id) => [id, document.getElementById(id)])
         );
         this.frame = this.frame.bind(this);
@@ -166,7 +187,7 @@ export class Run {
         }
     }
 
-    start(mode = 'day', speedLevel = 0, recordProvider) {
+    start(mode = 'day', speedLevel = 0, recordProvider, powerLevels = {}) {
         this.stop();
         this.runType = mode;
         this.speedLevel = speedLevel;
@@ -178,9 +199,11 @@ export class Run {
         this.world.light.setShift(mode);
         this.world.reset(mode);
         this.player.reset();
+        this.player.powerLevels = powerLevels;
         this.trump.reset();
         this.powerupManager.reset();
-        this.obstacleManager.reset(mode, Math.random, () => this.world.overtime);
+        this.firstRun = !this.veteran;
+        this.obstacleManager.reset(mode, Math.random, () => this.world.overtime, this.firstRun);
         this.particles.reset();
         this.scoreManager.reset();
         this.reportedAuditGross = 0;
@@ -193,10 +216,14 @@ export class Run {
         this.hud['pickup-card'].hidden = true;
         this.hud['pickup-card'].removeAttribute('data-kind');
         this.cleanMoves = 0;
-        this.streak = 0;
-        this.lastStuntAt = -10;
+        this.nextTauntAt = 0;
+        this.tauntCount = 0;
+        this.tension = -1;
+        this.hud.multiplier.dataset.level = '1';
         this.pursuitFrame = 0;
         this.lastDistrict = this.world.district;
+        this.stretch = null;
+        this.stretchReport = '';
         this.wireTime = 0;
         this.nextPrintAt = 0.8;
         this.lastPrint = '';
@@ -227,7 +254,10 @@ export class Run {
         const halfFov = THREE.MathUtils.degToRad(this.camera.fov * 0.5);
         const halfWidth = this.camera.aspect * Math.tan(halfFov);
         this.pursuitFrame += ((this.trump.isChasing ? 1 : 0) - this.pursuitFrame) * (1 - Math.exp(-5 * dt));
-        const z = Math.max(5.9, 3.46 / halfWidth) + this.pursuitFrame * 1.25;
+        const base = Math.max(5.9, 3.46 / halfWidth);
+        const z = base + this.pursuitFrame * 1.25;
+        // Trump can trail this far back before the bottom of the frame cuts him off.
+        this.chaseReach = portrait ? Math.max(2.2, base * .33) : 2.2;
         const stumble = this.player.stumble;
         this.busRide.cameraBlend += ((this.busRide.active ? 1 : 0) - this.busRide.cameraBlend) * (1 - Math.exp(-6*dt));
         const busFrame = this.busRide.cameraBlend;
@@ -236,7 +266,14 @@ export class Run {
         const targetX = this.reduce ? 0 : (x - parkX) * (portrait ? 0.43 : 0.23);
         this.streetCameraX += (targetX - this.streetCameraX) * (1 - Math.exp(-5 * dt));
         const impact = this.reduce ? 0 : Math.sin(this.shake * 95) * this.shake * 0.13;
-        const y = (portrait ? 5.65 : 4.55) + this.pursuitFrame * .33 + this.player.mesh.position.y * .115 + impact;
+        const height = (portrait ? Math.max(5.2, base * .5) : 4.55) + this.pursuitFrame * .33;
+        const y = height + this.player.mesh.position.y * .115 + impact;
+        let aim = 1.05;
+        if (portrait) {
+            // Stand the runner low in a tall frame to show more of the street. Lift him to make room for Trump.
+            const feet = THREE.MathUtils.lerp(RUNNER_FEET, CHASE_FEET, this.pursuitFrame);
+            aim = height - (z + 7.3) * Math.tan(Math.atan2(height, z) - Math.atan(feet * Math.tan(halfFov)));
+        }
         // Leave room for the pursuer to catch up horizontally after a swipe.
         const gap = this.trump.mesh.position.x - x;
         const extra = Math.max(0, Math.abs(gap) - .95);
@@ -248,7 +285,7 @@ export class Run {
             THREE.MathUtils.lerp(z, closeZ, frame) + 2.4*busFrame
         );
         this.camera.lookAt(THREE.MathUtils.lerp(parkX + this.streetCameraX * .52, pairX, frame),
-            THREE.MathUtils.lerp(portrait ? 1.65 : 1.05, 1.05, frame), THREE.MathUtils.lerp(-7.3, -3, frame));
+            THREE.MathUtils.lerp(aim, 1.05, frame), THREE.MathUtils.lerp(-7.3, -3, frame));
     }
 
     showOutfit() {
@@ -274,6 +311,7 @@ export class Run {
         this.raceStage?.stop();
         this.racePanel.hide();
         this.raceApproach.hide();
+        this.setTension(0);
         this.sound.music(false, true);
         this.wardrobe.close(this.scene);
         cancelAnimationFrame(this.frameId);
@@ -373,7 +411,7 @@ export class Run {
     updateHud() {
         const p = this.player;
         const auditedGross = this.scoreManager.auditedGross;
-        if (auditedGross > this.reportedAuditGross && !this.trump.isChasing && p.confusionTimer <= 0 && this.pulseTime <= 0) {
+        if (auditedGross > this.reportedAuditGross && !this.trump.hot && p.confusionTimer <= 0 && this.pulseTime <= 0) {
             const { gross, tax, keptTenths } = stampReceipt(auditedGross - this.reportedAuditGross);
             if (this.bulletin(gross + ' collected · ' + tax + ' tax · ' + keptTenths / 10 + ' kept', 'Stamp audit')) {
                 this.reportedAuditGross = auditedGross;
@@ -397,36 +435,96 @@ export class Run {
         const secondary = active.slice(0, -1).map(type => pickups[type].short + ' · ' + Math.ceil(p[type + 'Timer']) + 's');
         if (p.confusionTimer > 0) secondary.push('Haram! Reversed · ' + Math.ceil(p.confusionTimer) + 's');
         if (this.heatwave.active) {
-            secondary.push('78° Heatwave · ' + Math.ceil(this.heatwave.remaining) + 's', '2× streak bonus');
+            secondary.push('78° Heatwave · ' + Math.ceil(this.heatwave.remaining) + 's', '2× style · 5-stamp streaks');
         }
         const effect = secondary.join('\n');
         const schedule = this.raceSchedule;
         const next = schedule.rivals[this.familyWins];
         this.raceApproach.paint(approachCopy(
-            schedule, next, this.scoreManager.getDisplayScore(), this.world.speed,
-            this.trump.isChasing, this.preparedRivals.has(next?.id)
-        ), this.trump.isChasing);
-        this.hud['chase-card'].hidden = !this.trump.isChasing;
-        if (this.trump.isChasing) {
-            this.hud['chase-meter'].style.transform = 'scaleX(' + this.trump.chaseTimer / 5 + ')';
-            this.hud['chase-seconds'].textContent = Math.ceil(this.trump.chaseTimer) + 's';
-        }
+            schedule, next, this.scoreManager.metres, this.world.speed,
+            this.trump.hot, this.preparedRivals.has(next?.id)
+        ), this.trump.hot);
+        this.paintChase();
         for (const [key, value] of [
             ['score', this.scoreManager.getDisplayScore()],
-            ['pace', (this.world.speed / 17.5).toFixed(1) + '×'],
+            ['metres', this.scoreManager.metres],
             ['food-stamps', this.scoreManager.foodStamps],
-            ['district', this.parkRide.label || this.world.crossings?.currentName || this.world.currentEventLabel || this.world.district],
+            ['district', this.parkRide.label || this.world.crossings?.currentName || this.stretch?.name || this.world.currentEventLabel || this.world.district],
             ['effect', effect]
         ]) {
             if (this.hud[key].textContent !== String(value)) this.hud[key].textContent = value;
         }
     }
 
+    paintChase() {
+        const { hud, trump, scoreManager: score } = this;
+        const riding = this.busRide.active || this.parkRide.active;
+        const metres = Math.floor(trump.gap) + ' m';
+        if (hud['gap-metres'].textContent !== metres) hud['gap-metres'].textContent = metres;
+        hud['gap-lead'].style.transform = 'scaleX(' + (trump.gap / GAP_MAX).toFixed(3) + ')';
+        hud['trump-gap'].toggleAttribute('data-danger', trump.isChasing);
+        hud['trump-gap'].toggleAttribute('data-frozen', riding);
+        // The closer he is, the redder the edge of the frame.
+        const danger = trump.isChasing && !this.player.invincible && !this.busRide.active ? 1 - .55 * trump.gap / CATCH_GAP : 0;
+        hud.danger.style.opacity = danger.toFixed(2);
+        const level = 'x' + score.multiplier;
+        if (hud['multiplier-level'].textContent !== level) {
+            hud['multiplier-level'].textContent = level;
+            hud.multiplier.dataset.level = score.multiplier;
+        }
+        hud.multiplier.dataset.chain = score.chain;
+        hud['multiplier-ring'].style.strokeDashoffset = (1.02 - 1.02 * score.chainTime).toFixed(3);
+    }
+
+    setTension(value) {
+        if (Math.abs(value - this.tension) < .02 && (value || !this.tension)) return;
+        this.tension = value;
+        this.sound.setIntensity?.(value);
+    }
+
+    taunt(kind) {
+        if (this.elapsed < this.nextTauntAt) return;
+        const lines = taunts[kind];
+        if (this.bulletin(lines[this.tauntCount % lines.length])) {
+            this.tauntCount++;
+            this.nextTauntAt = this.elapsed + TAUNT_SECONDS;
+        }
+    }
+
+    popMultiplier() {
+        this.sound.play('multiplier', this.scoreManager.multiplier);
+        this.paintChase();
+        if (!this.reduce) {
+            this.hud.multiplier.animate(
+                [{ transform: 'scale(1.7) rotate(-9deg)' }, { transform: 'scale(.92)', offset: .6 }, { transform: 'none' }],
+                { duration: 420, easing: 'ease-out' }
+            );
+        }
+    }
+
+    // A family win pays once, in gross stamps and points. Returns what it paid for the race panel.
+    awardRace(index) {
+        const stamps = FAMILY_WIN_STAMPS[index] ?? 0;
+        this.scoreManager.addFoodStamps(stamps);
+        this.scoreManager.addBonus(FAMILY_WIN_POINTS);
+        return { stamps, points: FAMILY_WIN_POINTS };
+    }
+
+    finishFirstRun() {
+        if (this.veteran) return;
+        this.veteran = true;
+        try {
+            localStorage.setItem(FIRST_RUN_KEY, '1');
+        } catch {
+            // Without storage the next visit is treated as a first run again.
+        }
+    }
+
     canStartRace(requireClearStreet = true) {
         const { player, world } = this;
-        if (this.busRide?.active || this.parkRide?.active) return false;
+        if (this.parkRide?.active) return false;
         const laneX = (player.currentLane - 1) * 3;
-        if (this.trump.isChasing || !player.isGrounded || player.slideTimer > 0 ||
+        if (this.trump.hot || !player.isGrounded || player.slideTimer > 0 ||
             player.confusionTimer > 0 || Math.abs(player.mesh.position.x - laneX) > .35) return false;
         if (!requireClearStreet || this.familyWins === RIVALS.length - 1) return true;
         const ahead = world.speed * .65;
@@ -438,7 +536,7 @@ export class Run {
     checkRaceEntry(rival, metres) {
         const eligible = rival && this.preparedRivals.has(rival.id) && this.raceSchedule.canEnter(rival, metres);
         if (this.raceWarning) {
-            const interrupted = this.trump.isChasing || this.busRide.active || this.parkRide.active;
+            const interrupted = this.trump.hot || this.parkRide.active;
             if (eligible && this.raceWarning.rival === rival && !interrupted) {
                 if (this.elapsed >= this.raceWarning.startAt && this.canStartRace(false)) this.startRace(rival);
                 return;
@@ -446,7 +544,8 @@ export class Run {
             this.raceWarning = null;
             this.raceApproach.warn(null);
         }
-        if (!eligible || !this.canStartRace()) return;
+        // A busy street may hold a race back this far. The start clears its own chute.
+        if (!eligible || !this.canStartRace(metres < rival.at + RACE_DELAY_METRES)) return;
         this.raceWarning = { rival, startAt: this.elapsed + RACE_WARNING_SECONDS };
         this.raceApproach.warn(rival);
     }
@@ -457,16 +556,24 @@ export class Run {
         this.obstacleManager.clearFinishChute(Math.max(speed, recoverySpeed) * STREET_RECOVERY_SECONDS + 6);
     }
 
+    drawRace(rival) {
+        return new FamilyRace(rival, this.speedLevel, true, { seed: 1 + Math.floor(Math.random() * 1e6) });
+    }
+
     startRace(rival) {
         this.updateHeatwave(0, false);
         this.player.stumble.reset();
         this.player.iceTimer = 0;
         this.input.reset();
+        // Race check-in is the last stop.
+        if (this.busRide.active) this.busRide.leave(this.obstacleManager, this.player, this.world.speed);
         this.clearRaceChute();
         this.raceWarning = null;
         this.raceApproach.hide();
         this.race = this.upcomingRace?.rival === rival
-            ? this.upcomingRace : new FamilyRace(rival, this.speedLevel, true);
+            ? this.upcomingRace : this.drawRace(rival);
+        this.racePlayerLed = false;
+        this.sound.setMood('race');
         this.raceStage.start(this.race.rival);
         this.racePanel.show(this.race, !this.raceTutorialSeen);
         // Give the introductory artwork a full first frame on phones that compile a new shader here.
@@ -503,16 +610,41 @@ export class Run {
         });
     }
 
+    tapRace(side) {
+        const race = this.race;
+        if (this.mode !== 'playing' || !race) return;
+        const result = race.tap(side);
+        if (result === 'step') {
+            this.sound.play('stride');
+            if (race.taps % 16 === 0) this.sound.play('crowd');
+        } else if (result) {
+            this.sound.play('rhythmMiss');
+            impact();
+        }
+    }
+
     raceStep(dt) {
         const race = this.race;
         const phase = race.phase;
         if (phase === 'ready' || phase === 'won' || phase === 'lost') return;
         const count = race.countdown;
+        if (race.closeFinish && !this.reduce) dt *= SLOW_FINISH;
         this.elapsed += dt;
+        const { mode, pad } = race;
         race.update(dt);
+        if (race.mode !== mode) {
+            const cue = { warn: 'count', stop: 'haram', gold: 'multiplier', feet: 'count' }[race.mode];
+            if (cue) this.sound.play(cue);
+        } else if (mode === 'side' && race.pad !== pad) this.sound.play('rhythmGood');
+        if (race.phase === 'racing' && this.racePlayerLed !== race.gap > (this.racePlayerLed ? -.4 : .4)) {
+            this.racePlayerLed = !this.racePlayerLed;
+            if (race.elapsed > 2) this.sound.play('crowd');
+        }
         if (phase !== race.phase) {
             if (race.phase === 'won') {
+                this.sound.play('crowd');
                 this.familyWins++;
+                this.awardRace?.(race.rival.index);
                 this.world.setTakeover(this.familyWins);
                 this.world.overtime = this.familyWins === RIVALS.length;
                 this.onRaceWin?.(this.familyWins);
@@ -533,6 +665,7 @@ export class Run {
         this.race = null;
         this.racePanel.hide();
         this.raceStage.stop();
+        this.sound.setMood('street');
         if (race.phase === 'lost') {
             this.endRun('race:' + race.rival.id);
             return;
@@ -552,9 +685,13 @@ export class Run {
 
     endRun(cause) {
         this.mode = 'ended';
+        this.finishFirstRun();
         this.raceApproach.warn(null);
+        this.setTension(0);
+        this.hud.danger.style.opacity = 0;
         this.sound.music(false, true);
-        this.onEnd(this.scoreManager.getDisplayScore(), this.scoreManager.grossStamps, cause);
+        const { metres, stylePoints, bestMultiplier, grossStamps } = this.scoreManager;
+        this.onEnd(this.scoreManager.getDisplayScore(), grossStamps, cause, { metres, stylePoints, bestMultiplier });
     }
 
     startCapture(cause) {
@@ -566,6 +703,9 @@ export class Run {
         };
         this.player.mesh.visible = this.player.shadow.visible = false;
         this.captureBanner.hidden = false;
+        this.setTension(0);
+        this.hud.danger.style.opacity = 0;
+        this.trump.arrive(this.player.mesh.position.x);
         this.input.reset();
         this.sound.music(false, true);
         this.onDefeat?.(this.scoreManager.grossStamps, this.scoreManager.getDisplayScore());
@@ -583,11 +723,14 @@ export class Run {
             capture.elapsed += dt;
             if (capture.elapsed >= (this.reduce ? FINISH_HOLD : DANCE_HOLD)) this.endRun(capture.cause);
         } else if (this.race) {
+            this.race.lead = this.acc;
             const finale = this.world.overtime && this.race.phase === 'won';
             const hold = finale ? CITY_REVEAL : this.race.phase === 'lost' && !this.reduce
                 ? RACE_RUNOUT + DANCE_HOLD : FINISH_HOLD;
             const ready = this.raceStage.finishTime >= hold;
             if (this.race.phase === 'lost' && ready && this.mode === 'playing') {
+                this.raceStage.render(this.renderer, this.race, 0, this.reduce);
+                this.onFinishPhoto?.(this.renderer.domElement, this.raceStage);
                 this.leaveRace();
                 return;
             }
@@ -612,6 +755,7 @@ export class Run {
     step(dt) {
         if (this.capture) return;
         if (this.race) {
+            this.setTension(0);
             this.raceStep(dt);
             return;
         }
@@ -625,7 +769,6 @@ export class Run {
             particles
         } = this;
         this.elapsed += dt;
-        const wasChasing = trump.isChasing;
         const wasCycling = this.parkRide.active;
         world.update(dt);
         this.parkRide.update(this);
@@ -637,27 +780,40 @@ export class Run {
         traffic.update(dt, world.speed, world.distance);
         if (traffic.carriageBell) this.sound.play('carriageBell');
         powers.update(dt, world.speed);
-        trump.update(dt, player.mesh.position.x, player.stumble.shoulder);
-        if (wasChasing && !trump.isChasing) {
+        const riding = this.busRide.active || this.parkRide.active;
+        const sheltered = player.invincible || player.covidMaskTimer > 0;
+        const chase = trump.update(dt, player.mesh.position.x, player.stumble.shoulder,
+            riding, sheltered, this.chaseReach, this.busRide.active);
+        this.setTension(riding ? 0 : trump.pursuit.intensity);
+        if (chase === 'escaped') {
             this.notify('Audit evaded!');
             this.sound.play('escape');
             this.bulletin('Trump requests an extension on the chase.');
-        }
+        } else if (chase) this.taunt(chase);
+        if (this.elapsed >= FIRST_RUN_SAFE_SECONDS) this.finishFirstRun();
         if (world.district !== this.lastDistrict) {
             this.lastDistrict = world.district;
             this.sound.play('edition');
             this.bulletin(editionLines[world.district]);
         }
-        score.update(dt, world.speed);
+        const stretch = traffic.stretchAt(world.distance);
+        if (stretch !== this.stretch) {
+            this.stretch = stretch;
+            this.stretchReport = stretch ? stretchLine(stretch) : '';
+            if (stretch) this.sound.play('stretch');
+        }
+        if (this.stretchReport && this.bulletin(this.stretchReport, 'Street report')) this.stretchReport = '';
+        score.styleBoost = this.heatwave.styleBoost;
+        if (score.update(dt, world.speed, !riding && !sheltered)) this.sound.play('multiplierLost');
         for (const e of player.events) {
-            if (e === 'jump' || e === 'slide') this.sound.play(e);
+            if (e !== 'confusion' && (!this.busRide.active || e === 'whoosh')) this.sound.play(e);
             if (e === 'land' || e === 'slide')
                 particles.spawnParticles(player.mesh.position, 5, 0xd5be93, 0.45);
         }
         player.events.length = 0;
         const power = powers.checkCollisions(player);
         if (power && (power !== 'fastFreeBus' || (!this.busRide.active && !this.parkRide?.active))) {
-            if (power === 'fastFreeBus') this.busRide.board(player);
+            if (power === 'fastFreeBus') this.busRide.board(player, powerupSeconds(power, player.powerLevels[power]));
             else player.activatePowerup(power);
             this.pickupOrder = this.pickupOrder.filter(type => type !== power);
             this.pickupOrder.push(power);
@@ -672,14 +828,12 @@ export class Run {
                     { duration: 520, easing: 'ease-out' }
                 );
             }
-            this.sound.play(power === 'fastFreeBus' ? 'go' : power);
+            this.sound.play('power');
+            this.sound.play(power);
             impact();
             particles.spawnParticles(player.mesh.position, 14, 0xf0d997, 1.2);
         }
-        if (player.covidMaskTimer > 0) {
-            traffic.clear();
-            powers.reset();
-        }
+        if (player.covidMaskTimer > 0) traffic.clear();
         if (player.hasRainbow) {
             for (let i = traffic.obstacles.length - 1; i >= 0; i--) {
                 const o = traffic.obstacles[i];
@@ -702,23 +856,31 @@ export class Run {
         const ridingBus = this.busRide.active;
         if (ridingBus) {
             const fare = this.busRide.drive(dt, traffic, player, world.speed, this.reduce);
-            if (fare) {
+            const smashed = this.busRide.smashed;
+            if (smashed) {
                 score.addFoodStamps(fare);
-                this.sound.play('hit');
-                this.notify('Bus smash +' + fare + (fare === 1 ? ' stamp' : ' stamps'), 'clean');
+                const points = score.addStyle(CLEAN_MOVE_POINTS * smashed);
+                this.sound.play('smash');
+                this.notify('Smash +' + points + (fare ? ' · ' + fare + (fare === 1 ? ' stamp' : ' stamps') : ''), 'clean');
             }
             player.fastFreeBusTimer = Math.max(0,player.fastFreeBusTimer-dt);
             if (player.fastFreeBusTimer < 1e-7) this.busRide.leave(traffic,player,world.speed);
         }
         const streetHit = traffic.checkCollisions(player,ridingBus);
-        const hit = this.parkRide.contact(this) ?? streetHit;
+        const parkHit = this.parkRide.contact(this);
+        const hit = parkHit ?? streetHit;
+        if (this.parkRide.gateCleared) {
+            trump.pursuit.cleanMove();
+            if (parkHit !== 'coin') this.notify('Clean gate +' + score.addStyle(CLEAN_MOVE_POINTS), 'clean');
+            else score.addStyle(CLEAN_MOVE_POINTS);
+        }
         if (traffic.slippedOnIce && !player.invincible && !player.covidMaskTimer &&
             !ridingBus && !wasCycling && !this.parkRide.active) {
             player.iceTimer = ICE_STEERING_SECONDS;
-            if (!trump.isChasing) this.notify('Ice skid!', 'warning');
+            if (!trump.hot) this.notify('Ice skid!', 'warning');
             if (!this.reduce) particles.spawnParticles(player.mesh.position, 7, 0xd8ecf2, .62);
         }
-        if (hit === 'coin') this.collect();
+        if (hit === 'coin') this.collect(parkHit === 'coin' ? PARK_STAMPS : 1);
         else if (hit === 'alcohol') {
             if (player.rainbowTimer <= 0) {
                 player.activateConfusion();
@@ -728,20 +890,22 @@ export class Run {
                 particles.spawnParticles(player.mesh.position, 12, 0xa95fbc, 1.2);
             }
         } else if (hit && !player.invincible) {
-            if (hit === 'wall' || trump.isChasing) {
+            const safe = this.firstRun && this.elapsed < FIRST_RUN_SAFE_SECONDS;
+            if (!safe && (hit === 'wall' || trump.isChasing)) {
                 this.sound.play('end');
                 impact(true);
                 if (trump.isChasing) this.startCapture(hit);
                 else this.endRun(hit);
                 return;
             }
-            trump.startChase(player.mesh.position.x);
+            trump.hit(player.mesh.position.x, safe);
             player.stumble.start(trump.shoulder, this.reduce);
-            this.streak = 0;
+            if (score.hit()) this.sound.play('multiplierLost');
             player.flashRed();
             this.shake = 0.38;
             this.notify('Stumble!', 'stumble');
             this.bulletin('Trump wants the receipts.', 'City wire', true);
+            this.sound.play('crash');
             this.sound.play('chase');
             impact(true);
             particles.spawnParticles(player.mesh.position, 16, 0xe5ad69, 1.45);
@@ -757,18 +921,20 @@ export class Run {
         this.updateHeatwave(dt, onFoot);
         if (onFoot && traffic.lastStunt) {
             this.cleanMoves++;
-            this.streak = this.elapsed - this.lastStuntAt < 5 ? this.streak + 1 : 1;
-            this.lastStuntAt = this.elapsed;
+            trump.pursuit.cleanMove();
+            const level = score.multiplier, style = score.stylePoints;
+            const streak = score.cleanMove();
             const lines = stuntLines[traffic.lastStunt];
             const printed = this.bulletin(lines[(this.cleanMoves - 1) % lines.length]);
             if (!printed && this.noticeTime <= 0) {
-                this.notify({ cab: 'Clean jump', jump: 'Clean jump', slide: 'Clean slide', sidestep: 'Clean dodge' }[traffic.lastStunt], 'clean');
+                this.notify(moveNames[traffic.lastStunt] + ' +' + (score.stylePoints - style), 'clean');
             }
-            this.sound.play('stunt');
-            if (this.streak % 3 === 0) {
+            this.sound.play('stunt', score.multiplier);
+            if (score.multiplier > level) this.popMultiplier();
+            if (streak) {
                 const reward = this.heatwave.streakReward;
                 score.addFoodStamps(reward);
-                this.notify(reward === 2 ? 'Heatwave streak +2 stamps' : 'Clean streak +1 stamp');
+                this.notify(this.heatwave.active ? 'Heatwave streak +' + reward + ' stamps' : 'Clean streak +1 stamp');
             }
         }
         particles.update(dt);
@@ -794,15 +960,15 @@ export class Run {
             this.updateHud();
             this.hudTimer = 0.08;
         }
-        const metres = score.getDisplayScore();
+        const { metres } = score;
         const schedule = this.raceSchedule;
-        schedule.update(metres, this.familyWins, this.elapsed);
+        schedule.update(score.getDisplayScore(), this.familyWins, this.elapsed, metres);
         const next = schedule.rivals[this.familyWins];
         if (next && world.distance >= next.at - 550) {
             this.prepareRace(next);
-            if (!schedule.initialRecordPending && world.distance >= next.at - world.speed * 4.5) {
+            if (!(next.record && schedule.initialRecordPending) && world.distance >= next.at - world.speed * 4.5) {
                 if (this.upcomingRace?.rival !== next) {
-                    this.upcomingRace = new FamilyRace(next, this.speedLevel, true);
+                    this.upcomingRace = this.drawRace(next);
                     this.racePanel.prepare(this.upcomingRace, !this.raceTutorialSeen);
                 }
             }
@@ -821,8 +987,10 @@ export class Run {
         if (event && this.noticeTime <= 0) this.notify(event === 'start' ? '78° Heatwave' : 'Heatwave over', 'weather');
     }
 
-    collect() {
-        this.scoreManager.addFoodStamps(1);
+    collect(count = 1) {
+        this.scoreManager.addFoodStamps(count);
+        this.scoreManager.addStyle(STAMP_POINTS * count);
+        this.trump.pursuit.stamp();
         this.sound.play('stamp');
         this.magnet.copy(this.player.mesh.position);
         this.magnet.y += 0.9;

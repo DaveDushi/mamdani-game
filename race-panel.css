@@ -345,28 +345,125 @@
     font: 700 12px/1 Condensed, sans-serif;
 }
 
-.race-command {
+.race-deck {
     grid-row: 3;
     justify-self: center;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(123px, 1.15fr);
+    width: min(430px, 100%);
+    min-width: 0;
+}
+
+.race-calls {
+    display: grid;
+    grid-template: minmax(17px, auto) 34px / 1fr auto 1fr;
+    align-items: end;
+    padding: 0 4px 5px;
+    font: 700 16px/1 Condensed, sans-serif;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 1px 3px #091622, 0 0 2px #091622;
+}
+
+.race-verdict {
+    font: italic 900 clamp(24px, 7vw, 32px)/1 Condensed, Impact, sans-serif;
+    text-transform: uppercase;
+    white-space: nowrap;
+    paint-order: stroke fill;
+    -webkit-text-stroke: 4px #14212c;
+}
+
+.race-verdict { color: #ff8f7d; }
+.race-combo { color: var(--gold); }
+.race-combo { grid-row: 2; }
+.race-verdict { grid-area: 2 / 2; }
+.race-cue {
+    grid-area: 1 / 1 / 2 / -1;
+    justify-self: center;
+    padding: 4px 9px;
+    background: #14212c;
+    color: #fff4d9;
+    text-shadow: none;
+}
+.race-cue:empty { visibility: hidden; padding: 0; }
+
+.race-pads {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    height: 88px;
+    padding: 7px;
+    background: #101b24f2;
+    border: 1px solid var(--race-rule);
+    border-bottom: 0;
+}
+
+.race-pads > i {
+    display: grid;
+    place-items: center;
+    border: 3px solid #53626c;
+    border-radius: 3px;
+    background: #24323c;
+    color: #aab5bb;
+    font: italic 900 clamp(19px, 5.4vw, 26px)/1 Condensed, Impact, sans-serif;
+    text-transform: uppercase;
+}
+
+.race-pads:not([data-mode="side"], [data-mode="feet"]) { grid-template-columns: 1fr; }
+.race-pads:not([data-mode="side"], [data-mode="feet"]) > i:not([data-pad="0"]) { display: none; }
+.race-pads[data-mode="feet"] { grid-template-columns: 1fr 1fr; }
+.race-pads[data-mode="feet"] > i[data-pad="0"] { display: none; }
+.race-pads > i:is(.on, .tap) { border-color: #fff0bf; background: #d8ffa1; color: var(--ink); }
+.race-pads > i.next { border-color: #b9e682; border-style: dashed; color: #d8ffa1; }
+.race-pads > i.warn { border-color: #ffb469; background: #8a4a12; color: #fff4d9; }
+.race-pads > i.stop { border-color: #ffb1a4; background: #c2301d; color: #fff; }
+.race-pads > i.gold { border-color: #fff; background: var(--gold); color: var(--ink); }
+.race-pads[data-lean="true"] { opacity: .35; }
+
+/* On the track the tap button itself carries these states. Pads show only when the side matters. */
+.race-panel:not([data-phase="ready"]):not(:is([data-mode="side"], [data-mode="feet"])) .race-pads { display: none; }
+.race-panel:is([data-mode="side"], [data-mode="feet"]) .race-tap { display: none; }
+.race-panel:is([data-mode="side"], [data-mode="feet"]) .race-command { grid-template-columns: 1fr; }
+.race-panel:is([data-mode="side"], [data-mode="feet"]) #race-keys { grid-column: 1; }
+.race-panel[data-mode="warn"] .race-tap { border-color: #5a2f08; background: #ff9d42; }
+.race-panel[data-mode="stop"] .race-tap { border-color: #6d150a; background: #c2301d; color: #fff; }
+.race-panel[data-mode="gold"] .race-tap { border-color: #fff; background: #ffe27a; box-shadow: 0 0 0 4px #fff4d9, 0 0 26px 6px #ffcf4a; }
+
+.race-photo {
+    justify-self: center;
+    display: grid;
+    gap: 3px;
+    margin-bottom: 8px;
+    padding: 8px 14px 9px;
+    background: #fff4d9;
+    color: #14212c;
+    text-align: center;
+    font: 700 15px/1.1 Condensed, sans-serif;
+    font-variant-numeric: tabular-nums;
+}
+
+.race-photo[hidden] { display: none; }
+.race-photo strong { font: italic 900 24px/1 Condensed, Impact, sans-serif; text-transform: uppercase; }
+
+.race-panel:is([data-phase="won"], [data-phase="lost"]) :is(.race-calls, .race-pads) { display: none; }
+.race-panel[data-phase="intro"] .race-calls { visibility: hidden; }
+.race-panel[data-phase="ready"] .race-calls { display: none; }
+
+.race-command {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(150px, 1.6fr);
     gap: 4px 11px;
-    width: min(400px, 100%);
     min-width: 0;
     padding: 8px 10px;
     background: #14212c;
     border: 1px solid var(--race-rule);
 }
 
-.race-panel[data-phase="ready"] :is(.race-board, .race-command) {
+.race-panel[data-phase="ready"] :is(.race-board, .race-command),
+.race-panel[data-phase="intro"] .race-board {
     display: none;
 }
 
 .race-tutorial {
-    grid-row: 3;
-    justify-self: center;
-    width: min(410px, 100%);
-    padding: 12px;
+    padding: 10px 12px 12px;
     border: 1px solid var(--race-rule);
     border-top: 3px solid var(--gold);
     background: #14212c;
@@ -375,12 +472,21 @@
 
 .race-tutorial strong {
     color: var(--gold);
-    font: italic 900 24px/1 Condensed, Impact, sans-serif;
+    font: italic 900 clamp(19px, 5.4vw, 23px)/1.04 Condensed, Impact, sans-serif;
+    text-wrap: balance;
 }
 
 .race-tutorial p {
-    margin: 6px 0 10px;
+    margin: 5px 0 9px;
 }
+
+.race-tutorial p + p {
+    margin-top: -4px;
+    color: var(--race-muted);
+    font-weight: 500;
+}
+
+.race-tutorial[hidden], .race-tutorial p[hidden] { display: none; }
 
 .race-ready {
     width: 100%;
@@ -412,9 +518,8 @@
 }
 
 .race-boost {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    display: grid;
+    gap: 6px;
     color: var(--race-muted);
     font: 700 13px/1.2 Condensed, sans-serif;
 }
@@ -456,6 +561,7 @@
     min-height: 64px;
 }
 
+.race-panel[data-phase="lost"] .race-call { grid-column: 1 / -1; }
 .race-panel[data-phase="won"] .race-signal {
     color: var(--gold);
 }
@@ -479,12 +585,18 @@
     font-size: 19px;
 }
 .race-takeover b { color: var(--gold); font-variant-numeric: tabular-nums; }
+.race-takeover > b { font-size: 18px; }
 .takeover-track { height: 5px; background: #475057; }
 .takeover-track i { display: block; height: 100%; background: #de6859; transform-origin: left; }
 
 .race-panel[data-phase="won"] .race-boost,
 .race-panel[data-phase="lost"] .race-boost {
     display: none;
+}
+
+@media (pointer: coarse) {
+    #race-keys { display: none; }
+    .race-tap { min-height: 84px; }
 }
 
 #race-keys {
@@ -513,10 +625,21 @@
         font-size: clamp(19px, 2.8vw, 23px);
     }
 
-    .race-command {
+    .race-deck {
         justify-self: end;
-        width: clamp(215px, 30vw, 278px);
-        grid-template-columns: minmax(0, 1fr) minmax(96px, 1.05fr);
+        width: clamp(230px, 36vw, 330px);
+    }
+
+    .race-heading-line [data-race="milepost"] { display: none; }
+    .race-pads { height: 62px; padding: 5px; }
+    .race-calls { font-size: 14px; }
+    .race-verdict { font-size: 22px; }
+    .race-tutorial { padding: 7px 10px 9px; font-size: 14px; line-height: 1.25; }
+    .race-tutorial strong { font-size: 18px; }
+    .race-tutorial p { margin: 4px 0 7px; }
+
+    .race-command {
+        grid-template-columns: minmax(0, 1fr) minmax(118px, 1.4fr);
         column-gap: 6px;
     }
 

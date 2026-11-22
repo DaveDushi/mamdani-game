@@ -36,12 +36,6 @@
     height: 13px;
     stroke-width: 2.4;
 }
-.menu-wallet {
-    margin: 6px 0 10px;
-    color: #fff3d7;
-    font: 700 14px/1.2 Barlow, sans-serif;
-    text-shadow: 0 1px 3px #13202b, 0 0 6px #13202b;
-}
 .run-controls .play {
     width: 100%;
     gap: 8px;
@@ -65,7 +59,7 @@
 }
 #shop-screen {
     touch-action: pan-y;
-    grid-template: 'wardrobe preview' minmax(0, 1fr) / minmax(0, 350px) minmax(0, 1fr);
+    grid-template: 'wardrobe preview' minmax(0, 1fr) / minmax(0, 400px) minmax(0, 1fr);
     padding-left: max(var(--side), env(safe-area-inset-left));
     padding-right: max(12px, env(safe-area-inset-right));
 }
@@ -75,174 +69,130 @@
 .preparing-preview #outfit-preview { visibility: hidden; }
 #shop-screen .wardrobe {
     grid-area: wardrobe;
-    display: grid;
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
-    gap: 12px;
-    width: min(100%, 350px);
+    display: flex;
+    flex-direction: column;
+    width: min(100%, 400px);
     max-width: none;
-    padding: 24px;
+    padding: 0;
+    overflow: hidden;
 }
-#shop-screen h2 { margin: 0; font-size: 40px; }
-.shop-sections { display: flex; border-bottom: 2px solid var(--ink); }
+.shop-head {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 6px 8px 18px;
+}
+#shop-screen h2 { flex: 1; margin: 0; font-size: 34px; letter-spacing: -.03em; white-space: nowrap; }
+#shop-screen #shop-wallet {
+    margin: 0;
+    padding: 5px 9px 6px;
+    color: #2a2110;
+    background: #f3d98a;
+    border: 1px dashed #a58a3f;
+    font: 700 16px/1 Barlow, sans-serif;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.shop-sections { display: flex; flex: none; padding-inline: 18px; border-bottom: 2px solid var(--ink); }
 .shop-sections button {
-    flex: 1;
-    min-height: 42px;
+    flex: 1 1 auto;
+    min-height: 44px;
+    padding: 0 6px;
     font-weight: 700;
+    font-size: 15px;
+    white-space: nowrap;
     color: var(--ink);
 }
+.shop-sections button:hover { background: #e7dcc6; }
 .shop-sections button[aria-pressed='true'] { color: var(--paper); background: var(--ink); }
-#training-panel, #outfits-panel { min-height: 0; overflow: auto; }
+.shop-panel { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 12px 18px 16px; }
+#shop-screen .shop-panel p { margin: 6px 0; line-height: 1.25; }
+#shop-screen .shop-panel > p:first-child { margin-top: 0; }
+#shop-screen button:disabled { cursor: default; }
+#shop-screen .shop-feedback { color: #7d301e; font-weight: 700; }
+#shop-screen .shop-feedback:empty { margin: 0; }
+#shop-screen .solid.short { background: #65707a; }
+
+#shop-items { display: grid; gap: 4px; }
+#shop-screen .outfit { min-height: 44px; border: 2px solid transparent; }
+#shop-screen .outfit:hover { background: #ebe0c8; }
+#shop-screen .outfit[aria-pressed='true'] { background: #ded5c4; border-color: var(--ink); }
+#shop-screen .outfit span { width: 24px; height: 24px; }
+
+#shop-powerups { display: grid; gap: 8px; }
+.power-card {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 11px;
+    padding: 8px;
+    background: #fffaf0;
+    border: 1px solid #cfc5b0;
+}
+.power-card .power-icon { width: 52px; }
+.power-card h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 9px; margin: 0; font: 700 18px/1.1 Barlow, sans-serif; }
+#shop-screen .power-card p { margin: 1px 0 0; font-size: 14px; line-height: 1.2; }
+#shop-screen .power-card .power-time { font-variant-numeric: tabular-nums; }
+.pips { display: inline-flex; gap: 3px; }
+.pips i { width: 11px; height: 11px; border: 2px solid #8b7f63; border-radius: 50%; }
+.pips i.on { border-color: var(--red); background: var(--red); }
+#shop-screen .power-card .solid { min-width: 92px; min-height: 44px; margin: 0; padding: 6px 10px; font: 700 16px/1 Barlow, sans-serif; text-transform: none; }
+
 .training-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; }
 .training-heading h3 { margin: 0; font: 700 23px/1.1 Condensed, sans-serif; }
-#speed-level, #shop-wallet { font-weight: 700; }
-#shop-screen .wardrobe p { margin: 6px 0; line-height: 1.25; }
-#shop-screen #buy-speed { min-height: 42px; margin: 0; padding: 7px 12px; font-weight: 700; }
-#shop-screen button:disabled { cursor: default; }
-#shop-screen #speed-feedback { color: #7d301e; font-weight: 700; }
-#shop-screen #speed-feedback:empty { margin: 0; }
-#shop-screen #shop-record { margin: 10px 0 0; padding-top: 7px; border-top: 1px solid #b8ac95; font-size: 14px; }
-#race-schedule { font-size: 14px; }
-#race-schedule summary { display: flex; align-items: center; gap: 0.5em; padding: 9px 2px; cursor: pointer; font-weight: 700; list-style: none; }
+#speed-level { font-weight: 700; }
+#shop-screen #buy-speed { min-height: 44px; margin: 4px 0 0; padding: 7px 14px; font: 700 17px/1 Barlow, sans-serif; text-transform: none; }
+#shop-screen #shop-record { margin: 12px 0 0; padding-top: 9px; border-top: 1px solid #b8ac95; font-size: 15px; }
+#race-schedule { font-size: 15px; }
+#race-schedule summary { display: flex; align-items: center; gap: 0.5em; min-height: 44px; cursor: pointer; font-weight: 700; list-style: none; }
 #race-schedule summary::-webkit-details-marker { display: none; }
 #race-schedule summary::after { content: '+'; }
 #race-schedule[open] summary::after { content: '−'; }
-#race-schedule summary:focus-visible { outline: 2px solid #24718a; outline-offset: -2px; }
-#shop-rivals { margin: 0; padding: 0; }
-#shop-rivals li {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    gap: 6px;
-    padding-block: 5px;
-    border-top: 1px solid #c4bba9;
-    align-items: baseline;
-}
-#shop-rivals b { color: #6e3524; font-size: 12px; }
-#shop-rivals b:empty { display: none; }
-#shop-rivals span:nth-child(2) { white-space: nowrap; font-variant-numeric: tabular-nums; }
-#close-shop-btn { justify-self: start; }
+#race-schedule summary:focus-visible { outline-offset: -2px; }
+#race-schedule table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+#race-schedule :is(th, td) { padding: 4px 0; text-align: left; vertical-align: baseline; }
+#race-schedule :is(th, td):not(:first-child) { padding-left: 8px; text-align: right; white-space: nowrap; }
+#race-schedule small { display: block; color: #55584f; font-size: 13px; font-weight: 500; }
+#shop-rivals tr { border-top: 1px solid #c4bba9; }
+#shop-rivals th { font-weight: 700; }
+#shop-rivals b { color: #8a3325; font-size: 13px; }
 #shop-screen button:focus-visible { outline-offset: -3px; }
-@media (max-width: 359px) {
-    #start-screen { grid-template-columns: minmax(0, 1fr); }
-    #start-screen .home-brand { min-width: 0; white-space: normal; }
-    #start-screen .mast { padding-inline: 10px; }
-    #start-screen .brand { min-width: 0; font-size: 21px; }
-    #start-screen .mast-actions { flex-shrink: 0; }
-    .run-controls .play { font-size: clamp(20px, 8vw, 27px); }
-    #start-screen .rail { gap: 4px; padding-inline: 6px; }
-    #start-screen .key-guide { gap: 4px; font-size: 10px; }
-    #start-screen .key-guide span { gap: 2px; }
-    #start-screen .record { white-space: normal; line-height: 1.05; }
-    #start-screen .record b { white-space: nowrap; }
-    #start-screen .touch-guide { max-width: 48%; }
-}
+
 @media (max-aspect-ratio: 4/5) {
-    .cover-copy .run-controls { width: min(100%, 300px); }
-    .cover-copy .deck { margin-block: 10px; }
-    .cover-copy .subactions { margin-top: 8px; }
     #shop-screen {
         grid-template: 'preview' minmax(0, 1fr) 'wardrobe' auto / minmax(0, 1fr);
-        padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+        padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right));
     }
-    #shop-screen .wardrobe { width: min(100%, 440px); max-height: 54svh; padding: 14px; gap: 7px; }
-    #shop-screen h2 { font-size: 32px; }
+    #shop-screen .wardrobe { width: min(100%, 460px); max-height: 58svh; }
+    #shop-screen[data-section='outfits'] .wardrobe { max-height: 46svh; }
+    #shop-screen:has(#race-schedule[open])[data-section='training'] .wardrobe { max-height: 82svh; }
+    #shop-screen h2 { font-size: 28px; }
+    .shop-head, .shop-sections { padding-left: 14px; }
+    .shop-sections { padding-right: 14px; }
+    .shop-panel { padding: 10px 14px 14px; }
+    #shop-screen #shop-items { grid-template-columns: 1fr 1fr; margin: 0; }
+    #shop-screen .outfit { padding: 4px 7px; font-size: 15px; line-height: 1.1; }
 }
-@media (max-aspect-ratio: 4/5) and (max-height: 635px) {
-    #start-screen .edition { display: none; }
-    .cover-copy .deck { font-size: 14px; }
-    .cover-copy { padding-bottom: 10px; }
+@media (max-aspect-ratio: 4/5) and (max-height: 700px) {
+    #shop-screen[data-section='outfits'] .shop-lede { display: none; }
 }
-@media (max-aspect-ratio: 4/5) and (max-height: 535px) {
-    #start-screen .home-headline { padding-block: 6px; }
-    #start-screen .home-spread { grid-template-rows: auto minmax(76px, 1fr) auto; }
-    #start-screen .deck { display: none; }
-    #start-screen h1 { font-size: min(18vw, 11svh); }
-    .cover-title { margin-bottom: 10px; }
+@media (max-width: 359px) {
+    .run-controls .play { font-size: clamp(20px, 8vw, 27px); }
+    .shop-sections button { padding: 0 3px; font-size: 14px; }
+    #shop-screen h2 { font-size: 23px; }
 }
-@media (max-aspect-ratio: 4/5) and (max-height: 650px),
-       (min-aspect-ratio: 1/1) and (max-height: 430px) {
-    #shop-screen .wardrobe {
-        grid-template-columns: minmax(0, 1fr) auto;
-        grid-template-rows: auto auto minmax(0, 1fr);
-        grid-template-areas: 'heading back' 'sections sections' 'content content';
-        gap: 5px;
-        padding: 8px 12px;
-    }
-    #shop-screen h2 { grid-area: heading; align-self: center; font-size: 27px; }
-    .shop-sections { grid-area: sections; }
-    #training-panel, #outfits-panel { grid-area: content; }
-    #shop-screen .wardrobe p, #shop-screen #shop-record { font-size: 13px; margin-block: 4px; }
-    .shop-sections button, #shop-screen #buy-speed { min-height: 36px; }
-    .training-heading h3 { font-size: 20px; }
-    #outfits-panel {
-        display: grid;
-        grid-template-areas: 'outfits' 'sponsor';
-        align-items: center;
-        align-content: start;
-        gap: 4px;
-    }
-    #outfits-panel > p { grid-area: sponsor; }
-    #shop-screen #shop-items {
-        grid-area: outfits;
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        margin: 0;
-    }
-    #shop-screen .outfit {
-        gap: 5px;
-        padding: 4px;
-        min-height: 34px;
-        font-size: 13px;
-        line-height: 1.08;
-    }
-    #shop-screen .outfit span { width: 12px; height: 12px; }
-    #shop-screen .outfit b:empty { display: none; }
-    #shop-screen #close-shop-btn {
-        grid-area: back;
-        min-height: 34px;
-        padding: 5px 8px;
-        font-size: 16px;
-    }
-}
-@media (min-aspect-ratio: 1/1) and (max-height: 430px) {
+@media (min-aspect-ratio: 1/1) and (max-height: 500px) {
     #shop-screen {
-        grid-template-columns: min(48vw, 340px) minmax(0, 1fr);
+        grid-template-columns: min(52vw, 430px) minmax(0, 1fr);
         padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
             max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
     }
-    #shop-screen .wardrobe { width: min(48vw, 340px); }
-}
-@media (max-height: 530px) and (min-aspect-ratio: 1/1) {
-    #start-screen .cover-copy {
-        width: min(86%, 730px);
-        display: grid;
-        grid-template-columns: minmax(0, .9fr) minmax(0, 1fr);
-        gap: clamp(12px, 4vw, 40px);
-        align-items: center;
-    }
-    #start-screen h1 { font-size: min(11vw, 18svh); }
-    #start-screen .edition { display: none; }
-    #start-screen .cover:before {
-        background: linear-gradient(90deg, #14212bd6, #14212b99 67%, transparent);
-    }
-    .run-controls .subactions { gap: 5px; }
-    .run-controls .subactions button { padding-inline: 7px; }
-    .menu-wallet { margin-block: 4px 8px; font-size: 12px; }
-}
-@media (max-height: 330px) and (min-aspect-ratio: 1/1) {
-    #start-screen .deck { display: none; }
-    #poster-room {
-        grid-template: minmax(0, 1fr) / minmax(0, 1fr);
-        padding-block: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-bottom));
-    }
-    #poster-room .poster-wall {
-        width: min(100%, 610px);
-        height: 100%;
-        grid-template: auto minmax(0, 1fr) auto / minmax(0, .8fr) minmax(0, 1fr);
-        gap: 6px 14px;
-        align-items: center;
-    }
-    #poster-room .poster-print { grid-area: 1 / 1 / 4 / 2; width: auto; max-width: 100%; height: 100%; }
-    #poster-room .poster-heading { grid-area: 1 / 2; }
-    #poster-room #poster-caption { grid-area: 2 / 2; }
-    #poster-room .poster-controls { grid-area: 3 / 2; width: 100%; }
+    #shop-screen .wardrobe { width: 100%; max-height: 100%; }
+    #shop-screen h2 { font-size: 27px; }
+    .shop-head { padding-block: 2px; padding-left: 14px; }
+    .shop-sections { padding-inline: 14px; }
+    .shop-panel { padding: 8px 14px 12px; }
+    #shop-screen #shop-items { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; }
+    #shop-screen .outfit { padding: 4px 7px; font-size: 15px; line-height: 1.1; }
 }
