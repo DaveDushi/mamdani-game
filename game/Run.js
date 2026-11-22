@@ -553,6 +553,10 @@ export class Run {
         if (this.race) {
             const finale = this.world.overtime && this.race.phase === 'won';
             const ready = this.raceStage.finishTime >= (finale ? CITY_REVEAL : FINISH_HOLD);
+            if (this.race.phase === 'lost' && ready && this.mode === 'playing') {
+                this.leaveRace();
+                return;
+            }
             if (finale && ready) {
                 this.follow(dt);
                 if (!streetClear(this.world.distance - 25, this.world.distance + 80)) {

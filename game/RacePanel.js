@@ -93,7 +93,7 @@ export class RacePanel {
         this.keyHint = this.element.querySelector('#race-keys');
         this.tutorial = this.element.querySelector('.race-tutorial');
         this.readyButton = this.element.querySelector('.race-ready');
-        hud.append(this.element);
+        hud.append(this.element, this.nodes.start);
 
         // iPhone smart zoom can move the finish button offscreen during repeated sprint taps.
         const keepTrackInView = event => {
@@ -174,7 +174,7 @@ export class RacePanel {
     }
 
     paint(race, finishReady = false) {
-        if (finishReady && this.done && this.continueButton.disabled) {
+        if (finishReady && race.phase === 'won' && this.continueButton.disabled) {
             this.continueButton.disabled = false;
             if (this.active) this.continueButton.focus({ preventScroll: true });
         }
@@ -209,7 +209,7 @@ export class RacePanel {
         const showGo = phase === 'racing' && elapsed < 0.7;
         const startDigit = phase === 'intro' ? String(countdown) : showGo ? 'GO!' : '';
         const overlay = nodes.start;
-        overlay.hidden = !startDigit;
+        overlay.hidden = this.paused || !startDigit;
         overlay.dataset.go = String(showGo);
         if (nodes['start-digit'].textContent !== startDigit) {
             write(nodes['start-digit'], startDigit);
@@ -242,7 +242,7 @@ export class RacePanel {
                 fill(nodes['takeover-fill'], wins / RIVALS.length);
                 write(nodes['takeover-result'], `${wins}/${RIVALS.length} beaten · ${elapsed.toFixed(2)} s`);
             }
-            write(this.continueButton, champion ? 'Run Overtime' : phase === 'won' ? 'Back to street' : 'See results');
+            if (phase === 'won') write(this.continueButton, champion ? 'Run Overtime' : 'Back to street');
             this.continueButton.disabled = true;
         }
     }
@@ -253,7 +253,7 @@ export class RacePanel {
         this.tutorial.hidden = phase !== 'ready';
         this.tapButton.setAttribute('aria-disabled', String(phase !== 'racing'));
         this.tapButton.hidden = this.keyHint.hidden = this.done;
-        this.continueButton.hidden = !this.done;
+        this.continueButton.hidden = phase !== 'won';
     }
 
     get done() {
@@ -265,16 +265,18 @@ export class RacePanel {
         if (this.paused === paused) return;
         this.paused = paused;
         this.element.inert = paused;
+        this.nodes.start.hidden = paused || !this.nodes['start-digit'].textContent;
         if (!paused && this.active) this.focusControl();
     }
 
     focusControl() {
         const button = this.done ? this.continueButton : this.tutorial.hidden ? this.tapButton : this.readyButton;
-        button.focus({ preventScroll: true });
+        if (!button.hidden && !button.disabled) button.focus({ preventScroll: true });
     }
 
     hide() {
         this.element.hidden = true;
+        this.nodes.start.hidden = true;
         this.element.inert = true;
         delete this.element.dataset.phase;
         this.hud.classList.remove('is-racing');

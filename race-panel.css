@@ -170,12 +170,12 @@
 .race-start {
     position: absolute;
     inset: 0;
-    z-index: 1;
+    z-index: 4;
     display: grid;
     place-content: center;
     justify-items: center;
     gap: 5px;
-    background: radial-gradient(ellipse at center, #091622ba 0, #09162245 38%, transparent 68%);
+    background: radial-gradient(ellipse at center, #091622c9, #09162252 50%, #09162226);
     text-align: center;
     pointer-events: none;
 }
