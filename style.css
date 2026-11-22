@@ -931,8 +931,9 @@ h1 strong {
 .result-story {
     margin-block: 10px;
 }
-.story-tools, .story-tools .sound-toggle { display: flex; align-items: center; gap: 8px; }
-.story-tools svg { width: 18px; height: 18px; }
+.sound-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.sound-toggle svg { width: 18px; height: 18px; }
+#pause-screen .sound-toggle { display: flex; margin-top: 8px; }
 .manual-more { margin-block: 16px; }
 #registration-modal { z-index: 5; background: #111b24b8; }
 #registration-title { font-size: clamp(29px, 7vw, 42px); }
@@ -1556,14 +1557,6 @@ h1 strong {
     margin-top: 12px;
 }
 @media (max-width: 359px) {
-    .sound-toggle span {
-        display: none;
-    }
-    .mast .sound-toggle {
-        min-width: 44px;
-        min-height: 44px;
-        justify-content: center;
-    }
     .record {
         white-space: nowrap;
     }

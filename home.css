@@ -74,6 +74,18 @@
     object-fit: cover;
     object-position: 94% 38%;
 }
+.home-sound {
+    position: absolute;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: 10px;
+    min-height: 44px;
+    padding-inline: 11px;
+    border: 1px solid #f6eedb;
+    border-radius: 2px;
+    background: var(--print);
+    color: var(--sheet);
+    font-weight: 700;
+}
 
 .home-console.run-controls {
     grid-area: 3 / 1;

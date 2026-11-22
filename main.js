@@ -125,17 +125,20 @@ function home() {
     paintMenu();
     refreshWallet();
 }
+const soundButtons = document.querySelectorAll('.sound-toggle');
 function updateSound() {
-    const button = document.querySelector('.sound-toggle');
-    button.setAttribute('aria-label', 'Game sound');
-    button.setAttribute('aria-pressed', String(sound.enabled));
-    button.querySelector('span').textContent = sound.enabled ? 'Sound on' : 'Sound off';
-    button.querySelector('use').setAttribute('href', sound.enabled ? '#i-sound' : '#i-mute');
+    for (const button of soundButtons) {
+        button.setAttribute('aria-pressed', String(sound.enabled));
+        button.querySelector('span').textContent = sound.enabled ? 'Sound on' : 'Sound off';
+        button.querySelector('use').setAttribute('href', sound.enabled ? '#i-sound' : '#i-mute');
+    }
 }
-document.querySelector('.sound-toggle').addEventListener('click', () => {
-    sound.toggle();
-    updateSound();
-});
+for (const button of soundButtons) {
+    button.addEventListener('click', () => {
+        sound.toggle();
+        updateSound();
+    });
+}
 updateSound();
 home();
 offerDomainMove();

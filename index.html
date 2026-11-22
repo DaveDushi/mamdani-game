@@ -79,6 +79,9 @@
                         <img src="./art/borough-run.webp" width="1600" height="900"
                             alt="Mamdani running through Manhattan with Trump in pursuit." fetchpriority="high" />
                     </picture>
+                    <button type="button" class="sound-toggle home-sound" aria-label="Game sound" aria-pressed="true">
+                        <svg aria-hidden="true"><use href="#i-sound" /></svg><span>Sound on</span>
+                    </button>
                 </figure>
                 <div class="home-console run-controls">
                     <div class="home-modes">
@@ -165,6 +168,9 @@
                 <p id="pause-print" hidden></p>
                 <button class="solid" id="resume-btn">Resume</button
                 ><button class="plain" data-home>Menu</button>
+                <button type="button" class="plain sound-toggle" aria-label="Game sound" aria-pressed="true">
+                    <svg aria-hidden="true"><use href="#i-sound" /></svg><span>Sound on</span>
+                </button>
             </div>
         </section>
         <section id="game-over-screen" class="overlay hidden" aria-labelledby="result-headline">
@@ -285,12 +291,7 @@
             <article class="paper">
                 <p class="slug">City Wire · Satire desk</p>
                 <h2>The mayor is on foot.</h2>
-                <div class="story-tools">
-                    <button type="button" id="posters-btn" class="plain">Posters</button>
-                    <button type="button" class="plain sound-toggle" aria-label="Game sound" aria-pressed="true">
-                        <svg aria-hidden="true"><use href="#i-sound" /></svg><span>Sound on</span>
-                    </button>
-                </div>
+                <button type="button" id="posters-btn" class="plain">Posters</button>
                 <p>
                     Flatbush has a new bus lane. The Committee for Faster Buses is still voting on what “faster” means.
                 </p>
